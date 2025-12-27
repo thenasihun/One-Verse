@@ -310,149 +310,223 @@ class _VerseScreenState extends State<VerseScreen> {
     );
   }
 
+  Widget _buildMiniIconButton({
+    required IconData icon,
+    required VoidCallback? onTap,
+    String? tooltip,
+    Color? color,
+    double size = 22,
+  }) {
+    return IconButton(
+      icon: Icon(icon),
+      iconSize: size,
+      color: color ?? Theme.of(context).iconTheme.color?.withOpacity(0.6),
+      tooltip: tooltip,
+      padding: EdgeInsets.zero, // Reduce padding to fit 7 items
+      constraints: const BoxConstraints(), // Removes default minimum size
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: onTap,
+    );
+  }
+
   // --- UPDATED CONTROL PANEL ---
   Widget _buildControlPanel(
       BuildContext context, Surah? selectedSurah, QuranProvider quranProvider) {
-    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    final audioProvider = Provider.of<AudioProvider>(context);
     final settingsProvider =
         Provider.of<SettingsProvider>(context, listen: false);
     final downloadManager = DownloadManager();
 
+    final primaryColor = Theme.of(context).primaryColor;
+    final inactiveColor = Theme.of(context).disabledColor.withOpacity(0.3);
+    final iconColor =
+        Theme.of(context).iconTheme.color?.withOpacity(0.7) ?? Colors.grey[700];
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(50),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)
+          BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 5)),
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
-            onPressed: _goToPreviousVerse,
-            tooltip: "Previous Verse",
-          ),
-          IconButton(
-            icon: const Icon(Icons.share_outlined),
-            onPressed: () {
-              if (selectedSurah == null) return;
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildMiniIconButton(
+                icon: Icons.share_outlined,
+                onTap: () {
+                  if (selectedSurah == null) return;
 
-              // Get details for download path generation
-              final settings =
-                  Provider.of<SettingsProvider>(context, listen: false);
-              final reciter = settings.allAudioEditions.firstWhere(
-                  (e) => e.identifier == settings.audioEdition,
-                  orElse: () => settings.allAudioEditions.first);
+                  // Get details for download path generation
+                  final settings =
+                      Provider.of<SettingsProvider>(context, listen: false);
+                  final reciter = settings.allAudioEditions.firstWhere(
+                      (e) => e.identifier == settings.audioEdition,
+                      orElse: () => settings.allAudioEditions.first);
 
-              ShareService.shareVerse(
-                context: context,
-                arabic: quranProvider.arabicAyah?.arabicText ?? "",
-                translation:
-                    quranProvider.translationAyah?.translationText ?? "",
-                surahName: selectedSurah.englishName,
-                surahNum: quranProvider.selectedSurahNumber,
-                ayahNum: quranProvider.selectedAyahNumber,
-                audioUrl: quranProvider.audioUrl ?? "",
-                language: reciter.language,
-                reciterName: reciter.englishName,
-              );
-            },
-            tooltip: "Share Verse",
-          ),
-          IconButton(
-            icon: const Icon(Icons.download_outlined),
-            onPressed: quranProvider.audioUrl != null && selectedSurah != null
-                ? () {
-                    final reciter = settingsProvider.allAudioEditions
-                        .firstWhere(
-                            (ed) =>
-                                ed.identifier == settingsProvider.audioEdition,
-                            orElse: () =>
-                                settingsProvider.allAudioEditions.first);
-
-                    downloadManager.downloadAudio(
-                      url: quranProvider.audioUrl!,
-                      language: reciter.language,
-                      reciterName: reciter.englishName,
-                      surahNumber: selectedSurah.number,
-                      surahName: selectedSurah.englishName,
-                      ayahNumber: quranProvider.selectedAyahNumber,
-                    );
-                  }
-                : null,
-            tooltip: "Download Verse",
-          ),
-          Consumer<AudioProvider>(
-            builder: (context, audioConsumer, child) {
-              // FIX: Use the smart getter we added to AudioProvider
-              final isPlaying = audioConsumer.isPlaying;
-
-              // Only show stop button if playing AND it's the current verse on screen
-              final isCurrentVerse =
-                  quranProvider.audioUrl == audioConsumer.currentlyPlayingUrl;
-              final showStopButton =
-                  isPlaying && isCurrentVerse && !audioConsumer.isPlaylistMode;
-
-              return FloatingActionButton(
-                elevation: 2,
-                backgroundColor: showStopButton
-                    ? Colors.red.shade700
-                    : Theme.of(context).primaryColor,
-                onPressed: () {
-                  if (showStopButton) {
-                    audioConsumer.stop();
-                  } else if (quranProvider.audioUrl != null) {
-                    audioConsumer.playSingleVerse(quranProvider.audioUrl!);
-                  }
+                  ShareService.shareVerse(
+                    context: context,
+                    arabic: quranProvider.arabicAyah?.arabicText ?? "",
+                    translation:
+                        quranProvider.translationAyah?.translationText ?? "",
+                    surahName: selectedSurah.englishName,
+                    surahNum: quranProvider.selectedSurahNumber,
+                    ayahNum: quranProvider.selectedAyahNumber,
+                    audioUrl: quranProvider.audioUrl ?? "",
+                    language: reciter.language,
+                    reciterName: reciter.englishName,
+                  );
                 },
-                child: Icon(
-                    showStopButton
-                        ? Icons.stop_rounded
-                        : Icons.play_arrow_rounded,
-                    size: 36,
-                    color: Colors.white),
-              );
-            },
+                tooltip: "Share Verse",
+              ),
+              const SizedBox(width: 12),
+              _buildMiniIconButton(
+                icon: Icons.download_outlined,
+                color: quranProvider.audioUrl != null && selectedSurah != null
+                    ? iconColor
+                    : inactiveColor,
+                onTap: quranProvider.audioUrl != null && selectedSurah != null
+                    ? () {
+                        final reciter = settingsProvider.allAudioEditions
+                            .firstWhere(
+                                (ed) =>
+                                    ed.identifier ==
+                                    settingsProvider.audioEdition,
+                                orElse: () =>
+                                    settingsProvider.allAudioEditions.first);
+
+                        downloadManager.downloadAudio(
+                          url: quranProvider.audioUrl!,
+                          language: reciter.language,
+                          reciterName: reciter.englishName,
+                          surahNumber: selectedSurah.number,
+                          surahName: selectedSurah.englishName,
+                          ayahNumber: quranProvider.selectedAyahNumber,
+                        );
+                      }
+                    : null,
+                tooltip: "Download Verse",
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.queue_music_rounded),
-            onPressed: () {
-              // --- FIX IS HERE ---
-              // Logic:
-              // 1. If Surah is different -> LOAD NEW SURAH
-              // 2. If Surah is same but verse is different -> SEEK TO VERSE
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildMiniIconButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                size: 20,
+                color: iconColor,
+                onTap: _goToPreviousVerse,
+                tooltip: "Previous Verse",
+              ),
+              const SizedBox(width: 8),
+              Consumer<AudioProvider>(
+                builder: (context, audioConsumer, child) {
+                  // FIX: Use the smart getter we added to AudioProvider
+                  final isPlaying = audioConsumer.isPlaying;
 
-              bool isDifferentSurah = audioProvider.currentAudioSurah?.number !=
-                  quranProvider.selectedSurahNumber;
-              bool isSameSurahButDifferentVerse = !isDifferentSurah &&
-                  (audioProvider.currentAyahIndex !=
-                      quranProvider.selectedAyahNumber - 1);
+                  // Only show stop button if playing AND it's the current verse on screen
+                  final isCurrentVerse = quranProvider.audioUrl ==
+                      audioConsumer.currentlyPlayingUrl;
+                  final showStopButton = isPlaying &&
+                      isCurrentVerse &&
+                      !audioConsumer.isPlaylistMode;
 
-              if (isDifferentSurah || audioProvider.currentAudioSurah == null) {
-                // Load New Playlist
-                audioProvider.loadSurahAndPlay(
-                    quranProvider.selectedSurahNumber,
-                    settingsProvider.audioEdition,
-                    settingsProvider.translationLanguage,
-                    startingIndex: quranProvider.selectedAyahNumber - 1,
-                    autoPlay: true);
-              } else if (isSameSurahButDifferentVerse) {
-                // Just Seek in Current Playlist
-                audioProvider.playVerse(quranProvider.selectedAyahNumber - 1);
-              }
-              // If same surah AND same verse, just switch tab (do nothing to audio)
-
-              widget.onSwitchTab(1);
-            },
-            tooltip: "Open in Player",
+                  return SizedBox(
+                    width: 50,
+                    height: 50,
+                    child: FloatingActionButton(
+                      elevation: 4,
+                      backgroundColor: showStopButton
+                          ? Colors.red.shade700
+                          : Theme.of(context).primaryColor,
+                      onPressed: () {
+                        if (showStopButton) {
+                          audioConsumer.stop();
+                        } else if (quranProvider.audioUrl != null) {
+                          audioConsumer
+                              .playSingleVerse(quranProvider.audioUrl!);
+                        }
+                      },
+                      child: Icon(
+                          showStopButton
+                              ? Icons.stop_rounded
+                              : Icons.play_arrow_rounded,
+                          size: 30,
+                          color: Colors.white),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+              _buildMiniIconButton(
+                icon: Icons.arrow_forward_ios_rounded,
+                size: 20,
+                onTap: _goToNextVerse,
+                tooltip: "Next Verse",
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.arrow_forward_ios_rounded),
-            onPressed: _goToNextVerse,
-            tooltip: "Next Verse",
+          Row(
+            children: [
+              _buildMiniIconButton(
+                onTap: () => audioProvider.toggleLoopMode(),
+                icon: audioProvider.loopMode == LoopMode.one
+                    ? Icons.repeat_one_rounded
+                    : Icons.repeat_rounded,
+                color: audioProvider.loopMode == LoopMode.one
+                    ? primaryColor
+                    : null,
+                tooltip: "Repeat Mode",
+              ),
+              const SizedBox(width: 12),
+              _buildMiniIconButton(
+                icon: Icons.queue_music_rounded,
+                onTap: () {
+                  // --- FIX IS HERE ---
+                  // Logic:
+                  // 1. If Surah is different -> LOAD NEW SURAH
+                  // 2. If Surah is same but verse is different -> SEEK TO VERSE
+
+                  bool isDifferentSurah =
+                      audioProvider.currentAudioSurah?.number !=
+                          quranProvider.selectedSurahNumber;
+                  bool isSameSurahButDifferentVerse = !isDifferentSurah &&
+                      (audioProvider.currentAyahIndex !=
+                          quranProvider.selectedAyahNumber - 1);
+
+                  if (isDifferentSurah ||
+                      audioProvider.currentAudioSurah == null) {
+                    // Load New Playlist
+                    audioProvider.loadSurahAndPlay(
+                        quranProvider.selectedSurahNumber,
+                        settingsProvider.audioEdition,
+                        settingsProvider.translationLanguage,
+                        startingIndex: quranProvider.selectedAyahNumber - 1,
+                        autoPlay: true);
+                  } else if (isSameSurahButDifferentVerse) {
+                    // Just Seek in Current Playlist
+                    audioProvider
+                        .playVerse(quranProvider.selectedAyahNumber - 1);
+                  }
+                  // If same surah AND same verse, just switch tab (do nothing to audio)
+
+                  widget.onSwitchTab(1);
+                },
+                tooltip: "Open in Player",
+              ),
+            ],
           ),
         ],
       ),

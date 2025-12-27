@@ -13,20 +13,20 @@ class AudioProvider with ChangeNotifier {
   final AudioPlayer audioPlayer = AudioPlayer();
 
   SurahDetail? _currentAudioSurah;
-  
+
   final Map<int, Ayah> _arabicCache = {};
   final Map<int, Ayah> _translationCache = {};
 
   Ayah? _currentDisplayArabicAyah;
   Ayah? _currentDisplayTranslationAyah;
-  
+
   int _currentAyahIndex = 0;
   bool _isLoading = false;
   bool _isPlaylistMode = false;
   String? _currentlyPlayingUrl;
   String? _currentAudioEdition;
   String? _errorMessage;
-  
+
   int? _lastAttemptedSurahNumber;
   String? _lastAttemptedAudioEdition;
   String? _lastAttemptedTranslationEdition;
@@ -42,24 +42,27 @@ class AudioProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String? get currentlyPlayingUrl => _currentlyPlayingUrl;
 
+  LoopMode _loopMode = LoopMode.off;
+  LoopMode get loopMode => _loopMode;
+
   bool get isPlaying {
-    return audioPlayer.playing && 
-           audioPlayer.processingState != ProcessingState.completed;
+    return audioPlayer.playing &&
+        audioPlayer.processingState != ProcessingState.completed;
   }
 
   AudioProvider() {
     audioPlayer.currentIndexStream.listen((index) {
       if (index != null && _isPlaylistMode && _currentAudioSurah != null) {
         _currentAyahIndex = index;
-        
+
         if (index < _currentAudioSurah!.ayahs.length) {
           _currentlyPlayingUrl = _currentAudioSurah!.ayahs[index].audioUrl;
         }
-        
+
         _updateDisplayTextForIndex(index);
         _preFetchText(index + 1);
         _preFetchText(index + 2);
-        
+
         notifyListeners();
       }
     });
@@ -71,18 +74,22 @@ class AudioProvider with ChangeNotifier {
 
   void update(SettingsProvider settings) {
     _settings = settings;
-    if (_isPlaylistMode && _currentAudioSurah != null && settings.audioEdition != _currentAudioEdition) {
+    if (_isPlaylistMode &&
+        _currentAudioSurah != null &&
+        settings.audioEdition != _currentAudioEdition) {
       loadSurahAndPlay(
         _currentAudioSurah!.number,
         settings.audioEdition,
         settings.translationLanguage,
         startingIndex: _currentAyahIndex,
-        autoPlay: isPlaying, 
+        autoPlay: isPlaying,
       );
     }
   }
 
-  void _clearError() { _errorMessage = null; }
+  void _clearError() {
+    _errorMessage = null;
+  }
 
   Future<void> retryLastPlaylist() async {
     if (_lastAttemptedSurahNumber != null &&
@@ -100,16 +107,15 @@ class AudioProvider with ChangeNotifier {
   Future<void> loadSurahAndPlay(
       int surahNumber, String audioEdition, String translationEdition,
       {int startingIndex = 0, bool autoPlay = true}) async {
-    
     if (isPlaying) await audioPlayer.stop();
-    
+
     _clearError();
     _arabicCache.clear();
     _translationCache.clear();
-    
+
     _isLoading = true;
     _isPlaylistMode = true;
-    
+
     _lastAttemptedSurahNumber = surahNumber;
     _lastAttemptedAudioEdition = audioEdition;
     _lastAttemptedTranslationEdition = translationEdition;
@@ -117,8 +123,9 @@ class AudioProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _currentAudioSurah = await _apiService.getSurah(surahNumber, audioEdition);
-      
+      _currentAudioSurah =
+          await _apiService.getSurah(surahNumber, audioEdition);
+
       if (_currentAudioSurah == null || _currentAudioSurah!.ayahs.isEmpty) {
         throw Exception("Surah data is empty.");
       }
@@ -131,20 +138,20 @@ class AudioProvider with ChangeNotifier {
       );
 
       await audioPlayer.setAudioSource(playlist, initialIndex: startingIndex);
-      
+
       if (startingIndex < _currentAudioSurah!.ayahs.length) {
-        _currentlyPlayingUrl = _currentAudioSurah!.ayahs[startingIndex].audioUrl;
+        _currentlyPlayingUrl =
+            _currentAudioSurah!.ayahs[startingIndex].audioUrl;
       }
 
       _isLoading = false;
       notifyListeners();
-      
+
       _updateDisplayTextForIndex(startingIndex);
 
       if (autoPlay) {
         audioPlayer.play();
       }
-
     } catch (e) {
       _errorMessage = e.toString().replaceFirst("Exception: ", "");
       _isLoading = false;
@@ -152,11 +159,28 @@ class AudioProvider with ChangeNotifier {
     }
   }
 
+  // --- NEW: Toggle Loop Function ---
+  Future<void> toggleLoopMode() async {
+    // Toggle between "Repeat One" and "Off"
+    if (_loopMode == LoopMode.off) {
+      _loopMode = LoopMode.one;
+    } else {
+      _loopMode = LoopMode.off;
+    }
+
+    // Set it in the player
+    await audioPlayer.setLoopMode(_loopMode);
+    notifyListeners();
+  }
+
   // --- FIX: Auto-Retry Logic Added Here ---
   Future<void> _updateDisplayTextForIndex(int index) async {
-    if (_currentAudioSurah == null || index >= _currentAudioSurah!.ayahs.length || _settings == null) return;
+    if (_currentAudioSurah == null ||
+        index >= _currentAudioSurah!.ayahs.length ||
+        _settings == null) return;
 
-    if (_arabicCache.containsKey(index) && _translationCache.containsKey(index)) {
+    if (_arabicCache.containsKey(index) &&
+        _translationCache.containsKey(index)) {
       _currentDisplayArabicAyah = _arabicCache[index];
       _currentDisplayTranslationAyah = _translationCache[index];
       notifyListeners();
@@ -174,20 +198,21 @@ class AudioProvider with ChangeNotifier {
     // Retry Loop for Text
     int attempts = 0;
     bool success = false;
-    
+
     while (attempts < 3 && !success) {
       try {
         final responses = await Future.wait([
           _apiService.getAyah(surahNumber, ayahNumberInSurah, 'quran-uthmani'),
-          _apiService.getAyah(surahNumber, ayahNumberInSurah, _settings!.translationLanguage),
+          _apiService.getAyah(
+              surahNumber, ayahNumberInSurah, _settings!.translationLanguage),
         ]);
 
         _currentDisplayArabicAyah = responses[0];
         _currentDisplayTranslationAyah = responses[1];
-        
+
         _arabicCache[index] = responses[0];
         _translationCache[index] = responses[1];
-        
+
         success = true;
         notifyListeners();
       } catch (e) {
@@ -199,9 +224,9 @@ class AudioProvider with ChangeNotifier {
   }
 
   Future<void> _preFetchText(int index) async {
-    if (_currentAudioSurah == null || 
-        index >= _currentAudioSurah!.ayahs.length || 
-        _arabicCache.containsKey(index) || 
+    if (_currentAudioSurah == null ||
+        index >= _currentAudioSurah!.ayahs.length ||
+        _arabicCache.containsKey(index) ||
         _settings == null) {
       return;
     }
@@ -211,7 +236,8 @@ class AudioProvider with ChangeNotifier {
 
     Future.wait([
       _apiService.getAyah(surahNumber, ayahNumberInSurah, 'quran-uthmani'),
-      _apiService.getAyah(surahNumber, ayahNumberInSurah, _settings!.translationLanguage),
+      _apiService.getAyah(
+          surahNumber, ayahNumberInSurah, _settings!.translationLanguage),
     ]).then((responses) {
       _arabicCache[index] = responses[0];
       _translationCache[index] = responses[1];
@@ -225,7 +251,7 @@ class AudioProvider with ChangeNotifier {
   void playPrevious() {
     if (audioPlayer.hasPrevious) audioPlayer.seekToPrevious();
   }
-  
+
   Future<void> playVerse(int index) async {
     if (_isPlaylistMode && _currentAudioSurah != null) {
       _currentDisplayArabicAyah = null;
@@ -250,7 +276,7 @@ class AudioProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> stop() async { 
+  Future<void> stop() async {
     await audioPlayer.stop();
     notifyListeners();
   }
@@ -272,7 +298,8 @@ class AudioProvider with ChangeNotifier {
 
   Future<void> downloadSurah() async {
     if (_currentAudioSurah == null) return;
-    final reciterName = _currentAudioSurah!.ayahs.first.edition?.englishName ?? 'Unknown';
+    final reciterName =
+        _currentAudioSurah!.ayahs.first.edition?.englishName ?? 'Unknown';
     final language = _currentAudioSurah!.ayahs.first.edition?.language ?? 'ar';
     final surahNumber = _currentAudioSurah!.number;
     final surahName = _currentAudioSurah!.englishName;
