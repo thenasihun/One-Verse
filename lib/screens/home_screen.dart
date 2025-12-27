@@ -345,7 +345,7 @@ class _VerseScreenState extends State<VerseScreen> {
         Theme.of(context).iconTheme.color?.withOpacity(0.7) ?? Colors.grey[700];
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -390,7 +390,7 @@ class _VerseScreenState extends State<VerseScreen> {
                 },
                 tooltip: "Share Verse",
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               _buildMiniIconButton(
                 icon: Icons.download_outlined,
                 color: quranProvider.audioUrl != null && selectedSurah != null
@@ -490,7 +490,7 @@ class _VerseScreenState extends State<VerseScreen> {
                     : null,
                 tooltip: "Repeat Mode",
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               _buildMiniIconButton(
                 icon: Icons.queue_music_rounded,
                 onTap: () {
