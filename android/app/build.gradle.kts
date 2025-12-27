@@ -38,25 +38,38 @@ android {
         versionName = flutter.versionName
     }
 
+    // --------------- SIGNING -----------------
+    val keystoreFilePath = keystoreProperties["storeFile"] as String?
+    val sfile = keystoreFilePath?.let { file(it) }
+    val alias = keystoreProperties["keyAlias"] as String?
+    val password = keystoreProperties["keyPassword"] as String?
+    val spasswords = keystoreProperties["storePassword"] as String?
+
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
+            if (
+                alias != null &&
+                password != null &&
+                spasswords != null &&
+                sfile != null &&
+                sfile.exists()
+            ) {
+                storeFile = sfile
+                keyAlias = alias
+                keyPassword = password
+                storePassword = spasswords
+
+                println("✔ Using release keystore")
+            } else {
+                println("⚠ Keystore not found. Release will use debug signing.")
+            }
         }
     }
 
     buildTypes {
         getByName("release") {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            // signingConfig = signingConfigs.getByName("debug")
-            
-            // Correct Kotlin syntax for assigning the release signing config
             signingConfig = signingConfigs.getByName("release")
             
-            // Optional: Enables code shrinking, obfuscation, and optimization
             isMinifyEnabled = true 
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

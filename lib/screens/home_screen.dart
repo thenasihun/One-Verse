@@ -11,6 +11,8 @@ import 'package:oneverse/screens/settings_screen.dart';
 import 'package:oneverse/utils/download_manager.dart';
 import 'package:oneverse/widgets/verse_display.dart';
 import 'package:provider/provider.dart';
+import 'package:oneverse/services/share_service.dart';
+import 'package:oneverse/widgets/quran_selection_helper.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -37,17 +39,18 @@ class _HomeScreenState extends State<HomeScreen> {
     if (index == 1) {
       final quranProvider = Provider.of<QuranProvider>(context, listen: false);
       final audioProvider = Provider.of<AudioProvider>(context, listen: false);
-      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-      
+      final settingsProvider =
+          Provider.of<SettingsProvider>(context, listen: false);
+
       // FIX: Only load if it's a NEW Surah or the player is empty
-      if (audioProvider.currentAudioSurah?.number != quranProvider.selectedSurahNumber) {
-          audioProvider.loadSurahAndPlay(
-            quranProvider.selectedSurahNumber,
-            settingsProvider.audioEdition,
-            settingsProvider.translationLanguage,
+      if (audioProvider.currentAudioSurah?.number !=
+          quranProvider.selectedSurahNumber) {
+        audioProvider.loadSurahAndPlay(quranProvider.selectedSurahNumber,
+            settingsProvider.audioEdition, settingsProvider.translationLanguage,
             startingIndex: quranProvider.selectedAyahNumber - 1,
-            autoPlay: true // When opening from playlist button, we usually want to play
-          );
+            autoPlay:
+                true // When opening from playlist button, we usually want to play
+            );
       }
     }
     setState(() {
@@ -65,7 +68,12 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).bottomNavigationBarTheme.backgroundColor,
-          boxShadow: [BoxShadow(blurRadius: 20, color: Colors.black.withOpacity(.1),)],
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 20,
+              color: Colors.black.withOpacity(.1),
+            )
+          ],
         ),
         child: SafeArea(
           child: Padding(
@@ -78,7 +86,8 @@ class _HomeScreenState extends State<HomeScreen> {
               iconSize: 24,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               duration: const Duration(milliseconds: 400),
-              tabBackgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+              tabBackgroundColor:
+                  Theme.of(context).primaryColor.withOpacity(0.1),
               color: Colors.grey[600],
               tabs: const [
                 GButton(icon: Icons.book_outlined, text: 'Verses'),
@@ -129,7 +138,8 @@ class _VerseScreenState extends State<VerseScreen> {
   void _onSettingsChanged() {
     final newTranslation = _settingsProvider.translationLanguage;
     final newAudio = _settingsProvider.audioEdition;
-    if (newTranslation != _lastFetchedTranslation || newAudio != _lastFetchedAudio) {
+    if (newTranslation != _lastFetchedTranslation ||
+        newAudio != _lastFetchedAudio) {
       setState(() {
         _lastFetchedTranslation = newTranslation;
         _lastFetchedAudio = newAudio;
@@ -156,7 +166,8 @@ class _VerseScreenState extends State<VerseScreen> {
   void _goToNextVerse() {
     final quranProvider = Provider.of<QuranProvider>(context, listen: false);
     if (quranProvider.surahs.isEmpty) return;
-    final currentSurah = quranProvider.surahs.firstWhere((s) => s.number == quranProvider.selectedSurahNumber);
+    final currentSurah = quranProvider.surahs
+        .firstWhere((s) => s.number == quranProvider.selectedSurahNumber);
     if (quranProvider.selectedAyahNumber < currentSurah.numberOfAyahs) {
       quranProvider.selectAyah(quranProvider.selectedAyahNumber + 1);
       _fetchVerse();
@@ -182,16 +193,19 @@ class _VerseScreenState extends State<VerseScreen> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (quranProvider.surahs.isEmpty && quranProvider.surahListErrorMessage != null) {
+            if (quranProvider.surahs.isEmpty &&
+                quranProvider.surahListErrorMessage != null) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.signal_wifi_off, size: 64, color: Colors.grey),
+                    const Icon(Icons.signal_wifi_off,
+                        size: 64, color: Colors.grey),
                     const SizedBox(height: 16),
                     Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: Text(quranProvider.surahListErrorMessage!, textAlign: TextAlign.center),
+                      child: Text(quranProvider.surahListErrorMessage!,
+                          textAlign: TextAlign.center),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
@@ -204,7 +218,9 @@ class _VerseScreenState extends State<VerseScreen> {
             }
 
             final Surah? selectedSurah = quranProvider.surahs.isNotEmpty
-                ? quranProvider.surahs.firstWhere((s) => s.number == quranProvider.selectedSurahNumber, orElse: ()=> quranProvider.surahs.first)
+                ? quranProvider.surahs.firstWhere(
+                    (s) => s.number == quranProvider.selectedSurahNumber,
+                    orElse: () => quranProvider.surahs.first)
                 : null;
 
             return Padding(
@@ -229,7 +245,8 @@ class _VerseScreenState extends State<VerseScreen> {
     );
   }
 
-  Widget _buildVerseSelectorBar(BuildContext context, Surah? selectedSurah, QuranProvider quranProvider) {
+  Widget _buildVerseSelectorBar(
+      BuildContext context, Surah? selectedSurah, QuranProvider quranProvider) {
     return Material(
       color: Theme.of(context).cardColor,
       borderRadius: BorderRadius.circular(16),
@@ -246,27 +263,42 @@ class _VerseScreenState extends State<VerseScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("SURAH", style: TextStyle(fontSize: 12, color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
+                    Text("SURAH",
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).primaryColor,
+                            fontWeight: FontWeight.bold)),
                     Text(
-                      selectedSurah != null ? "${selectedSurah.number}. ${selectedSurah.englishName}" : "Select Surah",
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      selectedSurah != null
+                          ? "${selectedSurah.number}. ${selectedSurah.englishName}"
+                          : "Select Surah",
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
               InkWell(
-                onTap: () => _showAyahSelectionBottomSheet(context, selectedSurah),
+                onTap: () =>
+                    _showAyahSelectionBottomSheet(context, selectedSurah),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: Theme.of(context).scaffoldBackgroundColor,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
                     children: [
-                      Text("AYAH", style: TextStyle(fontSize: 12, color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
-                      Text("${quranProvider.selectedAyahNumber}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text("AYAH",
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).primaryColor,
+                              fontWeight: FontWeight.bold)),
+                      Text("${quranProvider.selectedAyahNumber}",
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -279,9 +311,11 @@ class _VerseScreenState extends State<VerseScreen> {
   }
 
   // --- UPDATED CONTROL PANEL ---
-  Widget _buildControlPanel(BuildContext context, Surah? selectedSurah, QuranProvider quranProvider) {
+  Widget _buildControlPanel(
+      BuildContext context, Surah? selectedSurah, QuranProvider quranProvider) {
     final audioProvider = Provider.of<AudioProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+    final settingsProvider =
+        Provider.of<SettingsProvider>(context, listen: false);
     final downloadManager = DownloadManager();
 
     return Container(
@@ -289,7 +323,9 @@ class _VerseScreenState extends State<VerseScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(50),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -300,13 +336,43 @@ class _VerseScreenState extends State<VerseScreen> {
             tooltip: "Previous Verse",
           ),
           IconButton(
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () {
+              if (selectedSurah == null) return;
+
+              // Get details for download path generation
+              final settings =
+                  Provider.of<SettingsProvider>(context, listen: false);
+              final reciter = settings.allAudioEditions.firstWhere(
+                  (e) => e.identifier == settings.audioEdition,
+                  orElse: () => settings.allAudioEditions.first);
+
+              ShareService.shareVerse(
+                context: context,
+                arabic: quranProvider.arabicAyah?.arabicText ?? "",
+                translation:
+                    quranProvider.translationAyah?.translationText ?? "",
+                surahName: selectedSurah.englishName,
+                surahNum: quranProvider.selectedSurahNumber,
+                ayahNum: quranProvider.selectedAyahNumber,
+                audioUrl: quranProvider.audioUrl ?? "",
+                language: reciter.language,
+                reciterName: reciter.englishName,
+              );
+            },
+            tooltip: "Share Verse",
+          ),
+          IconButton(
             icon: const Icon(Icons.download_outlined),
             onPressed: quranProvider.audioUrl != null && selectedSurah != null
                 ? () {
-                    final reciter = settingsProvider.allAudioEditions.firstWhere(
-                        (ed) => ed.identifier == settingsProvider.audioEdition,
-                        orElse: () => settingsProvider.allAudioEditions.first);
-                    
+                    final reciter = settingsProvider.allAudioEditions
+                        .firstWhere(
+                            (ed) =>
+                                ed.identifier == settingsProvider.audioEdition,
+                            orElse: () =>
+                                settingsProvider.allAudioEditions.first);
+
                     downloadManager.downloadAudio(
                       url: quranProvider.audioUrl!,
                       language: reciter.language,
@@ -322,15 +388,19 @@ class _VerseScreenState extends State<VerseScreen> {
           Consumer<AudioProvider>(
             builder: (context, audioConsumer, child) {
               // FIX: Use the smart getter we added to AudioProvider
-              final isPlaying = audioConsumer.isPlaying; 
-              
+              final isPlaying = audioConsumer.isPlaying;
+
               // Only show stop button if playing AND it's the current verse on screen
-              final isCurrentVerse = quranProvider.audioUrl == audioConsumer.currentlyPlayingUrl;
-              final showStopButton = isPlaying && isCurrentVerse && !audioConsumer.isPlaylistMode;
-              
+              final isCurrentVerse =
+                  quranProvider.audioUrl == audioConsumer.currentlyPlayingUrl;
+              final showStopButton =
+                  isPlaying && isCurrentVerse && !audioConsumer.isPlaylistMode;
+
               return FloatingActionButton(
                 elevation: 2,
-                backgroundColor: showStopButton ? Colors.red.shade700 : Theme.of(context).primaryColor,
+                backgroundColor: showStopButton
+                    ? Colors.red.shade700
+                    : Theme.of(context).primaryColor,
                 onPressed: () {
                   if (showStopButton) {
                     audioConsumer.stop();
@@ -338,7 +408,12 @@ class _VerseScreenState extends State<VerseScreen> {
                     audioConsumer.playSingleVerse(quranProvider.audioUrl!);
                   }
                 },
-                child: Icon(showStopButton ? Icons.stop_rounded : Icons.play_arrow_rounded, size: 36, color: Colors.white),
+                child: Icon(
+                    showStopButton
+                        ? Icons.stop_rounded
+                        : Icons.play_arrow_rounded,
+                    size: 36,
+                    color: Colors.white),
               );
             },
           ),
@@ -346,28 +421,30 @@ class _VerseScreenState extends State<VerseScreen> {
             icon: const Icon(Icons.queue_music_rounded),
             onPressed: () {
               // --- FIX IS HERE ---
-              // Logic: 
+              // Logic:
               // 1. If Surah is different -> LOAD NEW SURAH
               // 2. If Surah is same but verse is different -> SEEK TO VERSE
-              
-              bool isDifferentSurah = audioProvider.currentAudioSurah?.number != quranProvider.selectedSurahNumber;
-              bool isSameSurahButDifferentVerse = !isDifferentSurah && (audioProvider.currentAyahIndex != quranProvider.selectedAyahNumber - 1);
+
+              bool isDifferentSurah = audioProvider.currentAudioSurah?.number !=
+                  quranProvider.selectedSurahNumber;
+              bool isSameSurahButDifferentVerse = !isDifferentSurah &&
+                  (audioProvider.currentAyahIndex !=
+                      quranProvider.selectedAyahNumber - 1);
 
               if (isDifferentSurah || audioProvider.currentAudioSurah == null) {
                 // Load New Playlist
                 audioProvider.loadSurahAndPlay(
-                  quranProvider.selectedSurahNumber,
-                  settingsProvider.audioEdition,
-                  settingsProvider.translationLanguage,
-                  startingIndex: quranProvider.selectedAyahNumber - 1,
-                  autoPlay: true
-                );
+                    quranProvider.selectedSurahNumber,
+                    settingsProvider.audioEdition,
+                    settingsProvider.translationLanguage,
+                    startingIndex: quranProvider.selectedAyahNumber - 1,
+                    autoPlay: true);
               } else if (isSameSurahButDifferentVerse) {
                 // Just Seek in Current Playlist
                 audioProvider.playVerse(quranProvider.selectedAyahNumber - 1);
               }
               // If same surah AND same verse, just switch tab (do nothing to audio)
-              
+
               widget.onSwitchTab(1);
             },
             tooltip: "Open in Player",
@@ -384,151 +461,29 @@ class _VerseScreenState extends State<VerseScreen> {
 
   void _showSurahSelectionBottomSheet(BuildContext context) {
     final quranProvider = Provider.of<QuranProvider>(context, listen: false);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.85,
-        maxChildSize: 0.85,
-        expand: false,
-        builder: (_, scrollController) => _SurahSearchDelegate(
-          scrollController: scrollController,
-          allSurahs: quranProvider.surahs,
-          onSelect: (surah) {
-            quranProvider.selectSurah(surah.number);
-            _fetchVerse();
-            Navigator.of(context).pop();
-          },
-        ),
-      ),
-    );
+    QuranSelectionHelper.showSurahSheet(
+        context: context,
+        surahs: quranProvider.surahs,
+        onSelect: (surah) {
+          quranProvider.selectSurah(surah.number);
+          // quranProvider.selectAyah(1);
+          _fetchVerse();
+          // Navigator.of(context).pop();
+        });
   }
 
-  void _showAyahSelectionBottomSheet(BuildContext context, Surah? selectedSurah) {
+  void _showAyahSelectionBottomSheet(
+      BuildContext context, Surah? selectedSurah) {
     if (selectedSurah == null) return;
     final quranProvider = Provider.of<QuranProvider>(context, listen: false);
-    showModalBottomSheet(
+    QuranSelectionHelper.showAyahSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Container(
-        padding: const EdgeInsets.all(16),
-        child: GridView.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 5,
-            childAspectRatio: 1.5,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-          ),
-          itemCount: selectedSurah.numberOfAyahs,
-          itemBuilder: (context, index) {
-            final ayahNum = index + 1;
-            return InkWell(
-              onTap: () {
-                quranProvider.selectAyah(ayahNum);
-                _fetchVerse();
-                Navigator.of(context).pop();
-              },
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: quranProvider.selectedAyahNumber == ayahNum ? Theme.of(context).primaryColor : Theme.of(context).scaffoldBackgroundColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    "$ayahNum",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: quranProvider.selectedAyahNumber == ayahNum ? Colors.white : Theme.of(context).textTheme.bodyLarge?.color,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _SurahSearchDelegate extends StatefulWidget {
-  final ScrollController scrollController;
-  final List<Surah> allSurahs;
-  final Function(Surah) onSelect;
-
-  const _SurahSearchDelegate({
-    Key? key,
-    required this.scrollController,
-    required this.allSurahs,
-    required this.onSelect,
-  }) : super(key: key);
-
-  @override
-  __SurahSearchDelegateState createState() => __SurahSearchDelegateState();
-}
-
-class __SurahSearchDelegateState extends State<_SurahSearchDelegate> {
-  List<Surah> _filteredSurahs = [];
-  final TextEditingController _searchController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _filteredSurahs = widget.allSurahs;
-    _searchController.addListener(_filterSurahs);
-  }
-
-  void _filterSurahs() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredSurahs = widget.allSurahs.where((surah) {
-        return surah.englishName.toLowerCase().contains(query) ||
-               surah.name.contains(query) ||
-               surah.number.toString() == query;
-      }).toList();
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: "Search Surah by name or number...",
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: ListView.separated(
-              controller: widget.scrollController,
-              itemCount: _filteredSurahs.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final surah = _filteredSurahs[index];
-                return ListTile(
-                  title: Text("${surah.number}. ${surah.englishName}"),
-                  subtitle: Text(surah.name),
-                  onTap: () => widget.onSelect(surah),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+      totalAyahs: selectedSurah.numberOfAyahs,
+      selectedAyah: quranProvider.selectedAyahNumber,
+      onSelect: (ayahNum) {
+        quranProvider.selectAyah(ayahNum);
+        _fetchVerse();
+      },
     );
   }
 }
