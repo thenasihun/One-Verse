@@ -9,7 +9,7 @@ import 'package:oneverse/screens/info_screen.dart';
 import 'package:oneverse/screens/audio_player_screen.dart';
 import 'package:oneverse/screens/settings_screen.dart';
 import 'package:oneverse/utils/download_manager.dart';
-import 'package:oneverse/widgets/verse_display.dart';
+import 'package:oneverse/widgets/verse_display.dart'; // Keep this for the display logic
 import 'package:provider/provider.dart';
 import 'package:oneverse/services/share_service.dart';
 import 'package:oneverse/widgets/quran_selection_helper.dart';
@@ -42,15 +42,12 @@ class _HomeScreenState extends State<HomeScreen> {
       final settingsProvider =
           Provider.of<SettingsProvider>(context, listen: false);
 
-      // FIX: Only load if it's a NEW Surah or the player is empty
       if (audioProvider.currentAudioSurah?.number !=
           quranProvider.selectedSurahNumber) {
         audioProvider.loadSurahAndPlay(quranProvider.selectedSurahNumber,
             settingsProvider.audioEdition, settingsProvider.translationLanguage,
             startingIndex: quranProvider.selectedAyahNumber - 1,
-            autoPlay:
-                true // When opening from playlist button, we usually want to play
-            );
+            autoPlay: true);
       }
     }
     setState(() {
@@ -184,6 +181,8 @@ class _VerseScreenState extends State<VerseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(title: const Text("OneVerse")),
       body: SafeArea(
@@ -230,9 +229,33 @@ class _VerseScreenState extends State<VerseScreen> {
                   const SizedBox(height: 10),
                   _buildVerseSelectorBar(context, selectedSurah, quranProvider),
                   const SizedBox(height: 20),
+
+                  // --- RESTORED: One Container Card with natural Old Look ---
                   Expanded(
-                    child: VerseDisplay(onRetry: _fetchVerse),
+                    child: Container(
+                      padding: const EdgeInsets.all(12.0),
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardTheme.color ??
+                            Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                        border: Border.all(
+                          color: (isDarkMode ? Colors.white : Colors.black)
+                              .withOpacity(0.05),
+                        ),
+                      ),
+                      // We use VerseDisplay again but ensure it is transparent internally
+                      child: VerseDisplay(onRetry: _fetchVerse),
+                    ),
                   ),
+
                   const SizedBox(height: 20),
                   _buildControlPanel(context, selectedSurah, quranProvider),
                   const SizedBox(height: 10),
@@ -322,8 +345,8 @@ class _VerseScreenState extends State<VerseScreen> {
       iconSize: size,
       color: color ?? Theme.of(context).iconTheme.color?.withOpacity(0.6),
       tooltip: tooltip,
-      padding: EdgeInsets.zero, // Reduce padding to fit 7 items
-      constraints: const BoxConstraints(), // Removes default minimum size
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
       style: IconButton.styleFrom(
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
@@ -331,7 +354,6 @@ class _VerseScreenState extends State<VerseScreen> {
     );
   }
 
-  // --- UPDATED CONTROL PANEL ---
   Widget _buildControlPanel(
       BuildContext context, Surah? selectedSurah, QuranProvider quranProvider) {
     final audioProvider = Provider.of<AudioProvider>(context);
@@ -345,7 +367,7 @@ class _VerseScreenState extends State<VerseScreen> {
         Theme.of(context).iconTheme.color?.withOpacity(0.7) ?? Colors.grey[700];
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -367,8 +389,6 @@ class _VerseScreenState extends State<VerseScreen> {
                 icon: Icons.share_outlined,
                 onTap: () {
                   if (selectedSurah == null) return;
-
-                  // Get details for download path generation
                   final settings =
                       Provider.of<SettingsProvider>(context, listen: false);
                   final reciter = settings.allAudioEditions.firstWhere(
@@ -390,7 +410,7 @@ class _VerseScreenState extends State<VerseScreen> {
                 },
                 tooltip: "Share Verse",
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               _buildMiniIconButton(
                 icon: Icons.download_outlined,
                 color: quranProvider.audioUrl != null && selectedSurah != null
@@ -433,10 +453,7 @@ class _VerseScreenState extends State<VerseScreen> {
               const SizedBox(width: 8),
               Consumer<AudioProvider>(
                 builder: (context, audioConsumer, child) {
-                  // FIX: Use the smart getter we added to AudioProvider
                   final isPlaying = audioConsumer.isPlaying;
-
-                  // Only show stop button if playing AND it's the current verse on screen
                   final isCurrentVerse = quranProvider.audioUrl ==
                       audioConsumer.currentlyPlayingUrl;
                   final showStopButton = isPlaying &&
@@ -479,6 +496,7 @@ class _VerseScreenState extends State<VerseScreen> {
             ],
           ),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               _buildMiniIconButton(
                 onTap: () => audioProvider.toggleLoopMode(),
@@ -490,15 +508,10 @@ class _VerseScreenState extends State<VerseScreen> {
                     : null,
                 tooltip: "Repeat Mode",
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               _buildMiniIconButton(
                 icon: Icons.queue_music_rounded,
                 onTap: () {
-                  // --- FIX IS HERE ---
-                  // Logic:
-                  // 1. If Surah is different -> LOAD NEW SURAH
-                  // 2. If Surah is same but verse is different -> SEEK TO VERSE
-
                   bool isDifferentSurah =
                       audioProvider.currentAudioSurah?.number !=
                           quranProvider.selectedSurahNumber;
@@ -508,7 +521,6 @@ class _VerseScreenState extends State<VerseScreen> {
 
                   if (isDifferentSurah ||
                       audioProvider.currentAudioSurah == null) {
-                    // Load New Playlist
                     audioProvider.loadSurahAndPlay(
                         quranProvider.selectedSurahNumber,
                         settingsProvider.audioEdition,
@@ -516,12 +528,9 @@ class _VerseScreenState extends State<VerseScreen> {
                         startingIndex: quranProvider.selectedAyahNumber - 1,
                         autoPlay: true);
                   } else if (isSameSurahButDifferentVerse) {
-                    // Just Seek in Current Playlist
                     audioProvider
                         .playVerse(quranProvider.selectedAyahNumber - 1);
                   }
-                  // If same surah AND same verse, just switch tab (do nothing to audio)
-
                   widget.onSwitchTab(1);
                 },
                 tooltip: "Open in Player",
@@ -540,9 +549,7 @@ class _VerseScreenState extends State<VerseScreen> {
         surahs: quranProvider.surahs,
         onSelect: (surah) {
           quranProvider.selectSurah(surah.number);
-          // quranProvider.selectAyah(1);
           _fetchVerse();
-          // Navigator.of(context).pop();
         });
   }
 

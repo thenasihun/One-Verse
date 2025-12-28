@@ -9,6 +9,7 @@ import 'package:oneverse/providers/settings_provider.dart';
 import 'package:oneverse/utils/download_manager.dart';
 import 'package:provider/provider.dart';
 import 'package:oneverse/widgets/quran_selection_helper.dart';
+import 'package:oneverse/services/share_service.dart';
 
 class AudioPlayerScreen extends StatefulWidget {
   const AudioPlayerScreen({Key? key}) : super(key: key);
@@ -18,7 +19,7 @@ class AudioPlayerScreen extends StatefulWidget {
 }
 
 class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
-  int _viewMode = 0;
+  int _viewMode = 0; // 0: Split, 1: Arabic, 2: Translation
 
   @override
   void initState() {
@@ -76,7 +77,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
     });
   }
 
-  // --- Surah Selection Logic ---
   void _showSurahSelection(BuildContext context) {
     final quranProvider = Provider.of<QuranProvider>(context, listen: false);
     final audioProvider = Provider.of<AudioProvider>(context, listen: false);
@@ -102,7 +102,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
         });
   }
 
-  // --- Ayah Selection Logic ---
   void _showAyahSelection(BuildContext context) {
     final audioProvider = Provider.of<AudioProvider>(context, listen: false);
     final quranProvider = Provider.of<QuranProvider>(context, listen: false);
@@ -124,106 +123,78 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      // Standard App Bar (No longer transparent over an image)
       appBar: AppBar(
         title: const Text('Audio Player'),
-        foregroundColor: isDarkMode ? Colors.white : Colors.black87,
-        backgroundColor: Colors.transparent,
+        centerTitle: true,
         elevation: 0,
-        // --- REMOVED PLAYLIST ICON HERE ---
       ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const _StaticBackground(),
-          SafeArea(
-            child: Consumer<AudioProvider>(
-              builder: (context, audioProvider, child) {
-                // FIXED: We now ALWAYS return the Player UI (Stack Layer 1)
-                // We overlay loader or error on top if needed (Stack Layer 2)
-                return Stack(
-                  children: [
-                    // Layer 1: The UI (Always Visible, even with null data)
-                    _PlayerContent(
-                      audioProvider: audioProvider,
-                      isDarkMode: isDarkMode,
-                      viewMode: _viewMode,
-                      onCycleViewMode: _cycleViewMode,
-                      onSurahTap: () => _showSurahSelection(context),
-                      onAyahTap: () => _showAyahSelection(context),
+      // Standard Theme Background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
+      body: SafeArea(
+        child: Consumer<AudioProvider>(
+          builder: (context, audioProvider, child) {
+            return Stack(
+              children: [
+                // Layer 1: The UI
+                _PlayerContent(
+                  audioProvider: audioProvider,
+                  isDarkMode: isDarkMode,
+                  viewMode: _viewMode,
+                  onCycleViewMode: _cycleViewMode,
+                  onSurahTap: () => _showSurahSelection(context),
+                  onAyahTap: () => _showAyahSelection(context),
+                ),
+
+                // Layer 2: Loading Indicator
+                if (audioProvider.isLoading)
+                  Container(
+                    color: Theme.of(context)
+                        .scaffoldBackgroundColor
+                        .withOpacity(0.8),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: Theme.of(context).primaryColor,
+                      ),
                     ),
+                  ),
 
-                    // Layer 2: Loading Indicator Overlay
-                    if (audioProvider.isLoading)
-                      Container(
-                        color: Colors.black.withOpacity(0.3),
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: isDarkMode
-                                ? Colors.white
-                                : Theme.of(context).primaryColor,
-                          ),
-                        ),
-                      ),
-
-                    // Layer 3: Error Overlay (Only if truly empty and error exists)
-                    if (audioProvider.errorMessage != null &&
-                        audioProvider.currentAudioSurah == null)
-                      Container(
-                        color: Colors.black.withOpacity(0.7),
-                        child: _buildErrorState(
-                            context, audioProvider, isDarkMode),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
+                // Layer 3: Error Overlay
+                if (audioProvider.errorMessage != null &&
+                    audioProvider.currentAudioSurah == null)
+                  Container(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    child: _buildErrorState(context, audioProvider, isDarkMode),
+                  ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildErrorState(
       BuildContext context, AudioProvider audioProvider, bool isDarkMode) {
-    final Color textColor = Colors.white; // Always white on dark overlay
+    final textColor = isDarkMode ? Colors.white : Colors.black;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.cloud_off_rounded,
-              size: 80, color: textColor.withOpacity(0.7)),
+              size: 80, color: textColor.withOpacity(0.5)),
           const SizedBox(height: 20),
           Text("Something Went Wrong",
               style: TextStyle(
                   fontSize: 22, fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 10),
-          TextButton.icon(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            label: const Text("Retry", style: TextStyle(color: Colors.white)),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.refresh),
+            label: const Text("Retry"),
             onPressed: audioProvider.retryLastPlaylist,
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _StaticBackground extends StatelessWidget {
-  const _StaticBackground({Key? key}) : super(key: key);
-  @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: const NetworkImage(
-              "https://images.pexels.com/photos/949587/pexels-photo-949587.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(isDarkMode ? 0.6 : 0.05),
-              BlendMode.darken),
-        ),
       ),
     );
   }
@@ -249,23 +220,21 @@ class _PlayerContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color textColor =
-        isDarkMode ? Colors.white : Colors.black.withOpacity(0.8);
-    final Color cardBackgroundColor = isDarkMode
-        ? Colors.black.withOpacity(0.4)
-        : Colors.white.withOpacity(0.75);
-    final Color iconColor = isDarkMode ? Colors.white : Colors.grey.shade800;
+    final Color textColor = isDarkMode ? Colors.white : Colors.black87;
+    // Using standard Card Color from Theme instead of glassmorphism
+    final Color cardBackgroundColor =
+        Theme.of(context).cardTheme.color ?? Theme.of(context).cardColor;
+    final Color iconColor =
+        Theme.of(context).iconTheme.color ?? Colors.grey.shade700;
 
     final settings = Provider.of<SettingsProvider>(context, listen: false);
 
-    // SAFE ACCESS: Handle nulls for UI stability
     final hasData = audioProvider.currentAudioSurah != null;
     final englishName =
         hasData ? audioProvider.currentAudioSurah!.englishName : "Loading...";
     final surahNum =
         hasData ? "${audioProvider.currentAudioSurah!.number}" : "--";
 
-    // Determine Ayah Number safely
     String ayahNumDisplay = "--";
     if (hasData &&
         audioProvider.currentAyahIndex <
@@ -291,48 +260,56 @@ class _PlayerContent extends StatelessWidget {
     final bool isRtl = direction == 'rtl';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         children: [
+          // MAIN TEXT DISPLAY CARD
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(top: 10, bottom: 20),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 20),
-                    decoration: BoxDecoration(
-                        color: cardBackgroundColor,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: (isDarkMode ? Colors.white : Colors.black)
-                                .withOpacity(0.1))),
-                    child: Column(
-                      children: [
-                        _buildTitleBar(context, englishName, surahNum,
-                            ayahNumDisplay, isDarkMode, textColor),
-                        const Divider(height: 24),
-                        Expanded(
-                          child: _buildTextContent(
-                              currentAyah?.arabicText,
-                              currentTranslationAyah?.translationText,
-                              textColor,
-                              isRtl),
-                        ),
-                      ],
+              padding: const EdgeInsets.only(top: 10, bottom: 10),
+              child: Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                decoration: BoxDecoration(
+                    color: cardBackgroundColor,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                    border: Border.all(
+                        color: (isDarkMode ? Colors.white : Colors.black)
+                            .withOpacity(0.05))),
+                child: Column(
+                  children: [
+                    _buildTitleBar(context, englishName, surahNum,
+                        ayahNumDisplay, isDarkMode, textColor),
+                    const Divider(height: 24),
+                    Expanded(
+                      child: _buildTextContent(
+                          currentAyah?.arabicText,
+                          currentTranslationAyah?.translationText,
+                          textColor,
+                          isRtl),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
-          _buildSeekBar(context, audioProvider, isDarkMode),
-          const SizedBox(height: 10),
-          _buildPlayerControls(context, audioProvider, iconColor),
+
+          // INLINE SLIDER (00:00 --- 04:00)
+          _buildInlineSeekBar(context, audioProvider, isDarkMode),
+
+          const SizedBox(height: 8),
+
+          // CONTROL PANEL
+          _buildControlPanel(context, audioProvider, iconColor),
+
           const SizedBox(height: 16),
         ],
       ),
@@ -373,7 +350,6 @@ class _PlayerContent extends StatelessWidget {
       ]);
   }
 
-  // Updated Title Bar to accept Strings (Safe)
   Widget _buildTitleBar(BuildContext context, String name, String surahNum,
       String ayahNum, bool isDarkMode, Color textColor) {
     return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -392,12 +368,12 @@ class _PlayerContent extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                     color: (isDarkMode ? Colors.white : Colors.black)
-                        .withOpacity(0.1),
+                        .withOpacity(0.05), // Subtle background
                     borderRadius: BorderRadius.circular(30)),
                 child: Text(name,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: textColor),
                     overflow: TextOverflow.ellipsis))),
@@ -411,14 +387,14 @@ class _PlayerContent extends StatelessWidget {
 
   Widget _buildInfoChip(
       BuildContext context, String label, String value, bool isDarkMode) {
-    final Color chipTextColor = isDarkMode ? Colors.white : Colors.black;
+    final Color chipTextColor = isDarkMode ? Colors.white : Colors.black87;
     return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: Column(children: [
           Text(label,
               style: TextStyle(
                   fontSize: 10,
-                  color: chipTextColor.withOpacity(0.7),
+                  color: chipTextColor.withOpacity(0.6),
                   fontWeight: FontWeight.bold)),
           Text(value,
               style: TextStyle(
@@ -428,8 +404,100 @@ class _PlayerContent extends StatelessWidget {
         ]));
   }
 
-  Widget _buildPlayerControls(
+  // --- NEW INLINE SLIDER ---
+  Widget _buildInlineSeekBar(
+      BuildContext context, AudioProvider audioProvider, bool isDarkMode) {
+    final Color activeColor = Theme.of(context).primaryColor;
+    final Color inactiveColor = isDarkMode ? Colors.white24 : Colors.black12;
+    final Color textColor = isDarkMode ? Colors.white70 : Colors.black54;
+
+    return StreamBuilder<Duration?>(
+      stream: audioProvider.audioPlayer.durationStream,
+      builder: (context, snapshot) {
+        final duration = snapshot.data ?? Duration.zero;
+        return StreamBuilder<Duration>(
+          stream: audioProvider.audioPlayer.positionStream,
+          builder: (context, snapshot) {
+            var position = snapshot.data ?? Duration.zero;
+            if (position > duration) position = duration;
+
+            return Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              child: Row(
+                children: [
+                  // Current Time
+                  Text(_formatDuration(position),
+                      style: TextStyle(
+                          color: textColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+
+                  // Slider (Expanded)
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        thumbColor: isDarkMode ? Colors.white : activeColor,
+                        activeTrackColor: activeColor,
+                        inactiveTrackColor: inactiveColor,
+                        trackHeight:
+                            3.0, // Slightly thicker than hairline for visibility
+                        thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 6.0),
+                        overlayShape:
+                            const RoundSliderOverlayShape(overlayRadius: 14.0),
+                        overlayColor: activeColor.withOpacity(0.15),
+                        trackShape: const RectangularSliderTrackShape(),
+                      ),
+                      child: Slider(
+                        value: position.inMilliseconds.toDouble(),
+                        max: duration.inMilliseconds.toDouble(),
+                        onChanged: (value) => audioProvider.audioPlayer
+                            .seek(Duration(milliseconds: value.round())),
+                      ),
+                    ),
+                  ),
+
+                  // Total Duration
+                  Text(_formatDuration(duration),
+                      style: TextStyle(
+                          color: textColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // --- CLUSTERED CONTROL PANEL ---
+  Widget _buildControlPanel(
       BuildContext context, AudioProvider audioProvider, Color iconColor) {
+    final primaryColor = Theme.of(context).primaryColor;
+
+    Widget buildMiniBtn({
+      required IconData icon,
+      required VoidCallback? onTap,
+      String? tooltip,
+      Color? color,
+      double size = 22,
+    }) {
+      return IconButton(
+        icon: Icon(icon),
+        iconSize: size,
+        color: color ?? iconColor,
+        tooltip: tooltip,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
+        style: IconButton.styleFrom(
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+        onPressed: onTap,
+      );
+    }
+
     IconData viewIcon;
     if (viewMode == 1)
       viewIcon = Icons.text_fields_rounded;
@@ -438,86 +506,129 @@ class _PlayerContent extends StatelessWidget {
     else
       viewIcon = Icons.vertical_split_rounded;
 
-    return Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-      IconButton(
-          icon: Icon(viewIcon, color: Theme.of(context).primaryColor),
-          onPressed: onCycleViewMode,
-          tooltip: "Change View"),
-      IconButton(
-          icon: Icon(Icons.skip_previous_rounded, size: 40, color: iconColor),
-          onPressed: audioProvider.playPrevious),
-      StreamBuilder<PlayerState>(
-          stream: audioProvider.audioPlayer.playerStateStream,
-          builder: (context, snapshot) {
-            final playerState = snapshot.data;
-            final processingState = playerState?.processingState;
-            final isPlaying = playerState?.playing ?? false;
-            // Removed buffering check here to prevent button flickering, loader is now in Stack
-            return FloatingActionButton(
-                onPressed: isPlaying
-                    ? audioProvider.audioPlayer.pause
-                    : audioProvider.audioPlayer.play,
-                child: Icon(
-                    isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                    size: 40,
-                    color: Colors.white),
-                backgroundColor: Theme.of(context).primaryColor,
-                elevation: 4);
-          }),
-      IconButton(
-          icon: Icon(Icons.skip_next_rounded, size: 40, color: iconColor),
-          onPressed: audioProvider.playNext),
-      IconButton(
-          icon: Icon(Icons.download_outlined, color: iconColor),
-          onPressed: audioProvider.downloadCurrentVerse,
-          tooltip: "Download"),
-    ]);
-  }
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color ?? Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(50),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              buildMiniBtn(
+                icon: Icons.share_outlined,
+                onTap: () {
+                  if (audioProvider.currentAudioSurah == null) return;
+                  final settings =
+                      Provider.of<SettingsProvider>(context, listen: false);
+                  final reciter = settings.allAudioEditions.firstWhere(
+                      (e) => e.identifier == settings.audioEdition,
+                      orElse: () => settings.allAudioEditions.first);
 
-  Widget _buildSeekBar(
-      BuildContext context, AudioProvider audioProvider, bool isDarkMode) {
-    final Color activeColor = Theme.of(context).primaryColor;
-    final Color inactiveColor = isDarkMode ? Colors.white38 : Colors.black26;
-    final Color textColor = isDarkMode ? Colors.white70 : Colors.black54;
-    return StreamBuilder<Duration?>(
-        stream: audioProvider.audioPlayer.durationStream,
-        builder: (context, snapshot) {
-          final duration = snapshot.data ?? Duration.zero;
-          return StreamBuilder<Duration>(
-              stream: audioProvider.audioPlayer.positionStream,
-              builder: (context, snapshot) {
-                var position = snapshot.data ?? Duration.zero;
-                if (position > duration) position = duration;
-                return Column(children: [
-                  SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                          thumbColor: isDarkMode ? Colors.white : activeColor,
-                          activeTrackColor: activeColor,
-                          inactiveTrackColor: inactiveColor,
-                          trackHeight: 4,
-                          thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 6),
-                          overlayColor: activeColor.withOpacity(0.2)),
-                      child: Slider(
-                          value: position.inMilliseconds.toDouble(),
-                          max: duration.inMilliseconds.toDouble(),
-                          onChanged: (value) => audioProvider.audioPlayer
-                              .seek(Duration(milliseconds: value.round())))),
-                  Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(_formatDuration(position),
-                                style:
-                                    TextStyle(color: textColor, fontSize: 12)),
-                            Text(_formatDuration(duration),
-                                style:
-                                    TextStyle(color: textColor, fontSize: 12))
-                          ])),
-                ]);
-              });
-        });
+                  ShareService.shareVerse(
+                    context: context,
+                    arabic:
+                        audioProvider.currentDisplayArabicAyah?.arabicText ??
+                            "",
+                    translation: audioProvider
+                            .currentDisplayTranslationAyah?.translationText ??
+                        "",
+                    surahName: audioProvider.currentAudioSurah!.englishName,
+                    surahNum: audioProvider.currentAudioSurah!.number,
+                    ayahNum: audioProvider.currentAudioSurah!
+                        .ayahs[audioProvider.currentAyahIndex].numberInSurah,
+                    audioUrl: audioProvider.currentlyPlayingUrl ?? "",
+                    language: reciter.language,
+                    reciterName: reciter.englishName,
+                  );
+                },
+                tooltip: "Share",
+              ),
+              const SizedBox(width: 12),
+              buildMiniBtn(
+                icon: Icons.download_outlined,
+                onTap: audioProvider.downloadCurrentVerse,
+                tooltip: "Download",
+              ),
+            ],
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              buildMiniBtn(
+                icon: Icons.skip_previous_rounded,
+                size: 26,
+                onTap: audioProvider.playPrevious,
+                tooltip: "Previous",
+              ),
+              const SizedBox(width: 8),
+              StreamBuilder<PlayerState>(
+                stream: audioProvider.audioPlayer.playerStateStream,
+                builder: (context, snapshot) {
+                  final playerState = snapshot.data;
+                  final isPlaying = playerState?.playing ?? false;
+                  return SizedBox(
+                    width: 50,
+                    height: 50,
+                    child: FloatingActionButton(
+                      elevation: 4,
+                      backgroundColor: Theme.of(context).primaryColor,
+                      onPressed: isPlaying
+                          ? audioProvider.audioPlayer.pause
+                          : audioProvider.audioPlayer.play,
+                      child: Icon(
+                          isPlaying
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                          size: 30,
+                          color: Colors.white),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+              buildMiniBtn(
+                icon: Icons.skip_next_rounded,
+                size: 26,
+                onTap: audioProvider.playNext,
+                tooltip: "Next",
+              ),
+            ],
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              buildMiniBtn(
+                onTap: () => audioProvider.toggleLoopMode(),
+                icon: audioProvider.loopMode == LoopMode.one
+                    ? Icons.repeat_one_rounded
+                    : Icons.repeat_rounded,
+                color: audioProvider.loopMode == LoopMode.one
+                    ? primaryColor
+                    : null,
+                tooltip: "Repeat",
+              ),
+              const SizedBox(width: 12),
+              buildMiniBtn(
+                icon: viewIcon,
+                color: primaryColor,
+                onTap: onCycleViewMode,
+                tooltip: "Change View",
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatDuration(Duration d) {
