@@ -5,11 +5,11 @@ class AppTheme {
   // Primary Palette
   static const Color _primaryEmerald = Color(0xFF064E3B);
   static const Color _accentGold = Color(0xFFD4AF37);
-  
+
   // Light Mode Colors
   static const Color _lightBG = Color(0xFFF9FBF9);
   static const Color _lightCard = Colors.white;
-  
+
   // Dark Mode Colors
   static const Color _darkBG = Color(0xFF0A110F); // Very deep green-black
   static const Color _darkCard = Color(0xFF121D1A);
@@ -47,7 +47,8 @@ class AppTheme {
       brightness: brightness,
       primaryColor: _primaryEmerald,
       scaffoldBackgroundColor: backgroundColor,
-      
+      fontFamily: 'NotoSans',
+
       colorScheme: ColorScheme.fromSeed(
         seedColor: _primaryEmerald,
         brightness: brightness,
@@ -78,32 +79,21 @@ class AppTheme {
         shadowColor: Colors.black.withOpacity(0.1),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: isDark 
-              ? BorderSide(color: Colors.white.withOpacity(0.05)) 
+          side: isDark
+              ? BorderSide(color: Colors.white.withOpacity(0.05))
               : BorderSide.none,
         ),
       ),
 
-      // Beautiful Typography
       textTheme: TextTheme(
-        headlineSmall: GoogleFonts.montserrat(
-          color: primaryText,
-          fontWeight: FontWeight.bold,
-        ),
-        titleLarge: GoogleFonts.montserrat(
-          color: primaryText,
-          fontWeight: FontWeight.w600,
-          fontSize: 18,
-        ),
-        bodyLarge: GoogleFonts.lato(
-          color: bodyText,
-          fontSize: 16,
-        ),
-        bodyMedium: GoogleFonts.lato(
-          color: bodyText.withOpacity(0.8),
-          fontSize: 14,
-        ),
+        headlineSmall:
+            TextStyle(fontWeight: FontWeight.bold, color: primaryText),
+        titleLarge: TextStyle(
+            fontWeight: FontWeight.w600, fontSize: 18, color: primaryText),
+        bodyLarge: TextStyle(fontSize: 16, color: bodyText),
+        bodyMedium: TextStyle(fontSize: 14, color: bodyText.withOpacity(0.8)),
       ),
+      // ..
 
       // Global Button Styles
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -111,7 +101,8 @@ class AppTheme {
           backgroundColor: _primaryEmerald,
           foregroundColor: Colors.white,
           textStyle: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
       ),
@@ -124,7 +115,7 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 10,
       ),
-      
+
       // Divider styling
       dividerTheme: DividerThemeData(
         color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),

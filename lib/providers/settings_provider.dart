@@ -15,7 +15,7 @@ class SettingsProvider with ChangeNotifier {
   double _arabicFontSize = AppConstants.defaultArabicFontSize;
   double _translationFontSize = AppConstants.defaultTranslationFontSize;
   String _arabicFont = 'Amiri';
-  String _translationFont = 'Lato';
+  String _translationFont = 'NotoSans';
 
   // --- Dynamic Data for Edition Selection ---
   List<String> _availableTextLanguages = [];
@@ -25,7 +25,12 @@ class SettingsProvider with ChangeNotifier {
   String? _editionErrorMessage;
 
   final List<String> availableAudioLanguages = const [
-    'ar', 'en', 'ur', 'fr', 'zh', 'ru'
+    'ar',
+    'en',
+    'ur',
+    'fr',
+    'zh',
+    'ru'
   ];
 
   // --- Getters ---
@@ -46,12 +51,17 @@ class SettingsProvider with ChangeNotifier {
   // --- Initialization ---
   Future<void> loadPreferences() async {
     _prefs = await SharedPreferences.getInstance();
-    _translationLanguage = _prefs.getString('translation') ?? AppConstants.defaultTranslation;
+    _translationLanguage =
+        _prefs.getString('translation') ?? AppConstants.defaultTranslation;
     _audioEdition = _prefs.getString('audio') ?? AppConstants.defaultAudio;
-    _arabicFontSize = _prefs.getDouble('arabicSize') ?? AppConstants.defaultArabicFontSize;
-    _translationFontSize = _prefs.getDouble('translationSize') ?? AppConstants.defaultTranslationFontSize;
-    _arabicFont = _prefs.getString('arabicFont') ?? 'Amiri';
-    _translationFont = _prefs.getString('translationFont') ?? 'Lato';
+    _arabicFontSize =
+        _prefs.getDouble('arabicSize') ?? AppConstants.defaultArabicFontSize;
+    _translationFontSize = _prefs.getDouble('translationSize') ??
+        AppConstants.defaultTranslationFontSize;
+    _arabicFont =
+        _prefs.getString('arabicFont') ?? AppConstants.defaultArabicFont;
+    _translationFont = _prefs.getString('translationFont') ??
+        AppConstants.defaultTranslationFont;
 
     final theme = _prefs.getString('theme') ?? 'system';
     _themeMode = switch (theme) {
@@ -67,7 +77,7 @@ class SettingsProvider with ChangeNotifier {
   Future<void> fetchAvailableEditions() async {
     // If data is already loaded, don't waste time fetching again
     if (_allTextEditions.isNotEmpty && _allAudioEditions.isNotEmpty) return;
-    
+
     // Prevent double-loading
     if (_isEditionsLoading) return;
 
@@ -85,23 +95,23 @@ class SettingsProvider with ChangeNotifier {
           _apiService.getAllTextEditions(),
           _apiService.getAudioEditions(),
         ]);
-        
+
         _availableTextLanguages = responses[0] as List<String>;
         _allTextEditions = responses[1] as List<Edition>;
         _allAudioEditions = responses[2] as List<Edition>;
-        
+
         // Success! Stop loading and return.
         _isEditionsLoading = false;
         notifyListeners();
-        return; 
-
+        return;
       } catch (e) {
         attempts++;
         debugPrint("Settings Load Attempt $attempts failed: $e");
-        
+
         if (attempts >= maxAttempts) {
           // If we failed 3 times, THEN show the error message.
-          _editionErrorMessage = "Failed to load editions. Please check your connection and try again.";
+          _editionErrorMessage =
+              "Failed to load editions. Please check your connection and try again.";
           _isEditionsLoading = false;
           notifyListeners();
         } else {
@@ -122,6 +132,19 @@ class SettingsProvider with ChangeNotifier {
   void setTranslationLanguage(String value) {
     _translationLanguage = value;
     _prefs.setString('translation', value);
+
+    if (value.toLowerCase().contains('ur.')) {
+      _translationFont = 'NotoUrdu'; // Aapka Urdu Font jo pubspec mein hai
+      _prefs.setString('translationFont', 'NotoUrdu');
+    }
+
+    // 2. Check for Arabic (If translation is in Arabic text)
+    if (value.toLowerCase().contains('ar.')) {
+      _translationFont =
+          'UthmanicHafs'; // Arabic translation ke liye Amiri ya Uthmanic
+      _prefs.setString('translationFont', 'UthmanicHafs');
+    }
+
     notifyListeners();
   }
 

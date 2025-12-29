@@ -46,27 +46,24 @@ class VerseDisplay extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            quranProvider.arabicAyah!.arabicText,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.getFont(
-              settings.arabicFont,
-              fontSize: settings.arabicFontSize,
-              color: Theme.of(context).textTheme.bodyLarge?.color,
-              height: 1.8,
-            ),
-          ),
+          Text(quranProvider.arabicAyah!.arabicText,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: settings.arabicFont,
+                fontSize: settings.arabicFontSize,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+                height: 1.8,
+              )),
           const SizedBox(height: 18),
           if (quranProvider.translationAyah?.translationText != null)
             Text(
               quranProvider.translationAyah!.translationText!,
               textAlign: TextAlign.center,
-              style: GoogleFonts.getFont(
-                settings.translationFont,
+              style: TextStyle(
+                fontFamily: settings.translationFont,
                 fontSize: settings.translationFontSize,
                 color: Theme.of(context).textTheme.bodyMedium?.color,
-                fontStyle: FontStyle.italic,
-                height: 1.5,
+                height: 2.0,
               ),
             ),
         ],

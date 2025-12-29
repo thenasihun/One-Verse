@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:oneverse/providers/audio_provider.dart';
 import 'package:oneverse/providers/quran_provider.dart';
 import 'package:oneverse/providers/settings_provider.dart';
@@ -8,7 +9,7 @@ import 'core/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   final settingsProvider = SettingsProvider();
   await settingsProvider.loadPreferences();
 
@@ -23,7 +24,8 @@ Future<void> main() async {
 class OneVerseApp extends StatelessWidget {
   final SettingsProvider settingsProvider;
 
-  const OneVerseApp({Key? key, required this.settingsProvider}) : super(key: key);
+  const OneVerseApp({Key? key, required this.settingsProvider})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +33,8 @@ class OneVerseApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: settingsProvider),
         // --- UPDATED: Create and immediately fetch Surah list ---
-        ChangeNotifierProvider(create: (_) => QuranProvider()..fetchSurahList()), 
+        ChangeNotifierProvider(
+            create: (_) => QuranProvider()..fetchSurahList()),
         ChangeNotifierProxyProvider<SettingsProvider, AudioProvider>(
           create: (_) => AudioProvider(),
           update: (_, settings, audio) => audio!..update(settings),

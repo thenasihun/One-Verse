@@ -56,7 +56,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildThemeSelector(context, settings),
               const SizedBox(height: 24),
               _buildSectionHeader(context, "CONTENT"),
-              _buildContentCard(context, currentTextEdition, currentAudioEdition),
+              _buildContentCard(
+                  context, currentTextEdition, currentAudioEdition),
               const SizedBox(height: 24),
               _buildSectionHeader(context, "TYPOGRAPHY"),
               _buildTypographyCard(context, settings),
@@ -158,8 +159,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildContentCard(
-      BuildContext context, Edition? currentTextEdition, Edition? currentAudioEdition) {
+  Widget _buildContentCard(BuildContext context, Edition? currentTextEdition,
+      Edition? currentAudioEdition) {
     return Card(
       child: Column(
         children: [
@@ -217,19 +218,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
         DropdownButtonFormField<String>(
           value: settings.arabicFont,
           decoration: const InputDecoration(labelText: 'Arabic Font Style'),
-          items: ['Amiri', 'Lateef', 'Noto Naskh Arabic']
-              .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+          items: [
+            'Amiri',
+            'Lateef',
+            'UthmanicHafs',
+          ]
+              .map(
+                  (value) => DropdownMenuItem(value: value, child: Text(value)))
               .toList(),
           onChanged: (value) {
             if (value != null) settings.setArabicFont(value);
+            debugPrint("Selected Arabic Font: $value");
           },
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
           value: settings.translationFont,
-          decoration: const InputDecoration(labelText: 'Translation Font Style'),
-          items: ['Lato', 'Roboto', 'Montserrat']
-              .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+          decoration:
+              const InputDecoration(labelText: 'Translation Font Style'),
+          items: [
+            'NotoSans',
+            'Roboto',
+            'Montserrat',
+            'OpenSans',
+            'NotoUrdu',
+            'UthmanicHafs'
+          ]
+              .map(
+                  (value) => DropdownMenuItem(value: value, child: Text(value)))
               .toList(),
           onChanged: (value) {
             if (value != null) settings.setTranslationFont(value);
@@ -245,7 +261,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildFontSlider(BuildContext context, SettingsProvider settings,
       {required bool isArabic}) {
-    final fontSize = isArabic ? settings.arabicFontSize : settings.translationFontSize;
+    final fontSize =
+        isArabic ? settings.arabicFontSize : settings.translationFontSize;
     final min = isArabic ? 18.0 : 12.0;
     final max = isArabic ? 40.0 : 28.0;
 

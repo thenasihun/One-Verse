@@ -34,7 +34,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
     final quranProvider = Provider.of<QuranProvider>(context, listen: false);
     final settingsProvider =
         Provider.of<SettingsProvider>(context, listen: false);
-
     bool needsSync = false;
     int targetSurah = 1;
     int targetAyah = 0;
@@ -291,6 +290,7 @@ class _PlayerContent extends StatelessWidget {
                     const Divider(height: 24),
                     Expanded(
                       child: _buildTextContent(
+                          context,
                           currentAyah?.arabicText,
                           currentTranslationAyah?.translationText,
                           textColor,
@@ -316,23 +316,24 @@ class _PlayerContent extends StatelessWidget {
     );
   }
 
-  Widget _buildTextContent(
-      String? arabic, String? translation, Color textColor, bool isRtl) {
+  Widget _buildTextContent(BuildContext context, String? arabic,
+      String? translation, Color textColor, bool isRtl) {
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
     final arabicText = Text(arabic ?? 'Loading...',
         textAlign: TextAlign.center,
         style: TextStyle(
-            fontFamily: 'UthmanicHafs',
-            fontSize: 32,
+            fontFamily: settings.arabicFont,
+            fontSize: settings.arabicFontSize,
             color: textColor,
             height: 1.8));
     final transText = Text(translation ?? '',
         textAlign: isRtl ? TextAlign.right : TextAlign.left,
         textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
         style: TextStyle(
-            fontSize: 18,
+            fontFamily: settings.translationFont,
+            fontSize: settings.translationFontSize,
             color: textColor.withOpacity(0.9),
-            fontStyle: FontStyle.italic,
-            height: 1.5));
+            height: isRtl ? 3.0 : 1.5));
 
     if (viewMode == 1)
       return Center(child: SingleChildScrollView(child: arabicText));

@@ -7,18 +7,56 @@ import 'package:provider/provider.dart';
 class LanguageSelectionScreen extends StatelessWidget {
   final SelectionType selectionType;
 
-  const LanguageSelectionScreen({Key? key, required this.selectionType}) : super(key: key);
+  const LanguageSelectionScreen({Key? key, required this.selectionType})
+      : super(key: key);
 
   static const Map<String, String> _languageNames = {
-    'en': 'English',
-    'ur': 'Urdu',
-    'ar': 'Arabic',
-    'fr': 'French',
-    'zh': 'Chinese',
-    'ru': 'Russian',
+    "ar": "Arabic",
+    "am": "Amharic",
+    "az": "Azerbaijani",
+    "ber": "Berber (Amazigh)",
+    "bn": "Bengali",
+    "cs": "Czech",
+    "ce": "Chechen",
+    "de": "German",
+    "dv": "Divehi (Maldivian)",
+    "en": "English",
+    "es": "Spanish",
+    "fa": "Persian (Farsi)",
+    "fr": "French",
+    "ha": "Hausa",
+    "hi": "Hindi",
+    "id": "Indonesian",
+    "it": "Italian",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "ku": "Kurdish",
+    "ml": "Malayalam",
+    "nl": "Dutch",
+    "no": "Norwegian",
+    "pl": "Polish",
+    "ps": "Pashto",
+    "pt": "Portuguese",
+    "ro": "Romanian",
+    "ru": "Russian",
+    "sd": "Sindhi",
+    "so": "Somali",
+    "sq": "Albanian",
+    "sv": "Swedish",
+    "sw": "Swahili",
+    "ta": "Tamil",
+    "tg": "Tajik",
+    "th": "Thai",
+    "tr": "Turkish",
+    "tt": "Tatar",
+    "ug": "Uyghur",
+    "ur": "Urdu",
+    "uz": "Uzbek",
+    "zh": "Chinese",
   };
 
-  String _getLanguageName(String code) => _languageNames[code] ?? code.toUpperCase();
+  String _getLanguageName(String code) =>
+      _languageNames[code] ?? code.toUpperCase();
 
   @override
   Widget build(BuildContext context) {
