@@ -16,7 +16,7 @@ class SettingsProvider with ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
   double _arabicFontSize = AppConstants.defaultArabicFontSize;
   double _translationFontSize = AppConstants.defaultTranslationFontSize;
-  String _arabicFont = 'Amiri';
+  String _arabicFont = 'UthmanicHafs';
   String _translationFont = 'NotoSans';
 
   // --- Dynamic Data for Edition Selection ---
@@ -50,7 +50,7 @@ class SettingsProvider with ChangeNotifier {
   bool get isEditionsLoading => _isEditionsLoading;
   String? get editionErrorMessage => _editionErrorMessage;
 
-  double lineheight(double fontSize, String fontFamily) {
+  double getLineHeight(double fontSize, String fontFamily) {
     // check for Urdu fonts
     bool isUrduFont =
         fontFamily == 'NotoUrdu' || fontFamily == 'JameelNooriNastaleeq';

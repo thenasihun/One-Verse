@@ -13,8 +13,9 @@ class VerseDisplay extends StatelessWidget {
     final quranProvider = Provider.of<QuranProvider>(context);
     final settings = Provider.of<SettingsProvider>(context);
 
-    double lineHeight =
-        settings.lineheight(settings.arabicFontSize, settings.arabicFont);
+    double lineHeight(double fontSize, String fontFamily) {
+      return settings.getLineHeight(fontSize, fontFamily);
+    }
 
     final cleanedArabic = quranProvider.arabicAyah?.arabicText != null
         ? cleanArabicForDisplay(quranProvider.arabicAyah!.arabicText)
@@ -73,7 +74,8 @@ class VerseDisplay extends StatelessWidget {
                 wordSpacing: 2,
                 fontSize: settings.arabicFontSize,
                 color: Theme.of(context).textTheme.bodyMedium?.color,
-                height: lineHeight,
+                height:
+                    lineHeight(settings.arabicFontSize, settings.arabicFont),
               )),
           const SizedBox(height: 18),
           if (quranProvider.translationAyah?.translationText != null)
@@ -84,7 +86,8 @@ class VerseDisplay extends StatelessWidget {
                 fontFamily: settings.translationFont,
                 fontSize: settings.translationFontSize,
                 color: Theme.of(context).textTheme.bodyMedium?.color,
-                height: lineHeight,
+                height: lineHeight(
+                    settings.translationFontSize, settings.translationFont),
                 letterSpacing: 0,
               ),
             ),

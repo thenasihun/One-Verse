@@ -322,9 +322,10 @@ class _PlayerContent extends StatelessWidget {
     debugArabicRenderIssues('Current Arabic Ayah', arabic);
     final settings = Provider.of<SettingsProvider>(context, listen: false);
     final cleanedArabic = arabic != null ? cleanArabicForDisplay(arabic) : null;
+    double lineHeight(double fontSize, String fontFamily) {
+      return settings.getLineHeight(fontSize, fontFamily);
+    }
 
-    double lineHeight =
-        settings.lineheight(settings.arabicFontSize, settings.arabicFont);
     final arabicText = Text(
         settings.arabicFont != "UthmanicHafs"
             ? arabic ?? 'Loading'
@@ -346,7 +347,7 @@ class _PlayerContent extends StatelessWidget {
             wordSpacing: 2,
             fontSize: settings.arabicFontSize,
             color: textColor,
-            height: lineHeight));
+            height: lineHeight(settings.arabicFontSize, settings.arabicFont)));
     final transText = Text(translation ?? '',
         textAlign: isRtl ? TextAlign.right : TextAlign.left,
         textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
@@ -355,7 +356,8 @@ class _PlayerContent extends StatelessWidget {
             fontSize: settings.translationFontSize,
             color: textColor.withOpacity(0.9),
             letterSpacing: 0,
-            height: lineHeight));
+            height: lineHeight(
+                settings.translationFontSize, settings.translationFont)));
 
     if (viewMode == 1)
       return Center(child: SingleChildScrollView(child: arabicText));
