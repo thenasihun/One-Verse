@@ -14,7 +14,8 @@ class InfoScreen extends StatefulWidget {
 }
 
 class _InfoScreenState extends State<InfoScreen> {
-  String _appVersion = "1.0.0"; 
+  // app version ko dynamically load karne ke liye
+  String _appVersion = "1.0.1";     
 
   @override
   void initState() {
