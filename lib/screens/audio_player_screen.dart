@@ -318,14 +318,35 @@ class _PlayerContent extends StatelessWidget {
 
   Widget _buildTextContent(BuildContext context, String? arabic,
       String? translation, Color textColor, bool isRtl) {
+    // DEBUG (sirf current ayah ka short debug)
+    debugArabicRenderIssues('Current Arabic Ayah', arabic);
     final settings = Provider.of<SettingsProvider>(context, listen: false);
-    final arabicText = Text(arabic ?? 'Loading...',
+    final cleanedArabic = arabic != null ? cleanArabicForDisplay(arabic) : null;
+
+    double lineHeight =
+        settings.lineheight(settings.arabicFontSize, settings.arabicFont);
+    final arabicText = Text(
+        settings.arabicFont != "UthmanicHafs"
+            ? arabic ?? 'Loading'
+            : cleanedArabic ?? '',
         textAlign: TextAlign.center,
+        locale: const Locale('ar'),
+        textDirection: TextDirection.rtl,
         style: TextStyle(
             fontFamily: settings.arabicFont,
+            fontFamilyFallback: const [
+              'Amiri',
+              'ScheherazadeNew',
+              'Lateef',
+              'NotoNaskhArabic',
+              'UthmanicHafs'
+            ],
+            letterSpacing: 0,
+            leadingDistribution: TextLeadingDistribution.even,
+            wordSpacing: 2,
             fontSize: settings.arabicFontSize,
             color: textColor,
-            height: 1.8));
+            height: lineHeight));
     final transText = Text(translation ?? '',
         textAlign: isRtl ? TextAlign.right : TextAlign.left,
         textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
@@ -333,7 +354,8 @@ class _PlayerContent extends StatelessWidget {
             fontFamily: settings.translationFont,
             fontSize: settings.translationFontSize,
             color: textColor.withOpacity(0.9),
-            height: isRtl ? 3.0 : 1.5));
+            letterSpacing: 0,
+            height: lineHeight));
 
     if (viewMode == 1)
       return Center(child: SingleChildScrollView(child: arabicText));
@@ -638,3 +660,111 @@ class _PlayerContent extends StatelessWidget {
     return "$minutes:$seconds";
   }
 }
+
+String cleanArabicForDisplay(String s) {
+  final buffer = StringBuffer();
+
+  for (final r in s.runes) {
+    // 1) Harakaat + superscript alif → keep
+    if ((r >= 0x064B && r <= 0x0652) || r == 0x0670) {
+      buffer.writeCharCode(r);
+      continue;
+    }
+
+    // 2) Quranic decorative marks → REMOVE
+    if (r >= 0x06D6 && r <= 0x06ED) {
+      continue;
+    }
+
+    // 3) Everything else (Arabic letters, waqf letters, words) → keep
+    buffer.writeCharCode(r);
+  }
+
+  return buffer.toString();
+}
+
+// ================= DEBUG HELPERS =================
+
+bool _isArabicCombiningMark(int r) {
+  // Harakaat / Quran marks commonly in these ranges
+  // 064B-065F: Tashkeel, 0670: superscript alif, 06D6-06ED: Quranic marks
+  return (r >= 0x064B && r <= 0x065F) ||
+      r == 0x0670 ||
+      (r >= 0x06D6 && r <= 0x06ED);
+}
+
+String _uHex(int r) => 'U+${r.toRadixString(16).toUpperCase().padLeft(4, '0')}';
+
+/// Prints only the important debug info:
+/// i) Does text contain dotted circle (U+25CC)?
+/// ii) Any combining marks without a base letter nearby (likely cause)?
+/// iii) Any weird non-Arabic / replacement characters?
+void debugArabicRenderIssues(String label, String? text, {int context = 6}) {
+  if (text == null || text.isEmpty) {
+    debugPrint('$label: empty');
+    return;
+  }
+
+  final runes = text.runes.toList();
+
+  // 1) Dotted circle direct check
+  final dotted = runes.contains(0x25CC);
+
+  // 2) Find combining marks that are likely "floating"
+  final floatingMarks = <Map<String, dynamic>>[];
+
+  for (int i = 0; i < runes.length; i++) {
+    final r = runes[i];
+    if (_isArabicCombiningMark(r)) {
+      // Look for a base letter just before
+      final prev = i > 0 ? runes[i - 1] : null;
+      final prevIsMark = prev != null && _isArabicCombiningMark(prev);
+      final prevIsLikelyBase = prev != null && !prevIsMark;
+
+      // If mark is at start or previous is also a mark, often floating
+      if (i == 0 || !prevIsLikelyBase) {
+        final start = (i - context) < 0 ? 0 : (i - context);
+        final end =
+            (i + context) >= runes.length ? runes.length - 1 : (i + context);
+
+        final snippet = String.fromCharCodes(runes.sublist(start, end + 1));
+        floatingMarks.add({
+          'index': i,
+          'cp': _uHex(r),
+          'char': String.fromCharCode(r),
+          'snippet': snippet,
+        });
+      }
+    }
+  }
+
+  // 3) Print a short summary (avoid huge logs)
+  debugPrint('--- Arabic Render Debug: $label ---');
+  debugPrint('Length: ${text.length}, Runes: ${runes.length}');
+  debugPrint('Has dotted circle (U+25CC): $dotted');
+
+  if (dotted) {
+    // show where it occurs (first few)
+    final idxs = <int>[];
+    for (int i = 0; i < runes.length && idxs.length < 5; i++) {
+      if (runes[i] == 0x25CC) idxs.add(i);
+    }
+    debugPrint('Dotted circle positions (first 5): $idxs');
+  }
+
+  if (floatingMarks.isNotEmpty) {
+    debugPrint(
+        'Floating combining marks found: ${floatingMarks.length} (showing first 5)');
+    for (final m in floatingMarks.take(5)) {
+      debugPrint(
+          'At #${m['index']} ${m['cp']} "${m['char']}" | snippet: "${m['snippet']}"');
+    }
+  } else {
+    debugPrint('No obvious floating combining marks detected.');
+  }
+
+  debugPrint('--- end ---');
+}
+
+/// Optional cleanup if you want to test quickly:
+String removeDottedCircle(String s) => s.replaceAll('\u25CC', '');

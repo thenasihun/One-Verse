@@ -222,6 +222,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             'Amiri',
             'Lateef',
             'UthmanicHafs',
+            'NotoNaskhArabic',
+            'ScheherazadeNew',
+            'Kitab',
           ]
               .map(
                   (value) => DropdownMenuItem(value: value, child: Text(value)))
@@ -263,8 +266,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       {required bool isArabic}) {
     final fontSize =
         isArabic ? settings.arabicFontSize : settings.translationFontSize;
-    final min = isArabic ? 18.0 : 12.0;
-    final max = isArabic ? 40.0 : 28.0;
+    final min = isArabic ? 18.0 : 14.0;
+    final max = isArabic ? 32.0 : 24.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

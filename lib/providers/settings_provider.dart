@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:oneverse/core/constants.dart';
 import 'package:oneverse/models/edition_model.dart';
@@ -47,6 +49,44 @@ class SettingsProvider with ChangeNotifier {
   List<Edition> get allAudioEditions => _allAudioEditions;
   bool get isEditionsLoading => _isEditionsLoading;
   String? get editionErrorMessage => _editionErrorMessage;
+
+  double lineheight(double fontSize, String fontFamily) {
+    // check for Urdu fonts
+    bool isUrduFont =
+        fontFamily == 'NotoUrdu' || fontFamily == 'JameelNooriNastaleeq';
+
+    bool isArabicFont = fontFamily == 'Amiri' ||
+        fontFamily == 'UthmanicHafs' ||
+        fontFamily == 'ScheherazadeNew' ||
+        fontFamily == 'Kitab';
+
+    // Adjust line height based on font size for better readability
+    if (isUrduFont) {
+      if (fontSize <= 18) {
+        return 2.6;
+      } else if (fontSize <= 20) {
+        return 2.4;
+      } else if (fontSize <= 24) {
+        return 2.2;
+      } else {
+        return 2.0;
+      }
+    }
+
+    if (isArabicFont) {
+      if (fontSize <= 22) {
+        return 2.6;
+      } else if (fontSize <= 28) {
+        return 2.4;
+      } else if (fontSize <= 32) {
+        return 2.2;
+      } else {
+        return 2.0;
+      }
+    }
+
+    return 1.5;
+  }
 
   // --- Initialization ---
   Future<void> loadPreferences() async {

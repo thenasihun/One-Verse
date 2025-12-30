@@ -58,6 +58,12 @@ flutter:
       fonts:
         - asset: assets/fonts/NotoNastaliqUrdu-Regular.ttf
         - asset: assets/fonts/NotoNastaliqUrdu-Bold.ttf
+    - family: NotoNaskhArabic
+      fonts:
+        - asset: assets/fonts/NotoNaskhArabic-Regular.ttf
+    - family: ScheherazadeNew
+      fonts:
+        - asset: assets/fonts/ScheherazadeNew-Regular.ttf
     - family: Amiri 
       fonts:
         - asset: assets/fonts/AmiriQuran-Regular.ttf 
@@ -67,6 +73,9 @@ flutter:
     - family: Lateef
       fonts:
         - asset: assets/fonts/Lateef-Regular.ttf
+    - family: Kitab
+      fonts:
+        - asset: assets/fonts/Kitab-Regular.ttf
     - family: Roboto
       fonts:
         - asset: assets/fonts/Roboto-Regular.ttf

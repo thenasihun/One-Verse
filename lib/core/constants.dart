@@ -22,6 +22,6 @@ class AppConstants {
   static const String defaultAudio = 'ar.alafasy';
   static const double defaultArabicFontSize = 24.0;
   static const double defaultTranslationFontSize = 16.0;
-  static const String defaultArabicFont = 'Amiri';
+  static const String defaultArabicFont = 'UthmanicHafs';
   static const String defaultTranslationFont = 'NotoSans';
 }
