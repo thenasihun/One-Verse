@@ -1,75 +1,124 @@
+import 'dart:async';
+
+import 'package:audio_service/audio_service.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
-import 'package:oneverse/providers/audio_provider.dart';
-import 'package:oneverse/providers/download_provider.dart';
-import 'package:oneverse/providers/quran_provider.dart';
-import 'package:oneverse/providers/settings_provider.dart';
-import 'package:oneverse/screens/home_screen.dart';
-import 'package:oneverse/services/offline_store.dart';
+import 'package:flutter/services.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
+
 import 'core/theme.dart';
+import 'data/cache_store.dart';
+import 'data/downloads.dart';
+import 'data/network.dart';
+import 'data/offline_sync.dart';
+import 'data/repository.dart';
+import 'state/audio_handler.dart';
+import 'state/listening_log.dart';
+import 'state/playback.dart';
+import 'state/reminders.dart';
+import 'state/settings.dart';
+import 'ui/shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, systemNavigationBarColor: Colors.transparent));
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  try {
-    await OfflineStore.instance.init();
-  } catch (e) {
-    debugPrint("Offline storage unavailable: $e");
+  final services = await AppServices.create();
+  runApp(OneVerseApp(services: services));
+}
+
+/// Every long-lived object, created once at start-up.
+class AppServices {
+  final Settings settings;
+  final QuranRepository repo;
+  final Downloads downloads;
+  final OfflineSync sync;
+  final ListeningLog log;
+  final Playback playback;
+
+  AppServices._(this.settings, this.repo, this.downloads, this.sync, this.log, this.playback);
+
+  static Future<AppServices> create({OvAudioHandler? handler}) async {
+    await CacheStore.instance.init().catchError((Object e) => debugPrint('Storage: $e'));
+    await NetworkStatus.instance.init();
+    final settings = Settings();
+    await settings.load();
+    final repo = QuranRepository();
+    await repo.init();
+    final downloads = Downloads(repo);
+    await downloads.init();
+    final sync = OfflineSync(repo, translationId: settings.translationId, reciterId: settings.reciterId);
+    await sync.init();
+    final log = ListeningLog();
+    await log.init();
+
+    var h = handler;
+    if (h == null) {
+      final player = AudioPlayer();
+      try {
+        final session = await AudioSession.instance;
+        await session.configure(const AudioSessionConfiguration.music());
+        h = await AudioService.init(
+          builder: () => OvAudioHandler(player),
+          config: const AudioServiceConfig(
+            androidNotificationChannelId: 'com.nasihun.oneverse.playback',
+            androidNotificationChannelName: 'Recitation',
+            androidNotificationIcon: 'drawable/ic_ov_notification',
+            androidNotificationOngoing: true,
+            androidStopForegroundOnPause: true,
+            notificationColor: Color(0xFF064E3B),
+            artDownscaleWidth: 512,
+            artDownscaleHeight: 512,
+          ),
+        );
+      } catch (e) {
+        debugPrint('Audio service unavailable: $e');
+        h = OvAudioHandler(player);
+      }
+    }
+
+    final playback = Playback(repo: repo, settings: settings, downloads: downloads, log: log, sync: sync, handler: h);
+    await playback.restore();
+
+    settings.addListener(() {
+      sync.translationId = settings.translationId;
+      sync.reciterId = settings.reciterId;
+    });
+    if (settings.wifiPrefetch) unawaited(Future.delayed(const Duration(seconds: 4), sync.run));
+    unawaited(Reminders.instance.init());
+    return AppServices._(settings, repo, downloads, sync, log, playback);
   }
-
-  final settingsProvider = SettingsProvider();
-  await settingsProvider.loadPreferences();
-
-  // Pre-fetch settings
-  settingsProvider.fetchAvailableEditions();
-
-  runApp(
-    OneVerseApp(settingsProvider: settingsProvider),
-  );
 }
 
 class OneVerseApp extends StatelessWidget {
-  final SettingsProvider settingsProvider;
-
-  const OneVerseApp({Key? key, required this.settingsProvider})
-      : super(key: key);
+  final AppServices services;
+  const OneVerseApp({super.key, required this.services});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider.value(value: settingsProvider),
-        ChangeNotifierProvider.value(value: OfflineStore.instance),
-        ChangeNotifierProvider(create: (_) => SurahDownloadProvider()),
-        // --- UPDATED: Create and immediately fetch Surah list ---
-        ChangeNotifierProvider(
-            create: (_) => QuranProvider()..fetchSurahList()),
-        ChangeNotifierProxyProvider<SettingsProvider, AudioProvider>(
-          create: (_) => AudioProvider(),
-          update: (_, settings, audio) => audio!..update(settings),
-        ),
+        ChangeNotifierProvider.value(value: services.settings),
+        ChangeNotifierProvider.value(value: services.repo),
+        ChangeNotifierProvider.value(value: services.downloads),
+        ChangeNotifierProvider.value(value: services.sync),
+        ChangeNotifierProvider.value(value: services.log),
+        ChangeNotifierProvider.value(value: services.playback),
+        ChangeNotifierProvider.value(value: NetworkStatus.instance),
       ],
-      child: const MyApp(),
-    );
-  }
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<SettingsProvider>(
-      builder: (context, settings, _) {
-        return MaterialApp(
-          title: 'OneVerse',
+      child: Selector<Settings, ThemeMode>(
+        selector: (_, s) => s.themeMode,
+        builder: (context, mode, _) => MaterialApp(
+          title: 'One Verse',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: settings.themeMode,
-          home: const HomeScreen(),
-        );
-      },
+          theme: AppTheme.build(Brightness.light),
+          darkTheme: AppTheme.build(Brightness.dark),
+          themeMode: mode,
+          home: const Shell(),
+        ),
+      ),
     );
   }
 }
