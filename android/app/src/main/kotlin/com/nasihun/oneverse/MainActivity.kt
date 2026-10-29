@@ -1,5 +1,7 @@
 package com.nasihun.oneverse
 
-import io.flutter.embedding.android.FlutterActivity
+import com.ryanheise.audioservice.AudioServiceActivity
 
-class MainActivity : FlutterActivity()
+// AudioServiceActivity keeps the Flutter engine shared with the background
+// playback service, so the notification and lock screen stay in sync.
+class MainActivity : AudioServiceActivity()
