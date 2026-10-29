@@ -1,63 +1,88 @@
-# Audio, word timings and reciters
+# Audio, word timings, reciters and photos
+
+All numbers below were checked against the live APIs on 2026-10-29.
 
 ## Word-exact highlighting
 
-To light up the exact word being recited you need, for each ayah, `[word position, start ms, end ms]`
-measured on the same audio file you play. Sources found:
+To light up the word being recited you need, for each ayah, `[word position, start ms, end ms]` measured on
+the exact audio file you play, and the Quran text split into the same word positions.
 
-| Source | Reciters | Format | Licence | Notes |
-|---|---|---|---|---|
-| Quran Foundation chapter recitations (`segments=true`) | Several Quran.com reciters | Quran.com `chapter_recitations` shape | Quran Foundation Developer Terms | The primary source once API access is set up |
-| [its3li/quran-word-timings](https://github.com/its3li/quran-word-timings) | Muhammad Al-Luhaidan, all 114 surahs | Quran.com shape (`verse_timings[].segments`) plus a detailed file with confidence scores | **CC0** | Prayer recordings: words can repeat when the imam repeats a phrase. Highlight by time, which handles repeats. |
-| [baklarrrr/quran-timings](https://github.com/baklarrrr/quran-timings) | Yasser Al-Dosari (107 surahs), Maher Al-Muaiqly (105), Nasser Al-Qatami (106), Islam Sobhi (104) | Quran.com shape; `reciters.json` lists audio and timing URL templates | No licence file in the repo: ask the author before shipping | Some ayahs are listed as untimed (`leftOut`). They are recited; show them unlit. |
-| [cpfair/quran-align](https://github.com/cpfair/quran-align) | EveryAyah reciters | Per-ayah segments, word indices on Tanzil Uthmani split by spaces | CC BY 4.0 (credit required) | Data is in GitHub releases. Fits the current ayah-by-ayah EveryAyah-style audio. |
-| QUL (Tarteel, `qul.tarteel.ai`) | Many | Surah-by-surah and ayah-by-ayah segment downloads | See QUL terms | Also hosts fonts and script data |
+| Source | Reciters | Licence or terms | Notes |
+|---|---|---|---|
+| **Quran Foundation chapter recitations** (`/chapter_recitations/{id}/{chapter}?segments=true`, or Content Sync `chapter_recitations`) | 14 chapter reciters on Quran.com: Mishary Alafasy, Abdur-Rahman As-Sudais, Saud Ash-Shuraym, Yasser Ad-Dosari, Abdul Basit (Murattal and Mujawwad), Mahmoud Khalil Al-Husary (Murattal and Muallim), Minshawi (Murattal and Kids repeat), Abu Bakr Ash-Shatri, Hani Ar-Rifai, Khalifa Al-Tunaiji | Quran Foundation Developer Terms | Every ayah of the 9 surahs tested had segments. 18 segments in Al-Baqarah were malformed; skip any row that is not 3 numbers. Audio on `download.quranicaudio.com/qdc/...` |
+| [its3li/quran-word-timings](https://github.com/its3li/quran-word-timings) | Muhammad Al-Luhaidan, all 114 surahs | **CC0** | Prayer recordings: some phrases repeat, so highlight by time. Audio on mp3quran. |
+| [baklarrrr/quran-timings](https://github.com/baklarrrr/quran-timings) | Yasser Al-Dosari, Maher Al-Muaiqly, Nasser Al-Qatami, Islam Sobhi (104–107 surahs each) | **No licence file**: ask the author before shipping | Some ayahs untimed (`leftOut`): recited, show them unlit. Audio on mp3quran. |
+| [cpfair/quran-align](https://github.com/cpfair/quran-align) | EveryAyah reciters, ayah by ayah | CC BY 4.0 | Word indices on Tanzil Uthmani split by spaces |
 
-All of these use Quran.com word positions, so take the text from the Quran Foundation API (or another source
-with the same word split) and fall back to proportional mapping when a script splits an ayah into a different
-number of words. In testing with the fawazahmed0 texts, the word counts matched for 95–99% of ayahs in Hafs,
-and the rest mapped well proportionally.
+All of these number words the way Quran.com does. Take the text word by word from the Quran Foundation API
+(`words=true&word_fields=text_qpc_hafs,text_indopak,text_uthmani,text_imlaei,text_uthmani_tajweed`): every
+script then has the same positions, and highlighting is exact in every script. The redesign prototype does
+exactly this and needed no fallback mapping.
 
-The timings are tied to one exact audio file (for example `https://cdn.mp3quran.net/audio/islam-sobhi/r1/067.mp3`).
-If a source replaces the file, the timings stop matching. Play the URL named in the timing file.
+A timing file only matches the audio file it was measured on. Always play the URL that comes with the
+timings, and re-download timings if the source replaces a file.
 
-**Prototype note:** in the redesign preview, Maher Al-Muaiqly and Muhammad Al-Luhaidan use these real
-timings. Other reciters use estimated timing (words spread over the ayah), and the UI says so with a
-"Word-exact timing" or "Estimated timing" badge.
+**Resulting reciter coverage in the prototype:** 15 reciters with word-exact timing, 9 more with estimated
+timing, and the UI says which ("Word-exact timing" or "Estimated timing").
+
+## Reciter photos: QuranHub
+
+This is the API with photos and a long reciter list.
+
+- `GET https://api.quranhub.com/v1/edition/format/audio` returns **208 audio editions (158 distinct
+  reciters), 197 with `imageUrl`**, plus `shortDescription` in Arabic and English, Arabic name and
+  `nationality` (`{code, en, ar}`).
+- `GET https://api.quranhub.com/v1/edition/audio/nationality` and `/nationality/{code}` group reciters by
+  country (for a "Reciters from Egypt" shelf).
+- Identifiers mirror alquran.cloud's (`ar.alafasy` becomes `ar.alafasy.hafs`, also `.warsh`, `.qaloon`,
+  `.aldouri` riwayat), so mapping the app's current reciters is a string change.
+- Images are JPEGs on `quranhub.b-cdn.net` (about 12 KB). Cache them on the device and keep the generated
+  monogram as fallback.
+- **Licence:** the QuranHub code is under a Non-Commercial License (Misraj AI). The terms for the API data and
+  the photos are not stated. Ask Misraj AI (hello@misraj.ai) for permission before shipping, especially if
+  One Verse is ever monetised. Photos remain the property of their owners.
+
+Other sources checked: Quran.com reciter endpoints have no photo field; mp3quran.net has no photo field;
+UmmahAPI has no photo field.
 
 ## Audio sources
 
-| Source | Kind | Notes |
-|---|---|---|
-| alquran.cloud CDN (current app) | Ayah by ayah | Simple, already integrated. Good for repeat-ayah and downloading single ayahs. |
-| mp3quran.net API | Surah by surah, very large reciter list | Free public API. Pairs with the baklarrrr and its3li timings. Their privacy page allows copying material and links; recordings remain the reciters' and publishers' work. |
-| Quran Foundation | Both | Needs OAuth; terms govern offline storage |
-| EveryAyah | Ayah by ayah | No site-wide licence; asks for credit to the reciter and everyayah.com. Bitrates vary by reciter. |
+| Source | Reciters | Kind | Notes |
+|---|---|---|---|
+| alquran.cloud CDN (current app) | about 30 ayah-by-ayah editions (Arabic and translation voices), plus surah-by-surah ones | Ayah by ayah | Already integrated |
+| **mp3quran.net API v3** (`/api/v3/reciters?language=eng`) | **244 reciters**, many riwayat (`moshaf` list with `server` URL and `surah_list`) | Surah by surah | The largest list. Its privacy page allows copying material and links; recordings remain the reciters' and publishers'. Pairs with the Luhaidan and baklarrrr timings. |
+| Quran Foundation | 14 chapter reciters, more ayah recitations | Both, with timings | OAuth; offline copies through Content Sync |
+| QuranHub | 158 reciters | Per edition | Has the photos and biographies |
+| EveryAyah | Many | Ayah by ayah | No site-wide licence; asks for credit to the reciter and everyayah.com |
+| UmmahAPI | 13 reciters | Both | See below |
 
-Recommended: keep ayah-by-ayah playback, and add full-surah files with timings where available. A full file
-gives gapless recitation, and the timings still tell you which ayah and which word is playing.
+Recommended: keep ayah-by-ayah audio for repeat and single-ayah downloads; add full-surah files with
+timings for gapless playback. With timings you still know the exact ayah and word at every moment, and
+`/audio/reciters/{id}/lookup` maps a playback time to an ayah.
 
-## Reciter photos
+## UmmahAPI (`https://ummahapi.com`)
 
-- **QuranHub API** ([misraj-ai/quranhub](https://github.com/misraj-ai/quranhub)): its README says the audio
-  edition endpoints return reciter metadata with `imageUrl`, a short description and nationality, for about
-  141 reciters. This is the closest match to "an API with reciter pictures and a long list".
-- **JuzzQuran API**: reciter objects with `image_url`, country and style for about 75 reciters (listed on a
-  third-party API marketplace; check the source and terms).
-- **Wikipedia page-summary API** (`/api/rest_v1/page/summary/<title>`): a thumbnail for well-known reciters.
-- Always keep the generated monogram as a fallback, and cache images on the device.
+Free, no sign-up; an optional key gives 5× the limit. Live headers show `ratelimit-policy: 5000;w=900`
+(5,000 requests per 15 minutes without a key).
 
-None of these sources state a licence for the photos themselves. Ask for permission or use only images
-whose licence allows app use.
+Quran endpoints: `/api/quran`, `/api/quran/surahs`, `/api/quran/surah/{n}?script=uthmani|indopak|tajweed|all&translation=...&reciter=...`,
+`/api/quran/surah/{s}/ayah/{a}`, `/api/quran/random`, `/api/quran/search`, `/api/quran/juz/{n}`,
+`/api/quran/page/{n}` (word data for a 15-line Madinah page), `/api/quran/reciters` (13),
+`/api/quran/audio/{surah}[/{ayah}]`, `/api/quran/words/{surah}[/{ayah}]` (word by word),
+`/api/quran/mutashabihat...` (1,200+ similar ayahs, useful for huffaz).
 
-## Other Quran APIs looked at
+Also useful for One Verse:
 
-- **UmmahAPI** (`ummahapi.com`, could not be opened directly; summary from its own pages): free, no sign-up,
-  optional key for higher limits. Quran endpoints include `/api/quran/surah/{surah}` with
-  `script=uthmani|indopak|tajweed|all`, `/api/quran/surah/{s}/ayah/{a}`, `/api/quran/words/{s}/{a}` (word by
-  word), `/api/quran/reciters`, search, juz and random ayah, plus tafsir, duas and prayer times. Its pages
-  disagree on limits (100 requests per minute vs 5,000 per 15 minutes) and on counts (8 or 12 translations and
-  reciters). Useful as a simple fallback for IndoPak and tajweed text; the Quran Foundation API is deeper.
-- **fawazahmed0/quran-api**: static JSON on GitHub/jsDelivr, 90+ languages, Arabic editions including QPC
-  Hafs, IndoPak, Warsh, Qaloon and transliterations. No key, no rate limit. Good for bundling text offline.
-- **Quranpedia API**: reciters with riwayah and timing URLs; no photo field seen.
+- **Hijri calendar:** `/api/hijri-date?date=YYYY-MM-DD&timezone=...`, `/api/moon/hijri`, `/api/moon/months`
+  (Umm al-Qura). Use this to schedule special-day reminders (Ramadan, last ten nights, Arafah, Eid).
+- Ramadan timetable, prayer times and Qibla, tafsir (Ibn Kathir, Ma'arif al-Qur'an, Muyassar), 126 duas.
+
+Its tajweed text uses `<tajweed class=...>` tags. Translations: 12 (Saheeh, Pickthall, Yusuf Ali, Urdu and
+others). Good as a simple fallback; the Quran Foundation API is deeper and has the timings.
+
+## fawazahmed0/quran-api
+
+Static JSON on GitHub and jsDelivr: 90+ languages, Arabic editions including QPC Hafs, IndoPak, Warsh,
+Qaloon and transliterations. No key, no rate limit. Its QPC Hafs copy needs two clean-ups (see
+`quran-scripts-and-fonts.md`). Its word split differs slightly from Quran.com's (about 1–10% of ayahs), so
+prefer Quran Foundation words when highlighting.

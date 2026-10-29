@@ -21,7 +21,13 @@ choice one tap away. This list matches the interactive prototype.
   speed (0.75–1.5×), sleep timer (minutes or end of surah), reciter, translation voice, script, share,
   download, up next, and an ayah strip for seeking.
 - Reciter picker: photo grid, search, filters (Word sync, Murattal, Mujawwad, Teaching). One tap switches
-  the voice without losing the place.
+  the voice without losing the place. Photos, country and a short biography come from QuranHub (197 photos
+  for 158 reciters; clear the licence first). Later: shelves by country and riwayah (Hafs, Warsh, Qaloon).
+- Word-exact timing for 15 reciters today (12 from Quran Foundation, Maher Al-Muaiqly and Nasser Al-Qatami
+  from baklarrrr/quran-timings, Muhammad Al-Luhaidan from its3li/quran-word-timings); the rest use estimated
+  timing, and the UI says which.
+- Tap a word in focus view to hear it alone (Quran Foundation word audio on `audio.qurancdn.com`).
+- Share: a ready-made square image for one to seven ayahs from `POST /media/share-verse`.
 - Mini player on every screen.
 
 ## 3. Background playback and the notification card
@@ -75,11 +81,22 @@ Count only real playback time (playing, not paused, not seeking), and close a se
 - Al-Kahf on Friday morning (and a gentle note on Thursday after maghrib).
 - Al-Mulk before sleep, opening straight into the focus view.
 - Special days: Ramadan, the last ten nights, Day of Arafah, Eid, each with a chosen surah, reciter and time.
-  Use a Hijri calendar package and let the user adjust by a day for local moon sighting.
+  Get the Hijri date from a Hijri package or UmmahAPI's `/api/hijri-date` (Umm al-Qura), and let the user
+  adjust by a day for local moon sighting.
 
-**Later, with accounts:** sign in with Quran Foundation OAuth2 and sync activity days, streaks, goals,
-bookmarks, notes and preferences through its User APIs. Send activity days for listening sessions, and a
-reading session for the last position.
+**Tone (Quran Foundation gamification guidance):** streaks and reminders must not pressure, shame or imply
+spiritual rank. No hasanat counters, no "don't lose your streak" countdowns, no comparing users. Every
+reminder is opt-in and easy to turn off. Word the streak saver gently ("A few minutes of Al-Mulk tonight?").
+
+**Later, with accounts (Quran ID):**
+
+- `POST /v1/reading-sessions` with the current surah and ayah (the resume point on every device).
+- `POST /v1/activity-days` with `type: "AUDIO"`, `durationSeconds`, `ranges` (for example `67:1-67:12`),
+  `mushafId` and the `x-timezone` header. This credits listening toward streaks, goals and the calendar.
+- `GET /v1/streaks`, `GET /v1/streaks/current-streak-days`, `POST /v1/goals` with `QURAN_TIME` for the
+  daily-minutes goal, `GET /v1/goals/get-todays-plan` for the ring.
+- Bookmarks and collections for favourite ayahs, notes for reflections, preferences for reciter,
+  translation, script and theme.
 
 ## 6. Downloads
 
@@ -87,13 +104,18 @@ reading session for the last position.
   word timings when the reciter has them. Other translations and the translation voice are optional extras.
 - Files stay organised as `Music/OneVerse/<language>/<reciter>/<surah>/` so content creators can find clips.
 - Show total size before downloading and progress per item while downloading.
+- If the text, translations or audio come from Quran Foundation, the offline copy must be kept through
+  Content Sync and refreshed at least weekly (see `quran-foundation-api.md`). Fonts may be bundled with
+  credit. Audio from alquran.cloud or mp3quran follows those sources' terms.
 
 ## 7. Suggested build order
 
 1. Script and font pairing fix (it is a reading bug today), with the script picker.
 2. Persisted session and resume.
 3. `audio_service` notification and lock-screen controls.
-4. New Home, verse list with follow mode, focus view, Now Playing.
-5. Word timings (start with the CC0 Luhaidan data and Quran Foundation segments).
-6. Progress tab, streaks and reminders.
-7. Accounts and cloud sync with the Quran Foundation User APIs.
+4. New Home, verse list with follow mode, focus view, Now Playing, reciter photos.
+5. Register in the Quran Foundation Developer Console (pre-live first), build a small token proxy, and the
+   Content Sync engine for text, translations and timings.
+6. Word timings and full-surah gapless audio.
+7. Progress tab, streaks and reminders (local first).
+8. Quran ID sign-in and cloud sync with the User APIs; then apply to the Quran App Store (Connected Apps).
