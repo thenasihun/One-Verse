@@ -175,7 +175,7 @@ class MiniPlayer extends StatelessWidget {
                 ReciterAvatar(r, size: 42, radius: 10),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${s.nameEn} · Ayah ${pb.ayah}', maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(13.5, w: FontWeight.w700, color: c.fg)),
                     Text(
                       pb.error ?? (r.name + (settings.listenMode.index == 1 ? ' + ${settings.translationVoice.name}' : '')),

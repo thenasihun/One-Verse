@@ -236,7 +236,7 @@ class _DisplaySheet extends StatelessWidget {
                   const SizedBox(width: 10),
                   SizedBox(
                     width: 140,
-                    child: QuranText(words: bismillahByScript[sc]!.split(' '), script: sc, fontSize: 19, maxLines: 1),
+                    child: QuranText(words: splitWords(bismillahByScript[sc]!), script: sc, fontSize: 19, maxLines: 1),
                   ),
                 ]),
               ),

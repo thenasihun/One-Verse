@@ -27,6 +27,10 @@ List<TajweedRun> parseTajweed(String s) {
 
 String _strip(String s) => s.replaceAll(RegExp(r'<[^>]+>'), '');
 
+/// Splits a line into words without breaking tajweed tags such as
+/// `<rule class=ham_wasl>`.
+List<String> splitWords(String line) => line.split(RegExp(r' (?![^<]*>)')).where((w) => w.isNotEmpty).toList();
+
 const bismillahByScript = {
   QuranScript.hafs: 'بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ',
   QuranScript.indopak: 'بِسۡمِ اللهِ الرَّحۡمٰنِ الرَّحِيۡمِ',

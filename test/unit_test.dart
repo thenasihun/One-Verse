@@ -105,6 +105,11 @@ void main() {
       expect(r.map((e) => e.rule).toList(), [null, 'ham_wasl', null, 'slnt', null]);
       expect(r.map((e) => e.text).join(), 'وَٱلۡحَيَوةَ');
     });
+    test('splits words without breaking tags', () {
+      final w = splitWords(bismillahByScript[QuranScript.tajweed]!);
+      expect(w.length, 4);
+      expect(w.every((x) => parseTajweed(x).every((r) => !r.text.contains('<'))), isTrue);
+    });
     test('every script has a Bismillah', () {
       for (final s in QuranScript.values) {
         expect(bismillahByScript[s], isNotNull);

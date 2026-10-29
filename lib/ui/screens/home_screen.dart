@@ -38,8 +38,10 @@ List<Moment> momentsFor(DateTime now) {
     out.add(const Moment(67, 'Before sleep', 'Al-Mulk', 'Recited every night before sleeping', Icons.nightlight_round));
   } else if (h < 11) {
     out.add(const Moment(36, 'This morning', 'Ya-Sin', 'Start the day with the heart of the Quran', Icons.wb_sunny_rounded));
-  } else {
+  } else if (h < 17) {
     out.add(const Moment(55, 'This afternoon', 'Ar-Rahman', 'Which of the favours of your Lord…', Icons.wb_sunny_rounded));
+  } else {
+    out.add(const Moment(56, 'This evening', 'Al-Waqi\'ah', 'A surah many recite each evening', Icons.wb_twilight_rounded));
   }
   if (out.length < 2) out.add(const Moment(67, 'Tonight', 'Al-Mulk', 'Recited every night before sleeping', Icons.nightlight_round));
   return out.take(2).toList();
@@ -222,17 +224,21 @@ class _ContinueCard extends StatelessWidget {
                 ]),
               ]),
             ),
-            Material(
-              color: Colors.white,
-              shape: const CircleBorder(),
-              elevation: 6,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: onPlay,
-                child: SizedBox(
-                  width: 58,
-                  height: 58,
-                  child: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 32, color: const Color(0xFF0A1F18)),
+            Semantics(
+              button: true,
+              label: playing ? 'Pause' : 'Play',
+              child: Material(
+                color: Colors.white,
+                shape: const CircleBorder(),
+                elevation: 6,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: onPlay,
+                  child: SizedBox(
+                    width: 58,
+                    height: 58,
+                    child: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 32, color: const Color(0xFF0A1F18)),
+                  ),
                 ),
               ),
             ),

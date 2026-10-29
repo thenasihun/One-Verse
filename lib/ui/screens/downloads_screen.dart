@@ -107,10 +107,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 const SizedBox(height: 10),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  child: Row(children: [
-                    Expanded(flex: (audio / 1024).round() + 1, child: Container(height: 8, color: c.gold)),
-                    Expanded(flex: (text / 1024).round() + 1, child: Container(height: 8, color: c.emerald)),
-                  ]),
+                  child: total == 0
+                      ? Container(height: 8, color: c.line2)
+                      : Row(children: [
+                          Expanded(flex: (audio / 1024).round() + 1, child: Container(height: 8, color: c.gold)),
+                          Expanded(flex: (text / 1024).round() + 1, child: Container(height: 8, color: c.emerald)),
+                        ]),
                 ),
                 const SizedBox(height: 10),
                 Wrap(spacing: 16, children: [

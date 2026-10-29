@@ -153,7 +153,7 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
     if (pb.surah == widget.surah && pb.playing && !follow && !showPill) showPill = true;
 
     return Scaffold(
-      bottomNavigationBar: const SafeArea(top: false, child: MiniPlayer()),
+      bottomNavigationBar: const SafeArea(top: false, child: Column(mainAxisSize: MainAxisSize.min, children: [MiniPlayer(), SizedBox(height: 6)])),
       body: Stack(children: [
         NotificationListener<ScrollNotification>(
           onNotification: _onScroll,
@@ -192,7 +192,7 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 22, 16, 6),
                         child: QuranText(
-                          words: bismillahByScript[settings.script]!.split(' '),
+                          words: splitWords(bismillahByScript[settings.script]!),
                           script: settings.script,
                           fontSize: 26,
                           align: TextAlign.center,
@@ -372,8 +372,17 @@ class _TranslationBar extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant _TranslationBar old) => false;
 
+  // The bar is its own widget so it rebuilds when settings change; a header
+  // delegate's build is not reliably re-run on dependency changes.
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => const _TranslationBarContent();
+}
+
+class _TranslationBarContent extends StatelessWidget {
+  const _TranslationBarContent();
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.ov;
     final s = context.watch<Settings>();
     final repo = context.watch<QuranRepository>();
