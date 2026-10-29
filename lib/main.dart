@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'core/theme.dart';
 import 'data/cache_store.dart';
 import 'data/downloads.dart';
+import 'data/models.dart';
 import 'data/network.dart';
 import 'data/offline_sync.dart';
 import 'data/repository.dart';
@@ -58,6 +59,7 @@ class AppServices {
     await sync.init();
     final log = ListeningLog();
     await log.init();
+    if (kIsWeb && Uri.base.queryParameters['demo'] == '1') _seedDemo(settings, log);
 
     var h = handler;
     if (h == null) {
@@ -125,5 +127,33 @@ class OneVerseApp extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Sample listening history for store screenshots taken from the web build
+/// (`?demo=1`). Never runs on phones.
+void _seedDemo(Settings settings, ListeningLog log) {
+  settings.prefs
+    ..setInt('session_surah', 67)
+    ..setInt('session_ayah', 12);
+  final q = Uri.base.queryParameters;
+  final script = QuranScript.values.where((s) => s.name == q['script']).firstOrNull;
+  if (script != null) settings.update((x) => x.script = script);
+  if (q['tr'] != null) settings.setTranslation(q['tr']!);
+  final now = DateTime.now();
+  const reciters = ['ar.alafasy', 'ar.alafasy', 'ar.abdurrahmaansudais', 'ov.luhaidan', 'ar.mahermuaiqly'];
+  const surahs = [67, 18, 36, 55, 1, 56, 67];
+  for (var i = 1; i <= 46; i++) {
+    if (i == 15 || i == 16 || i == 38) continue;
+    final day = DateTime(now.year, now.month, now.day - i, 6 + (i * 5) % 16, 10);
+    final minutes = 12 + (i * 7) % 29;
+    log.add(minutes * 60, reciterId: reciters[i % reciters.length], surah: surahs[i % surahs.length], at: day);
+    for (var a = 0; a < minutes; a++) {
+      log.addAyah(at: day);
+    }
+  }
+  log.add(14 * 60, reciterId: 'ar.alafasy', surah: 67, at: DateTime(now.year, now.month, now.day, now.hour > 7 ? 7 : 0, 20));
+  for (var a = 0; a < 11; a++) {
+    log.addAyah(at: now);
   }
 }

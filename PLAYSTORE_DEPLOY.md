@@ -1,7 +1,10 @@
-# OneVerse v1.1.0 (build 4): Play Store deployment guide
+# One Verse v2.0.0 (build 5): Play Store deployment guide
 
 This file is a set of instructions for an AI agent (or a person) publishing this update to Google Play.
 Follow the steps in order. Do not change the build files or upload a different file.
+
+Version 2.0.0 is a complete rebuild of the app with a new design. The listing text, screenshots and feature
+graphic all change with it, and one new declaration is needed (foreground service, section 7).
 
 ---
 
@@ -11,14 +14,14 @@ Follow the steps in order. Do not change the build files or upload a different f
 |---|---|
 | App name (on device) | One Verse |
 | Package name | `com.nasihun.oneverse` |
-| Version name | `1.1.0` |
-| Version code | `4` (previous release: `3`) |
+| Version name | `2.0.0` |
+| Version code | `5` (previous release: `4`, version 1.1.0) |
 | Target SDK / Compile SDK | 36 (Android 16) |
-| Min SDK | 24 (Android 7.0). **Changed:** older builds supported lower versions |
+| Min SDK | 24 (Android 7.0), unchanged |
 | Signing key alias | `oneverse` |
 | Upload certificate SHA-256 | `47:41:EF:75:41:49:1C:2E:6C:C1:1D:E1:E5:4D:29:F6:9A:05:8D:01:53:C0:4F:45:25:82:93:03:EC:19:D1:F9` |
 | Developer account | Nasihun (`https://play.google.com/store/apps/dev?id=8907093897824220429`) |
-| Privacy policy | `https://nasihun.com/privacy-policy` |
+| Privacy policy | `https://nasihun.com/privacy-policy` (update it first, see section 7) |
 | Support email | `thenasihun@gmail.com` |
 
 ## 2. Files to upload
@@ -29,9 +32,13 @@ All paths are relative to the project root `/Users/Data/Development/flutter/One-
 |---|---|---|
 | **App bundle (upload this to Play)** | `build/app/outputs/bundle/release/app-release.aab` | **Yes** |
 | R8 deobfuscation mapping | `build/app/outputs/mapping/release/mapping.txt` | Yes (App bundle explorer → Downloads → ReTrace mapping file) |
-| Signed APK (for testing or sideloading only) | `build/app/outputs/flutter-apk/app-release.apk` | No. Play only accepts the `.aab` |
+| Phone screenshots (1080×1920) | `store/playstore/screenshots/01-overview.png` … `08-progress.png` | Yes, in this order |
+| Extra screenshots | `store/playstore/screenshots/09-moments.png`, `10-offline.png` | Optional (tablet slots, see section 6) |
+| Feature graphic (1024×500) | `store/playstore/feature-graphic.png` | Yes |
+| App icon (512×512) | unchanged | No |
+| Signed APK (testing or sideloading only) | `build/app/outputs/flutter-apk/app-release.apk` | No. Play only accepts the `.aab` |
 
-Both files are signed with the release keystore, and the signature has been verified.
+How to build these files is in section 10.
 
 ---
 
@@ -39,162 +46,316 @@ Both files are signed with the release keystore, and the signature has been veri
 
 1. Open https://play.google.com/console and sign in with the Nasihun developer account.
 2. Select the app **One Verse** (`com.nasihun.oneverse`).
-3. In the left menu, go to **Test and release → Production**. A **Closed testing** track also works if you want to test first.
-4. Click **Create new release**.
-5. Under **App bundles**, click **Upload** and choose `build/app/outputs/bundle/release/app-release.aab`.
-   - Wait until it shows **Version 4 (1.1.0)** with no errors.
-6. **Release name:** `1.1.0 (4) – Offline surah download & verse-by-verse translation audio`
-7. **Release notes:** paste the text from section 4 below. Add both `en-US` and `ur` if the Urdu listing exists.
-8. Click **Next**. Read the warnings screen (see section 7 for expected warnings), then click **Save**.
-9. Go to **Publishing overview** and click **Send changes for review**.
-10. Optional: choose a **staged rollout** (for example 20%) and increase it after 1–2 days with no crash reports.
+3. First do **App content → Foreground service permissions** (section 7). Play rejects the release without it.
+4. Go to **Test and release → Production** (or **Closed testing** to test first).
+5. Click **Create new release**.
+6. Under **App bundles**, click **Upload** and choose `build/app/outputs/bundle/release/app-release.aab`.
+   - Wait until it shows **Version 5 (2.0.0)** with no errors.
+7. **Release name:** `2.0.0 (5) – All-new One Verse: word-by-word highlight, 5 scripts, offline`
+8. **Release notes:** paste the text from section 4. Add both `en-US` and `ur` if the Urdu listing exists.
+9. Click **Next**. Read the warnings screen (section 8), then click **Save**.
+10. Update the store listing (section 5) and the graphics (section 6).
+11. Go to **Publishing overview** and click **Send changes for review**.
+12. Recommended: a **staged rollout** of 20%, increased after 1–2 days with no crash reports in **Android vitals**.
 
-After saving, update the store listing (section 5) and check the declarations (section 6).
 Listing changes are reviewed together with the release.
 
 ---
 
 ## 4. Release notes ("What's new", maximum 500 characters each)
 
-### en-US
+### en-US (431 characters)
 ```
-What's new in 1.1.0
-• Download complete Surahs for offline listening – tap the download button in the Player (or long-press for one-tap download)
-• Verse-by-verse: hear each Arabic verse followed by its translation audio (Urdu, English, French & more)
-• Choose your Arabic reciter, translation reciter & playback mode
-• No internet? The app shows which Surahs you can play offline
-• New Offline Downloads screen to play or delete downloads
-• Faster loading & bug fixes
+One Verse 2.0 – all new
+• Word-by-word highlight: every word lights up as it's recited
+• 5 Quran scripts: Madani, IndoPak, Tajweed colours, Uthmani, Simple
+• 25 reciters with photos; Urdu & 40+ translations in one tap
+• New player: repeat ayah, speed, sleep timer, lock-screen controls
+• Focus view, streaks, listening stats and gentle reminders
+• Works offline for 30 days and syncs on Wi-Fi
+• Continues exactly where you left off
 ```
 
-### ur (Urdu)
+### ur (Urdu, 419 characters)
 ```
-نیا کیا ہے – ورژن 1.1.0
-• مکمل سورت آف لائن سننے کے لیے ڈاؤن لوڈ کریں – پلیئر میں ڈاؤن لوڈ بٹن دبائیں (یا لانگ پریس کریں)
-• آیت بہ آیت: ہر عربی آیت کے بعد اس کا ترجمہ آڈیو (اردو، انگریزی وغیرہ)
-• عربی قاری، ترجمہ قاری اور پلے بیک موڈ خود منتخب کریں
-• انٹرنیٹ نہیں؟ ایپ بتائے گی کون سی سورتیں آف لائن دستیاب ہیں
-• نئی آف لائن ڈاؤن لوڈز اسکرین
-• تیز رفتار لوڈنگ اور بہتریاں
+ون ورس 2.0 – بالکل نئی ایپ
+• لفظ بہ لفظ ہائی لائٹ: تلاوت کے ساتھ ہر لفظ روشن ہوتا ہے
+• قرآن کے 5 رسم الخط: مدنی، انڈو پاک، تجوید رنگوں کے ساتھ، عثمانی، سادہ
+• تصاویر کے ساتھ 25 قاری، اردو اور 40 سے زائد ترجمے ایک ٹیپ پر
+• نیا پلیئر: آیت دہرائیں، رفتار، سلیپ ٹائمر، لاک اسکرین کنٹرول
+• فوکس ویو، اسٹریک، سننے کے اعداد و شمار اور یاددہانیاں
+• 30 دن تک بغیر انٹرنیٹ، وائی فائی پر خودکار اپڈیٹ
+• جہاں چھوڑا تھا وہیں سے جاری
 ```
 
 ---
 
-## 5. Store listing update (Grow users → Store presence → Main store listing)
+## 5. Store listing (Grow users → Store presence → Main store listing)
 
 ### App name (maximum 30 characters)
 Recommended (29 characters):
 ```
-OneVerse: Quran Audio Offline
+One Verse: Quran Word by Word
 ```
-Alternative if you want to keep the current name: `One Verse - Al Quran MP3 Audio`
+Alternatives: `One Verse - Quran Audio & Read` (30), `One Verse: Quran Audio Offline` (30).
 
 ### Short description (maximum 80 characters)
+76 characters:
 ```
-Quran verse by verse with translation audio. Download Surahs & listen offline.
+Quran audio with word-by-word highlight, 5 scripts, Urdu & 40+ translations.
 ```
 
 ### Full description (maximum 4000 characters)
+2957 characters:
 ```
-OneVerse – Listen to the Holy Quran, one verse at a time.
+One Verse – Hear the Quran. See every word.
 
-Connect with the Quran wherever you are. OneVerse plays the Quran verse by verse with beautiful recitations, translation audio and text — and now works completely offline.
+One Verse is a calm, beautiful Quran app for listening, reading and understanding, one ayah at a time. Free forever, with no ads, no subscriptions and no sign-up.
 
-★ NEW: OFFLINE SURAH DOWNLOAD
-• Download a complete Surah with one tap (long-press the download button in the Player)
-• Everything you need is saved: Arabic recitation, translation recitation, Arabic text and translation text
-• No internet? OneVerse shows which Surahs are available offline – tap and play
-• Manage downloads: see size, play or delete from the Offline Downloads screen
+✨ WORD-BY-WORD HIGHLIGHT
+• Every word lights up exactly as the reciter says it
+• Word-exact timing for 16 reciters, including Mishary Alafasy, Abdur-Rahman As-Sudais and Maher Al-Muaiqly
+• The reader scrolls along by itself, ayah by ayah
 
-★ NEW: VERSE-BY-VERSE WITH TRANSLATION AUDIO
-• Hear each Arabic verse followed by its translation audio
-• Translation recitations in Urdu, English, French, Persian, Turkish, Russian, Chinese and more
-• Three playback modes: Arabic only, Arabic + Translation, Translation only
-• Repeat a verse (Arabic + translation together) to memorise and reflect
+📖 5 QURAN SCRIPTS, EACH IN ITS OWN FONT
+• Madani (KFGQPC Hafs) – the printed Madinah Mushaf
+• IndoPak Nastaleeq – the style most readers in Pakistan and India learned
+• Tajweed colours – Madd, Ghunnah, Qalqalah, Ikhfa, Idgham, Iqlab and more
+• Uthmani and Simple (modern spelling)
+• Every mark sits in the right place, so the text reads correctly on Android
 
-🎧 BEAUTIFUL RECITATION
-• Famous reciters including Mishary Alafasy, Abdul Rahman Al-Sudais, Saud Al-Shuraim and more
-• Smooth, continuous playback through the whole Surah
-• Previous / next verse, jump to any Surah or Ayah
+🎧 25 RECITERS, WITH THEIR PHOTOS
+• Mishary Alafasy, Sudais, Shuraim, Maher Al-Muaiqly, Yasser Al-Dosari, Husary, Minshawi, Abdul Basit, Nasser Al-Qatami and more
+• Short biographies, Murattal, Mujawwad and teaching styles
 
-📖 READ AND UNDERSTAND
-• Authentic Uthmani script (KFGQPC Hafs font) and other Arabic fonts
-• 100+ text translations in 40+ languages including Urdu, English, Hindi, Bengali, Indonesian, Turkish
-• Split view, Arabic only or translation only
+🌍 UNDERSTAND EVERY AYAH
+• 100+ translations in 40+ languages: Urdu, English, Hindi, Bengali, Indonesian, Turkish, French, Persian and more
+• Urdu shown in beautiful Nastaliq
+• Hear the translation audio after each Arabic ayah (English, Urdu, French, Russian, Persian, Chinese, Uzbek)
+• Switch translation with one tap
 
-💾 SAVE AND SHARE SINGLE VERSES
-• Save any verse as an MP3 to Music/OneVerse (Language › Reciter › Surah › Ayah)
-• Share a verse as text or audio – perfect for content creators
+▶️ A PLAYER MADE FOR THE QURAN
+• Repeat an ayah 1×, 3× or forever – ideal for memorising
+• Speed from 0.75× to 1.5× and a sleep timer
+• Keeps playing in the background, with controls in the notification and on the lock screen
+• Arabic only, Arabic + translation, or translation only
 
-🎨 MADE FOR YOU
-• Dark mode (Emerald & Gold) and light mode
-• Adjustable Arabic and translation font size and style
-• Free, no sign-up
+🕌 FOCUS VIEW
+• One ayah, full screen, with its meaning below
+• Swipe to move between ayahs; the screen stays awake
 
-Made with love by Nasihun – nasihun.com
+🔥 BUILD A DAILY HABIT
+• Minutes listened today, this week, this month and this year
+• Daily goal ring, listening streak and a calendar of your days
+• Gentle reminders: your daily goal, Al-Kahf on Fridays, Al-Mulk before sleep
+• Special days: Ramadan, the last ten nights, Arafah, Eid and Ashura
+
+📶 ALWAYS READY, EVEN OFFLINE
+• The whole Quran text in all five scripts, your translation and word timings are kept on your phone for 30 days
+• On Wi-Fi it refreshes by itself, so it is always ready without internet
+• Download any surah's recitation to listen offline
+
+⏯️ CONTINUE WHERE YOU LEFT OFF
+• Close the app or restart your phone – One Verse opens on the same ayah, with the same reciter and settings
+
+🎨 MADE WITH CARE
+• Dark (emerald and gold) and light themes
+• Adjustable Arabic and translation size
+• Share any ayah
+
+🔒 PRIVATE BY DESIGN
+No account, no ads, no tracking. Your listening history stays on your device.
+
+Quran text and word timings: Quran.com (Quran Foundation). Fonts: King Fahd Glorious Quran Printing Complex. Translations and audio: AlQuran Cloud, Quranic Audio and mp3quran. Full credits are in the app's About screen.
+
+Made by Nasihun – nasihun.com. Please remember us in your duas.
 ```
 
-### Screenshots (recommended, optional)
-Add 2–3 new phone screenshots (1080×2400) showing:
-1. The Player with the **Arabic · Reciter → Translation · Reciter** chips (verse-by-verse mode)
-2. The **Download** sheet ("This Verse" / "Complete Surah (offline)")
-3. The **"You're Offline"** screen listing downloaded Surahs, or the **Offline Downloads** screen
+### Category and tags
+- Category: **Books & Reference** (keep the current one if it is different).
+- Tags (pick up to 5): Religion & spirituality, Audiobooks, Education, Books, Reference.
 
 ---
 
-## 6. Declarations to check (Policy and programs → App content)
+## 6. Graphics (Main store listing → Graphics)
 
-- **Data safety:** no change is needed. The app has no login, analytics or ads, and does not collect personal data.
-  - It downloads Quran text and audio from `api.alquran.cloud` and `cdn.islamic.network`. These are public content downloads; no user data is sent.
-  - Downloads are stored on the device only.
-- **Permissions:** the app requests **"Music and audio" (READ_MEDIA_AUDIO)** on Android 13+, only when the user saves a single verse to the Music folder.
-  - Storage permissions are now limited (`WRITE_EXTERNAL_STORAGE` up to Android 9, `READ_EXTERNAL_STORAGE` up to Android 12).
-  - No new sensitive permissions were added.
-- **Target audience, content rating and ads:** unchanged. If Play asks, the app still contains **no ads**.
+Play allows **up to 8 phone screenshots**. Upload them in this order:
+
+| # | File | Shows |
+|---|---|---|
+| 1 | `store/playstore/screenshots/01-overview.png` | All 12 features with icons |
+| 2 | `02-word.png` | Word-by-word highlight in the reader |
+| 3 | `03-player.png` | Now Playing: repeat, speed, sleep timer, lock-screen controls |
+| 4 | `04-scripts.png` | 5 Quran scripts and tajweed colours |
+| 5 | `05-urdu.png` | IndoPak text with Urdu translation |
+| 6 | `06-reciters.png` | 25 reciters with photos |
+| 7 | `07-focus.png` | Focus view |
+| 8 | `08-progress.png` | Streaks and listening stats |
+
+Optional:
+- `09-moments.png` (Home and special days) and `10-offline.png` (offline library).
+  - They can go in the **7-inch tablet** and **10-inch tablet** screenshot slots, or replace 7 and 8 above.
+- **Feature graphic:** `store/playstore/feature-graphic.png` (1024×500).
+- **App icon:** unchanged.
+- **Promo video:** optional. `demo/one-verse-ad.mp4` is from the old 1.1.0 design, so do not use it for this release.
+
+All images are PNG without transparency, at the sizes Play requires. To regenerate them, see
+`store/playstore/README.md`.
 
 ---
 
-## 7. Expected warnings (all safe to ignore)
+## 7. Declarations (Policy and programs → App content)
 
-- *"This release will not be available to users on API levels 21–23"* (or similar device-loss warning).
-  - Cause: min SDK is now 24 because of the Flutter upgrade. Those devices keep the old version.
-- *"There is no deobfuscation file associated with this App Bundle."*
-  - Fix: upload `build/app/outputs/mapping/release/mapping.txt`, or ignore it.
+### Foreground service permissions (new, required)
+The app now declares `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, so recitation keeps playing in the background with
+notification controls.
+- **Type:** Media playback.
+- **Description to paste:**
+  ```
+  One Verse plays Quran recitation chosen by the user. The media playback foreground service keeps the recitation playing when the screen is off or the user switches to another app, and shows play/pause, next, previous and repeat controls in the notification and on the lock screen. Playback only starts when the user taps Play, and it stops when they pause or close it.
+  ```
+- **Video link:** if Play asks for one, record a 20–30 second screen recording and upload it to YouTube as
+  *Unlisted*. Show these steps: play a surah → press Home → the notification controls → pause from the
+  notification.
+
+### Data safety
+**No data collected**, unchanged. The answers stay:
+- No data collected and no data shared.
+- No account, ads or analytics.
+- Listening history, streaks, settings and the resume point are stored **only on the device**.
+- The app downloads public Quran content (text, translations, word timings, audio, reciter photos) from:
+  - Quran.com
+  - AlQuran Cloud
+  - QuranHub
+  - Quranic Audio and mp3quran
+  - Two GitHub-hosted timing projects
+
+  No user data is sent to any of them.
+
+### Permissions
+Removed in 2.0.0:
+- `READ_MEDIA_AUDIO`
+- `READ_EXTERNAL_STORAGE`
+- `WRITE_EXTERNAL_STORAGE`
+
+Downloads now go to the app's private storage.
+
+Added in 2.0.0:
+- `POST_NOTIFICATIONS`: playback controls, plus reminders the user turns on. The app asks for it when the user
+  turns on a reminder.
+- `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK`: background playback.
+- `WAKE_LOCK`: background playback.
+- `RECEIVE_BOOT_COMPLETED`: restores scheduled reminders after a restart.
+- `VIBRATE`: reminder notifications.
+
+None of these need a separate declaration except the foreground service above.
+
+### Privacy policy
+The repository's `privacy-policy.html` has been updated for 2.0.0:
+- notification and background-playback permissions
+- no storage permission
+- listening history kept only on the device
+- the list of content providers
+
+**Copy it to `https://nasihun.com/privacy-policy` before sending the release for review.** The live page still
+describes the storage permission of 1.x.
+
+### Target audience, content rating and ads
+- Target audience and content rating: unchanged.
+- Ads: the app still contains **no ads**.
+
+---
+
+## 8. Expected warnings (all safe to ignore)
+
+- *"There is no deobfuscation file associated with this App Bundle."* Upload `mapping.txt` (section 2), or
+  ignore it.
 - *"This App Bundle contains native code, and you've not uploaded debug symbols."* This is safe to ignore.
+- *"Permissions removed: READ_MEDIA_AUDIO…"* This is expected (section 7).
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Error | Fix |
 |---|---|
-| "Version code 4 has already been used" | In `pubspec.yaml`, change `version: 1.1.0+4` to `+5` (or the next unused number). Then run `flutter build appbundle --release` and upload again. |
-| "Your Android App Bundle is signed with the wrong key" | The bundle must be signed with the `oneverse` key (SHA-256 shown in section 1). Make sure `android/key.properties` exists and points to `OneVerseKey.jks`. When it does, the build log shows `✔ Using release keystore`. |
+| "Version code 5 has already been used" | In `pubspec.yaml`, change `version: 2.0.0+5` to `+6`. Rebuild with `flutter build appbundle --release` and upload again. |
+| "Your Android App Bundle is signed with the wrong key" | The bundle must be signed with the `oneverse` key (SHA-256 in section 1). Make sure `android/key.properties` exists and points to `OneVerseKey.jks`. When it does, the build log shows `✔ Using release keystore`. |
 | "signed in debug mode" | `android/key.properties` is missing, so the build fell back to debug signing. Restore it and rebuild. |
+| "You must complete the foreground service declaration" | Do the first part of section 7. |
+| Build error `Failed to find target with hash string 'android-36'` | In Android Studio, open **SDK Manager** and install **Android SDK Platform 36**. Then rebuild. |
 
-## 9. How to rebuild (if needed)
+## 10. How to build (on the Mac)
 
 ```bash
 cd /Users/Data/Development/flutter/One-Verse
+git checkout main && git pull origin main
 flutter clean && flutter pub get
-flutter test                          # must print "All tests passed!"
-flutter build appbundle --release     # log must show "✔ Using release keystore"
+flutter test test/unit_test.dart        # must print "All tests passed!"
+flutter build appbundle --release       # log must show "✔ Using release keystore"
+flutter build apk --release             # optional: signed APK for testing on a phone
 ```
 
 Signing setup:
-- `android/key.properties` contains the passwords, alias `oneverse` and the path to `OneVerseKey.jks`.
+- `android/key.properties` contains:
+  - `storePassword` and `keyPassword`
+  - `keyAlias=oneverse`
+  - `storeFile=` the path to `OneVerseKey.jks`
 - `key.properties` and `*.jks` are git-ignored. **Never commit or share them.**
-- Keep a backup of `OneVerseKey.jks` and its passwords somewhere safe. Losing the upload key means asking Google for an upload key reset.
+- Keep a backup of `OneVerseKey.jks` and its passwords somewhere safe.
+
+Check the signature before uploading:
+```bash
+keytool -printcert -jarfile build/app/outputs/bundle/release/app-release.aab | grep SHA256
+```
+It must match the upload certificate SHA-256 in section 1.
 
 ---
 
-## 10. Changelog for this version (technical)
+## 11. Changelog for this version (technical)
 
-- Complete-surah offline download. Files download 4 at a time, with retry, progress, cancel and a mirror fallback.
-- New Offline Downloads screen.
-- Verse-by-verse Arabic → translation audio playlist, with a repeat-verse mode that repeats both parts.
-- Settings: Arabic reciter, translation audio reciter, playback mode, offline downloads.
-- Offline-first loading:
-  - The surah list is bundled with the app.
-  - Editions and surah text are cached.
-  - An offline screen lists the surahs that can be played.
-- Single-verse save to `Music/OneVerse` now works on Android 11+ without the storage permission.
-- Build tooling: Gradle 8.14.3 and AGP 8.13.1. Packages updated: `fluttertoast` 10, `font_awesome_flutter` 11, `google_fonts` 6.3.3.
+Rebuilt from scratch on a new design: a dark emerald and gold theme, plus a light theme.
+
+**Screens**
+- Home, Surahs, Reader, Focus view, Now Playing, Progress, Library and About.
+- Bottom navigation and a mini player.
+
+**Text**
+- Quran.com word-by-word data in five scripts, each paired with the font it was encoded for:
+  - `text_qpc_hafs` + UthmanicHafs
+  - `text_indopak` + IndoPak Nastaleeq
+  - `text_uthmani_tajweed` + Amiri Quran with rule colours
+  - `text_uthmani` + Amiri Quran
+  - `text_imlaei` + Scheherazade New
+- This fixes broken marks on Android, and the ayah-number ornament no longer spills out of its circle.
+
+**Word timing and playback**
+- Word timings come from Quran.com (QDC) and two GitHub timing projects, for 16 reciters.
+- Exact word highlighting, and the reader scrolls along with the recitation.
+- Playback runs on `just_audio` + `audio_service`:
+  - background playback, with notification and lock-screen controls (repeat, previous, play/pause, next, stop)
+  - Arabic + translation audio mode
+  - repeat 1×/3×/∞, speed 0.75–1.5×, sleep timer
+- The session (surah, ayah, position and settings) survives the app being closed.
+
+**Offline**
+- The whole Quran text in all scripts, the chosen translation, and timings for the chosen reciter are cached
+  for 30 days.
+- On Wi-Fi, anything older than 3 days is refreshed in the background.
+- Surah recitations can be downloaded to private storage.
+
+**Habits**
+- Listening log with day, week, month and year charts, our own streak algorithm (60 s/day), a goal ring and a
+  calendar heatmap.
+- Reminders via `flutter_local_notifications`:
+  - daily goal and an evening nudge
+  - Al-Kahf on Fridays, Al-Mulk at night
+  - Hijri special days: Ramadan, the last ten nights, Arafah, both Eids, Ashura
+- Reciter photos and bios come from QuranHub.
+
+**Removed**
+- Storage permissions, `permission_handler` and `device_info_plus`.
+
+**Tests**
+- 19 unit tests.
+- Live API tests: every script, translations, audio for all reciters, timings for all 16 synced reciters,
+  photos.
+- A Playwright walkthrough of every screen (`tool/web_e2e.js`).

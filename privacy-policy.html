@@ -59,7 +59,7 @@
 
             <div>
                 <h2 class="text-2xl font-bold text-emerald-900 mb-2">Privacy Policy for One Verse</h2>
-                <p class="text-sm text-gray-500">Last Updated: December 18, 2025</p>
+                <p class="text-sm text-gray-500">Last Updated: October 29, 2026</p>
             </div>
 
             <div>
@@ -79,8 +79,9 @@
                     </li>
                     <li>
                         <strong>Usage Data:</strong> We do not track your app usage habits or store any data on
-                        external servers. All settings like font size, theme, and selected reciter are stored
-                        locally on your device.
+                        external servers. Your settings (script, font size, theme, reciter, translation), the
+                        place where you stopped listening, and your listening history (minutes per day, streaks)
+                        are stored only on your device and are never uploaded. Uninstalling the app deletes them.
                     </li>
                 </ul>
             </div>
@@ -92,13 +93,21 @@
                 </p>
                 <ul class="space-y-4 text-gray-600 leading-relaxed list-disc list-inside">
                     <li>
-                        <strong>Storage / Media / Audio Access:</strong> Used only to download Quranic audio files
-                        into your public <em>Music</em> folder. The app does not access personal photos or private
-                        files.
+                        <strong>Internet Access:</strong> Required to stream audio recitations and fetch Quranic
+                        text, translations, word timings and reciter photos from third-party APIs. Downloads are
+                        saved in the app's private storage; the app does not read your photos, music or files.
                     </li>
                     <li>
-                        <strong>Internet Access:</strong> Required to stream audio recitations and fetch Quranic
-                        text and translations from third-party APIs.
+                        <strong>Notifications:</strong> Used for the playback controls while recitation plays in
+                        the background, and for reminders you turn on yourself (daily goal, Al-Kahf on Fridays,
+                        Al-Mulk at night, special days). Reminders are scheduled on your device.
+                    </li>
+                    <li>
+                        <strong>Foreground service (media playback) and wake lock:</strong> Keep the recitation
+                        playing when the screen is off or another app is open.
+                    </li>
+                    <li>
+                        <strong>Run at startup:</strong> Restores your reminders after the phone restarts.
                     </li>
                 </ul>
             </div>
@@ -106,8 +115,11 @@
             <div>
                 <h3 class="text-xl font-bold mb-3">4. Third-Party Services</h3>
                 <p class="text-gray-600 leading-relaxed">
-                    One Verse uses the AlQuran.cloud API to fetch Quranic text and audio links. While we do not
-                    collect data, third-party services may process your IP address to fulfill requests.
+                    One Verse fetches public Quran content from Quran.com / Quran Foundation (text, word timings
+                    and audio), AlQuran.cloud (translations and recitations), QuranHub (reciter photos and
+                    biographies), Quranic Audio, mp3quran.net and two open word-timing projects hosted on GitHub.
+                    No personal data is sent to them. While we do not collect data, these services may process
+                    your IP address to fulfill requests.
                     We encourage users to review their respective privacy policies.
                 </p>
             </div>
