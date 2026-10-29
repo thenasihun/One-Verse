@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:oneverse/core/app_navigation.dart';
 import 'package:oneverse/models/surah_model.dart';
 import 'package:oneverse/providers/audio_provider.dart';
 import 'package:oneverse/providers/quran_provider.dart';
 import 'package:oneverse/providers/settings_provider.dart';
 import 'package:oneverse/screens/info_screen.dart';
 import 'package:oneverse/screens/audio_player_screen.dart';
+import 'package:oneverse/screens/downloads_screen.dart';
 import 'package:oneverse/screens/settings_screen.dart';
 import 'package:oneverse/utils/download_manager.dart';
 import 'package:oneverse/widgets/verse_display.dart'; // Keep this for the display logic
 import 'package:provider/provider.dart';
+import 'package:oneverse/services/offline_store.dart';
 import 'package:oneverse/services/share_service.dart';
 import 'package:oneverse/widgets/quran_selection_helper.dart';
 
@@ -33,23 +36,54 @@ class _HomeScreenState extends State<HomeScreen> {
       const SettingsScreen(),
       const InfoScreen(),
     ];
+    AppNavigation.tabIndex.addListener(_onTabRequested);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _announceOffline());
+  }
+
+  @override
+  void dispose() {
+    AppNavigation.tabIndex.removeListener(_onTabRequested);
+    super.dispose();
+  }
+
+  void _onTabRequested() => switchTab(AppNavigation.tabIndex.value);
+
+  /// Tells the user at startup when there's no internet and what they can
+  /// still play.
+  Future<void> _announceOffline() async {
+    if (await hasInternet() || !mounted) return;
+    final count = OfflineStore.instance.packages.length;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 6),
+        persist: false, // auto-hide even though it has an action
+        content: Text(count > 0
+            ? "You're offline. $count surah${count == 1 ? ' is' : 's are'} available offline."
+            : "You're offline. Download surahs from the Player to listen without internet."),
+        action: count > 0
+            ? SnackBarAction(
+                label: 'VIEW',
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const DownloadsScreen())),
+              )
+            : null,
+      ),
+    );
   }
 
   void switchTab(int index) {
-    if (index == 1) {
+    if (index == AppNavigation.playerTab) {
       final quranProvider = Provider.of<QuranProvider>(context, listen: false);
       final audioProvider = Provider.of<AudioProvider>(context, listen: false);
-      final settingsProvider =
-          Provider.of<SettingsProvider>(context, listen: false);
 
-      if (audioProvider.currentAudioSurah?.number !=
-          quranProvider.selectedSurahNumber) {
+      if (!audioProvider.hasPlaylistFor(quranProvider.selectedSurahNumber)) {
         audioProvider.loadSurahAndPlay(quranProvider.selectedSurahNumber,
-            settingsProvider.audioEdition, settingsProvider.translationLanguage,
             startingIndex: quranProvider.selectedAyahNumber - 1,
             autoPlay: true);
       }
     }
+    AppNavigation.tabIndex.value = index;
+    if (_currentIndex == index) return;
     setState(() {
       _currentIndex = index;
     });
@@ -111,15 +145,13 @@ class VerseScreen extends StatefulWidget {
 
 class _VerseScreenState extends State<VerseScreen> {
   late SettingsProvider _settingsProvider;
-  String? _lastFetchedTranslation;
-  String? _lastFetchedAudio;
+  String? _lastFetchedConfig;
 
   @override
   void initState() {
     super.initState();
     _settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    _lastFetchedTranslation = _settingsProvider.translationLanguage;
-    _lastFetchedAudio = _settingsProvider.audioEdition;
+    _lastFetchedConfig = _settingsProvider.playbackConfig.key;
     _settingsProvider.addListener(_onSettingsChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchSurahList();
@@ -133,14 +165,9 @@ class _VerseScreenState extends State<VerseScreen> {
   }
 
   void _onSettingsChanged() {
-    final newTranslation = _settingsProvider.translationLanguage;
-    final newAudio = _settingsProvider.audioEdition;
-    if (newTranslation != _lastFetchedTranslation ||
-        newAudio != _lastFetchedAudio) {
-      setState(() {
-        _lastFetchedTranslation = newTranslation;
-        _lastFetchedAudio = newAudio;
-      });
+    final newConfig = _settingsProvider.playbackConfig.key;
+    if (newConfig != _lastFetchedConfig) {
+      _lastFetchedConfig = newConfig;
       _fetchVerse();
     }
   }
@@ -154,10 +181,8 @@ class _VerseScreenState extends State<VerseScreen> {
   }
 
   void _fetchVerse() {
-    Provider.of<QuranProvider>(context, listen: false).fetchAyah(
-      _settingsProvider.translationLanguage,
-      _settingsProvider.audioEdition,
-    );
+    Provider.of<QuranProvider>(context, listen: false)
+        .fetchAyah(_settingsProvider.playbackConfig);
   }
 
   void _goToNextVerse() {
@@ -391,9 +416,12 @@ class _VerseScreenState extends State<VerseScreen> {
                   if (selectedSurah == null) return;
                   final settings =
                       Provider.of<SettingsProvider>(context, listen: false);
-                  final reciter = settings.allAudioEditions.firstWhere(
-                      (e) => e.identifier == settings.audioEdition,
-                      orElse: () => settings.allAudioEditions.first);
+                  final firstAudio = quranProvider.verseAudio.isNotEmpty
+                      ? quranProvider.verseAudio.first
+                      : null;
+                  final reciter = settings.findEdition(firstAudio?.edition) ??
+                      settings.findEdition(settings.audioEdition);
+                  if (reciter == null) return;
 
                   ShareService.shareVerse(
                     context: context,
@@ -406,6 +434,10 @@ class _VerseScreenState extends State<VerseScreen> {
                     audioUrl: quranProvider.audioUrl ?? "",
                     language: reciter.language,
                     reciterName: reciter.englishName,
+                    localAudioPath: firstAudio != null &&
+                            firstAudio.source.startsWith('/')
+                        ? firstAudio.source
+                        : null,
                   );
                 },
                 tooltip: "Share Verse",
@@ -417,23 +449,24 @@ class _VerseScreenState extends State<VerseScreen> {
                     ? iconColor
                     : inactiveColor,
                 onTap: quranProvider.audioUrl != null && selectedSurah != null
-                    ? () {
-                        final reciter = settingsProvider.allAudioEditions
-                            .firstWhere(
-                                (ed) =>
-                                    ed.identifier ==
-                                    settingsProvider.audioEdition,
-                                orElse: () =>
-                                    settingsProvider.allAudioEditions.first);
-
-                        downloadManager.downloadAudio(
-                          url: quranProvider.audioUrl!,
-                          language: reciter.language,
-                          reciterName: reciter.englishName,
-                          surahNumber: selectedSurah.number,
-                          surahName: selectedSurah.englishName,
-                          ayahNumber: quranProvider.selectedAyahNumber,
-                        );
+                    ? () async {
+                        // One file per reciter (Arabic and/or translation).
+                        final parts = quranProvider.verseAudio;
+                        for (final audio in parts) {
+                          await downloadManager.downloadAudio(
+                            url: audio.source,
+                            language: settingsProvider
+                                    .findEdition(audio.edition)
+                                    ?.language ??
+                                audio.edition.split('.').first,
+                            reciterName:
+                                settingsProvider.editionName(audio.edition),
+                            surahNumber: selectedSurah.number,
+                            surahName: selectedSurah.englishName,
+                            ayahNumber: quranProvider.selectedAyahNumber,
+                            showToasts: audio == parts.first,
+                          );
+                        }
                       }
                     : null,
                 tooltip: "Download Verse",
@@ -471,9 +504,11 @@ class _VerseScreenState extends State<VerseScreen> {
                       onPressed: () {
                         if (showStopButton) {
                           audioConsumer.stop();
-                        } else if (quranProvider.audioUrl != null) {
-                          audioConsumer
-                              .playSingleVerse(quranProvider.audioUrl!);
+                        } else if (quranProvider.verseAudio.isNotEmpty) {
+                          audioConsumer.playSingleVerse(quranProvider
+                              .verseAudio
+                              .map((a) => a.source)
+                              .toList());
                         }
                       },
                       child: Icon(
@@ -512,22 +547,15 @@ class _VerseScreenState extends State<VerseScreen> {
               _buildMiniIconButton(
                 icon: Icons.queue_music_rounded,
                 onTap: () {
-                  bool isDifferentSurah =
-                      audioProvider.currentAudioSurah?.number !=
-                          quranProvider.selectedSurahNumber;
-                  bool isSameSurahButDifferentVerse = !isDifferentSurah &&
-                      (audioProvider.currentAyahIndex !=
-                          quranProvider.selectedAyahNumber - 1);
-
-                  if (isDifferentSurah ||
-                      audioProvider.currentAudioSurah == null) {
+                  if (!audioProvider
+                      .hasPlaylistFor(quranProvider.selectedSurahNumber)) {
                     audioProvider.loadSurahAndPlay(
                         quranProvider.selectedSurahNumber,
-                        settingsProvider.audioEdition,
-                        settingsProvider.translationLanguage,
                         startingIndex: quranProvider.selectedAyahNumber - 1,
                         autoPlay: true);
-                  } else if (isSameSurahButDifferentVerse) {
+                  } else if (audioProvider.currentAyahIndex !=
+                          quranProvider.selectedAyahNumber - 1 ||
+                      !audioProvider.isPlaying) {
                     audioProvider
                         .playVerse(quranProvider.selectedAyahNumber - 1);
                   }

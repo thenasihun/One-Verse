@@ -18,19 +18,27 @@ class EditionSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<SettingsProvider>(
       builder: (context, settings, child) {
-        final bool isText = selectionType == SelectionType.text;
-        final List<Edition> editions = (isText
-                ? settings.allTextEditions
-                : settings.allAudioEditions)
+        final List<Edition> editions = switch (selectionType) {
+          SelectionType.text => settings.allTextEditions,
+          SelectionType.audio => settings.arabicAudioEditions,
+          SelectionType.translationAudio => settings.translationAudioEditions,
+        }
             .where((e) => e.language == languageCode)
             .toList();
 
-        final String? groupValue =
-            isText ? settings.translationLanguage : settings.audioEdition;
+        final String? groupValue = switch (selectionType) {
+          SelectionType.text => settings.translationLanguage,
+          SelectionType.audio => settings.audioEdition,
+          SelectionType.translationAudio => settings.translationAudioEdition,
+        };
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Select Edition'),
+            title: Text(switch (selectionType) {
+              SelectionType.text => 'Select Translation',
+              SelectionType.audio => 'Select Arabic Reciter',
+              SelectionType.translationAudio => 'Select Translation Reciter',
+            }),
           ),
           body: ListView.builder(
             itemCount: editions.length,
@@ -43,10 +51,15 @@ class EditionSelectionScreen extends StatelessWidget {
                 groupValue: groupValue,
                 onChanged: (value) {
                   if (value == null) return;
-                  if (isText) {
-                    settings.setTranslationLanguage(value);
-                  } else {
-                    settings.setAudioEdition(value);
+                  switch (selectionType) {
+                    case SelectionType.text:
+                      settings.setTranslationLanguage(value);
+                    case SelectionType.audio:
+                      settings.setAudioEdition(value);
+                    case SelectionType.translationAudio:
+                      settings.setTranslationAudioEdition(value);
+                      // Back to Settings, past the language list.
+                      Navigator.of(context).pop();
                   }
                   Navigator.of(context).pop();
                 },

@@ -1,12 +1,14 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:oneverse/models/ayah_model.dart';
+import 'package:oneverse/models/playback_config.dart';
 import 'package:oneverse/models/surah_model.dart';
 import 'package:oneverse/providers/audio_provider.dart';
+import 'package:oneverse/providers/download_provider.dart';
 import 'package:oneverse/providers/quran_provider.dart';
 import 'package:oneverse/providers/settings_provider.dart';
-import 'package:oneverse/utils/download_manager.dart';
+import 'package:oneverse/screens/downloads_screen.dart';
+import 'package:oneverse/services/offline_store.dart';
 import 'package:provider/provider.dart';
 import 'package:oneverse/widgets/quran_selection_helper.dart';
 import 'package:oneverse/services/share_service.dart';
@@ -32,42 +34,16 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   void _initPlayerIfNeeded() {
     final audioProvider = Provider.of<AudioProvider>(context, listen: false);
     final quranProvider = Provider.of<QuranProvider>(context, listen: false);
-    final settingsProvider =
-        Provider.of<SettingsProvider>(context, listen: false);
-    bool needsSync = false;
-    int targetSurah = 1;
-    int targetAyah = 0;
 
-    if (quranProvider.surahs.isNotEmpty) {
-      if (audioProvider.currentAudioSurah == null ||
-          audioProvider.currentAudioSurah!.number !=
-              quranProvider.selectedSurahNumber) {
-        needsSync = true;
-        targetSurah = quranProvider.selectedSurahNumber;
-        targetAyah = quranProvider.selectedAyahNumber - 1;
-      }
-    } else if (audioProvider.currentAudioSurah == null) {
-      needsSync = true;
-      targetSurah = 1;
-      targetAyah = 0;
+    if (audioProvider.isLoading ||
+        audioProvider.hasPlaylistFor(quranProvider.selectedSurahNumber)) {
+      return;
     }
-
-    if (needsSync && !audioProvider.isLoading) {
-      final edition = settingsProvider.audioEdition.isNotEmpty
-          ? settingsProvider.audioEdition
-          : 'ar.abdurrahmaansudais';
-      final trans = settingsProvider.translationLanguage.isNotEmpty
-          ? settingsProvider.translationLanguage
-          : 'en.asad';
-
-      audioProvider.loadSurahAndPlay(
-        targetSurah,
-        edition,
-        trans,
-        startingIndex: targetAyah,
-        autoPlay: false,
-      );
-    }
+    audioProvider.loadSurahAndPlay(
+      quranProvider.selectedSurahNumber,
+      startingIndex: quranProvider.selectedAyahNumber - 1,
+      autoPlay: false,
+    );
   }
 
   void _cycleViewMode() {
@@ -79,8 +55,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   void _showSurahSelection(BuildContext context) {
     final quranProvider = Provider.of<QuranProvider>(context, listen: false);
     final audioProvider = Provider.of<AudioProvider>(context, listen: false);
-    final settingsProvider =
-        Provider.of<SettingsProvider>(context, listen: false);
 
     if (quranProvider.surahs.isEmpty) {
       quranProvider.fetchSurahList();
@@ -91,12 +65,8 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
         context: context,
         surahs: quranProvider.surahs,
         onSelect: (surah) {
-          audioProvider.loadSurahAndPlay(
-              surah.number,
-              settingsProvider.audioEdition,
-              settingsProvider.translationLanguage,
-              startingIndex: 0,
-              autoPlay: true);
+          audioProvider.loadSurahAndPlay(surah.number,
+              startingIndex: 0, autoPlay: true);
           quranProvider.selectSurah(surah.number);
         });
   }
@@ -177,23 +147,33 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   Widget _buildErrorState(
       BuildContext context, AudioProvider audioProvider, bool isDarkMode) {
     final textColor = isDarkMode ? Colors.white : Colors.black;
+    if (audioProvider.isOfflineError) {
+      return _OfflineState(audioProvider: audioProvider, textColor: textColor);
+    }
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.cloud_off_rounded,
-              size: 80, color: textColor.withOpacity(0.5)),
-          const SizedBox(height: 20),
-          Text("Something Went Wrong",
-              style: TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.bold, color: textColor)),
-          const SizedBox(height: 10),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.refresh),
-            label: const Text("Retry"),
-            onPressed: audioProvider.retryLastPlaylist,
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.cloud_off_rounded,
+                size: 80, color: textColor.withOpacity(0.5)),
+            const SizedBox(height: 20),
+            Text("Something Went Wrong",
+                style: TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.bold, color: textColor)),
+            const SizedBox(height: 10),
+            Text(audioProvider.errorMessage ?? '',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: textColor.withOpacity(0.7))),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.refresh),
+              label: const Text("Retry"),
+              onPressed: audioProvider.retryLastPlaylist,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -245,18 +225,8 @@ class _PlayerContent extends StatelessWidget {
     final currentAyah = audioProvider.currentDisplayArabicAyah;
     final currentTranslationAyah = audioProvider.currentDisplayTranslationAyah;
 
-    String direction = 'ltr';
-    try {
-      final edition = settings.allTextEditions.firstWhere(
-          (e) => e.identifier == settings.translationLanguage,
-          orElse: () => settings.allTextEditions.isNotEmpty
-              ? settings.allTextEditions.first
-              : null as dynamic);
-      if (edition != null) {
-        direction = edition.direction ?? 'ltr';
-      }
-    } catch (e) {}
-    final bool isRtl = direction == 'rtl';
+    final bool isRtl =
+        settings.findEdition(settings.translationLanguage)?.direction == 'rtl';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -287,7 +257,9 @@ class _PlayerContent extends StatelessWidget {
                   children: [
                     _buildTitleBar(context, englishName, surahNum,
                         ayahNumDisplay, isDarkMode, textColor),
-                    const Divider(height: 24),
+                    const SizedBox(height: 8),
+                    _ReciterStrip(audioProvider: audioProvider),
+                    const Divider(height: 20),
                     Expanded(
                       child: _buildTextContent(
                           context,
@@ -555,10 +527,16 @@ class _PlayerContent extends StatelessWidget {
                   if (audioProvider.currentAudioSurah == null) return;
                   final settings =
                       Provider.of<SettingsProvider>(context, listen: false);
-                  final reciter = settings.allAudioEditions.firstWhere(
-                      (e) => e.identifier == settings.audioEdition,
-                      orElse: () => settings.allAudioEditions.first);
+                  final playingEdition = audioProvider.isTranslationSegment ||
+                          audioProvider.currentConfig?.mode ==
+                              PlaybackMode.translation
+                      ? audioProvider.currentConfig?.translationAudioEdition
+                      : audioProvider.currentConfig?.audioEdition;
+                  final reciter = settings.findEdition(playingEdition) ??
+                      settings.findEdition(settings.audioEdition);
+                  if (reciter == null) return;
 
+                  final localFile = audioProvider.currentLocalFile;
                   ShareService.shareVerse(
                     context: context,
                     arabic:
@@ -574,16 +552,14 @@ class _PlayerContent extends StatelessWidget {
                     audioUrl: audioProvider.currentlyPlayingUrl ?? "",
                     language: reciter.language,
                     reciterName: reciter.englishName,
+                    localAudioPath: localFile,
                   );
                 },
                 tooltip: "Share",
               ),
               const SizedBox(width: 12),
-              buildMiniBtn(
-                icon: Icons.download_outlined,
-                onTap: audioProvider.downloadCurrentVerse,
-                tooltip: "Download",
-              ),
+              _SurahDownloadButton(
+                  audioProvider: audioProvider, iconColor: iconColor),
             ],
           ),
           Row(
@@ -770,3 +746,367 @@ void debugArabicRenderIssues(String label, String? text, {int context = 6}) {
 
 /// Optional cleanup if you want to test quickly:
 String removeDottedCircle(String s) => s.replaceAll('\u25CC', '');
+
+/// Shows which reciter(s) are playing; highlights the active one in
+/// Arabic + Translation mode.
+class _ReciterStrip extends StatelessWidget {
+  final AudioProvider audioProvider;
+  const _ReciterStrip({required this.audioProvider});
+
+  @override
+  Widget build(BuildContext context) {
+    final config = audioProvider.currentConfig;
+    if (config == null || audioProvider.currentAudioSurah == null) {
+      return const SizedBox.shrink();
+    }
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    final primary = Theme.of(context).primaryColor;
+    final muted = Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey;
+
+    Widget chip(String label, String name, bool active) {
+      return Flexible(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: active ? primary.withOpacity(0.12) : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: active ? primary.withOpacity(0.5) : muted.withOpacity(0.2)),
+          ),
+          child: Text(
+            '$label · $name',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: active ? FontWeight.bold : FontWeight.normal,
+              color: active ? primary : muted,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final translationActive = audioProvider.isTranslationSegment ||
+        config.mode == PlaybackMode.translation;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (config.needsArabicAudio)
+          chip('Arabic', settings.editionName(config.audioEdition),
+              !translationActive),
+        if (config.isPaired)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Icon(Icons.arrow_forward_rounded, size: 14, color: muted),
+          ),
+        if (config.needsTranslationAudio)
+          chip('Translation',
+              settings.editionName(config.translationAudioEdition), translationActive),
+        if (audioProvider.isOfflinePlayback) ...[
+          const SizedBox(width: 6),
+          Tooltip(
+            message: 'Playing from downloads',
+            child: Icon(Icons.offline_pin_rounded, size: 18, color: primary),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Download button for the player. Tap: choose verse or complete surah.
+/// Long-press: download the complete surah straight away. Shows progress
+/// while a surah downloads and a check once it's available offline.
+class _SurahDownloadButton extends StatelessWidget {
+  final AudioProvider audioProvider;
+  final Color iconColor;
+  const _SurahDownloadButton(
+      {required this.audioProvider, required this.iconColor});
+
+  static Surah? _surahOf(AudioProvider audio) {
+    final d = audio.currentAudioSurah;
+    if (d == null) return null;
+    return Surah(
+      number: d.number,
+      name: d.name,
+      englishName: d.englishName,
+      numberOfAyahs: d.numberOfAyahs,
+      revelationType: d.revelationType,
+    );
+  }
+
+  static void startSurahDownload(BuildContext context, AudioProvider audio) {
+    final surah = _surahOf(audio);
+    final settings = context.read<SettingsProvider>();
+    final config = audio.currentConfig ?? settings.playbackConfig;
+    if (surah == null) return;
+    context.read<SurahDownloadProvider>().downloadSurah(
+      surah,
+      config,
+      editionNames: {
+        for (final e in config.requiredEditions) e: settings.editionName(e),
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final downloads = context.watch<SurahDownloadProvider>();
+    final store = context.watch<OfflineStore>();
+    final surah = _surahOf(audioProvider);
+    final config = audioProvider.currentConfig;
+    final primary = Theme.of(context).primaryColor;
+
+    final task = surah == null ? null : downloads.taskFor(surah.number);
+    final isDownloading = task?.isActive ?? false;
+    final isOffline = surah != null &&
+        config != null &&
+        store.isAvailable(surah.number, config);
+
+    Widget icon;
+    if (isDownloading) {
+      icon = SizedBox(
+        width: 22,
+        height: 22,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            CircularProgressIndicator(
+                value: task!.progress, strokeWidth: 2.5, color: primary),
+            Icon(Icons.stop_rounded, size: 12, color: primary),
+          ],
+        ),
+      );
+    } else {
+      icon = Icon(
+        isOffline ? Icons.download_done_rounded : Icons.download_outlined,
+        size: 22,
+        color: isOffline ? primary : iconColor,
+      );
+    }
+
+    return Tooltip(
+      message: isOffline
+          ? 'Available offline'
+          : 'Download (long-press for complete surah)',
+      child: InkResponse(
+        radius: 22,
+        onTap: surah == null ? null : () => _showSheet(context),
+        onLongPress: surah == null
+            ? null
+            : () {
+                if (isDownloading) {
+                  _showSheet(context);
+                } else if (isOffline) {
+                  Fluttertoast.showToast(
+                      msg: "${surah.englishName} is already available offline");
+                } else {
+                  startSurahDownload(context, audioProvider);
+                }
+              },
+        child: icon,
+      ),
+    );
+  }
+
+  void _showSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _DownloadSheet(audioProvider: audioProvider),
+    );
+  }
+}
+
+class _DownloadSheet extends StatelessWidget {
+  final AudioProvider audioProvider;
+  const _DownloadSheet({required this.audioProvider});
+
+  @override
+  Widget build(BuildContext context) {
+    final downloads = context.watch<SurahDownloadProvider>();
+    final store = context.watch<OfflineStore>();
+    final settings = context.watch<SettingsProvider>();
+    final surah = _SurahDownloadButton._surahOf(audioProvider);
+    final config = audioProvider.currentConfig ?? settings.playbackConfig;
+    final primary = Theme.of(context).primaryColor;
+
+    if (surah == null) return const SizedBox.shrink();
+
+    final ayahNumber = audioProvider.currentAyahIndex + 1;
+    final task = downloads.taskFor(surah.number);
+    final package = store.findPackage(surah.number, config);
+
+    Widget surahTrailing;
+    String surahSubtitle;
+    VoidCallback? surahTap;
+    if (task != null && task.isActive) {
+      final p = task.progress;
+      surahSubtitle = p == null
+          ? 'Preparing…'
+          : 'Downloading… ${task.doneFiles}/${task.totalFiles} files (${(p * 100).toStringAsFixed(0)}%)';
+      surahTrailing = TextButton(
+        onPressed: () => downloads.cancel(surah.number),
+        child: const Text('Cancel'),
+      );
+    } else if (package != null) {
+      surahSubtitle =
+          'Available offline · ${formatBytes(package.sizeBytes)}';
+      surahTrailing = IconButton(
+        icon: const Icon(Icons.delete_outline),
+        tooltip: 'Remove download',
+        onPressed: () => store.deletePackage(package),
+      );
+    } else {
+      surahSubtitle =
+          '${surah.numberOfAyahs} verses · ${describeDownloadContents(config, settings)}';
+      if (task?.status == DownloadStatus.failed && task?.error != null) {
+        surahSubtitle = '${task!.error}\n$surahSubtitle';
+      }
+      surahTrailing = Icon(Icons.download_for_offline_rounded, color: primary);
+      surahTap = () {
+        _SurahDownloadButton.startSurahDownload(context, audioProvider);
+      };
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text('Download',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18)),
+              const SizedBox(height: 4),
+              Text('${surah.number}. ${surah.englishName}',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 12),
+              Card(
+                margin: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.music_note_outlined),
+                      title: Text('This Verse (Ayah $ayahNumber)'),
+                      subtitle: const Text('Save the audio to Music/OneVerse'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        audioProvider.downloadCurrentVerse();
+                      },
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    ListTile(
+                      leading: Icon(
+                          package != null
+                              ? Icons.offline_pin_rounded
+                              : Icons.library_music_outlined,
+                          color: package != null ? primary : null),
+                      title: const Text('Complete Surah (offline)'),
+                      subtitle: Text(surahSubtitle),
+                      isThreeLine: true,
+                      trailing: surahTrailing,
+                      onTap: surahTap,
+                    ),
+                    if (task != null && task.isActive)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: LinearProgressIndicator(value: task.progress),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Tip: long-press the download button to download the complete surah.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const DownloadsScreen()));
+                    },
+                    child: const Text('Manage'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown when the player can't load because there's no internet: lists the
+/// surahs that can be played offline.
+class _OfflineState extends StatelessWidget {
+  final AudioProvider audioProvider;
+  final Color textColor;
+  const _OfflineState({required this.audioProvider, required this.textColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final store = context.watch<OfflineStore>();
+    final hasDownloads = store.packages.isNotEmpty;
+
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const SizedBox(height: 16),
+        Icon(Icons.wifi_off_rounded, size: 72, color: textColor.withOpacity(0.5)),
+        const SizedBox(height: 16),
+        Text("You're Offline",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 22, fontWeight: FontWeight.bold, color: textColor)),
+        const SizedBox(height: 8),
+        Text(
+          hasDownloads
+              ? "This surah isn't downloaded. These surahs are available offline — tap one to play:"
+              : "Connect to the internet to listen, or download surahs while online to listen anytime.",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: textColor.withOpacity(0.7)),
+        ),
+        const SizedBox(height: 16),
+        if (hasDownloads) const OfflineLibraryList(allowDelete: false),
+        const SizedBox(height: 16),
+        Center(
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.refresh),
+            label: const Text("Retry"),
+            onPressed: audioProvider.retryLastPlaylist,
+          ),
+        ),
+      ],
+    );
+  }
+}

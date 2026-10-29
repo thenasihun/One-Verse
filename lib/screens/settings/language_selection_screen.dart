@@ -28,6 +28,8 @@ class LanguageSelectionScreen extends StatelessWidget {
     "hi": "Hindi",
     "id": "Indonesian",
     "it": "Italian",
+    "kk": "Kazakh",
+    "my": "Burmese",
     "ja": "Japanese",
     "ko": "Korean",
     "ku": "Kurdish",
@@ -61,19 +63,52 @@ class LanguageSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
-    final languages = selectionType == SelectionType.text
-        ? settings.availableTextLanguages
-        : settings.availableAudioLanguages;
+    final isTranslationAudio = selectionType == SelectionType.translationAudio;
+    final languages = switch (selectionType) {
+      SelectionType.text => settings.availableTextLanguages,
+      SelectionType.translationAudio => settings.translationAudioLanguages,
+      SelectionType.audio => const ['ar'],
+    };
+    // Translation audio gets a "None" entry on top.
+    final offset = isTranslationAudio ? 1 : 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Select Language'),
+        title: Text(isTranslationAudio
+            ? 'Translation Audio Language'
+            : 'Select Language'),
       ),
       body: ListView.builder(
-        itemCount: languages.length,
+        itemCount: languages.length + offset,
         itemBuilder: (context, index) {
-          final langCode = languages[index];
+          if (isTranslationAudio && index == 0) {
+            final isNone = settings.translationAudioEdition == null;
+            return ListTile(
+              leading: Icon(
+                  isNone ? Icons.radio_button_checked : Icons.radio_button_off,
+                  color: isNone ? Theme.of(context).primaryColor : null),
+              title: const Text('None (Arabic recitation only)'),
+              onTap: () {
+                settings.setTranslationAudioEdition(null);
+                Navigator.of(context).pop();
+              },
+            );
+          }
+          final langCode = languages[index - offset];
+          final isSelectedLang = isTranslationAudio &&
+              settings
+                      .findEdition(settings.translationAudioEdition)
+                      ?.language ==
+                  langCode;
           return ListTile(
+            leading: isTranslationAudio
+                ? Icon(
+                    isSelectedLang
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color:
+                        isSelectedLang ? Theme.of(context).primaryColor : null)
+                : null,
             title: Text(_getLanguageName(langCode)),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {

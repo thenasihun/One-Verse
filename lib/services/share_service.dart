@@ -15,6 +15,7 @@ class ShareService {
     required String audioUrl,
     required String language, // Needed for download
     required String reciterName, // Needed for download
+    String? localAudioPath, // Downloaded copy in app storage, if any
   }) async {
     // 1. Construct the formatted text
     final String verseText = "$arabic\n\n"
@@ -22,17 +23,20 @@ class ShareService {
         "📖 Surah $surahName ($surahNum:$ayahNum)\n"
         "Shared via One Verse App";
 
-    // 2. Construct the local file path (Logic matches DownloadManager)
-    final sanitizedLanguage = language.toLowerCase();
-    final sanitizedReciter =
-        reciterName.replaceAll(RegExp(r'[^\w\s-]'), '').trim();
-    final sanitizedSurah =
-        "${surahNum.toString().padLeft(3, '0')}_${surahName.replaceAll(RegExp(r'[^\w\s-]'), '').trim()}";
-
-    // Note: We are assuming the standard path.
-    // Ideally, DownloadManager should have a static helper for this path, but this works for now.
-    final String path =
-        '/storage/emulated/0/Music/OneVerse/$sanitizedLanguage/$sanitizedReciter/$sanitizedSurah/$ayahNum.mp3';
+    // 2. Prefer a file we already have: the Music/OneVerse copy, then the
+    // offline download.
+    String path = DownloadManager.publicVersePath(
+      language: language,
+      reciterName: reciterName,
+      surahName: surahName,
+      surahNumber: surahNum,
+      ayahNumber: ayahNum,
+    );
+    if (!File(path).existsSync() &&
+        localAudioPath != null &&
+        File(localAudioPath).existsSync()) {
+      path = localAudioPath;
+    }
     final bool fileExists = File(path).existsSync();
 
     // 3. Show Choice Dialog
@@ -78,10 +82,9 @@ class ShareService {
         );
       } else {
         // DOWNLOAD THEN SHARE
-        Fluttertoast.showToast(msg: "Downloading audio for sharing...");
 
         final downloadManager = DownloadManager();
-        await downloadManager.downloadAudio(
+        final savedPath = await downloadManager.downloadAudio(
             url: audioUrl,
             language: language,
             reciterName: reciterName,
@@ -90,9 +93,9 @@ class ShareService {
             ayahNumber: ayahNum);
 
         // Check again if download was successful
-        if (File(path).existsSync()) {
+        if (savedPath != null && File(savedPath).existsSync()) {
           await Share.shareXFiles(
-            [XFile(path)],
+            [XFile(savedPath)],
             text: "Surah $surahName ($surahNum:$ayahNum)",
           );
         } else {

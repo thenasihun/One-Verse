@@ -1,30 +1,42 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
+/// Saves single verses to the public Music/OneVerse folder so users can find
+/// and share them outside the app. Offline surah downloads live in app
+/// storage instead (see SurahDownloadProvider).
 class DownloadManager {
-  final Dio _dio = Dio();
+  static const String _androidMusicDir = '/storage/emulated/0/Music';
+
+  final Dio _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 60),
+  ));
 
   /// Robust permission request that checks Android version
   Future<bool> _requestPermission() async {
-    PermissionStatus status;
+    if (!Platform.isAndroid) return true;
 
-    if (Platform.isAndroid) {
-      final androidInfo = await DeviceInfoPlugin().androidInfo;
-      // Android 13 (SDK 33) and above require READ_MEDIA_AUDIO
-      if (androidInfo.version.sdkInt >= 33) {
-        status = await Permission.audio.request();
+    final androidInfo = await DeviceInfoPlugin().androidInfo;
+    final sdk = androidInfo.version.sdkInt;
+
+    // Android 11+ lets apps create audio files in Music/ without a permission.
+    // We still ask (it lets us see files from a previous install) but don't
+    // block the download if the user says no.
+    if (sdk >= 30) {
+      if (sdk >= 33) {
+        await Permission.audio.request();
       } else {
-        status = await Permission.storage.request();
+        await Permission.storage.request();
       }
-    } else {
-      // iOS and others
-      status = await Permission.storage.request();
+      return true;
     }
 
+    final status = await Permission.storage.request();
     if (status.isGranted) {
       return true;
     }
@@ -43,82 +55,110 @@ class DownloadManager {
     return false;
   }
 
-  /// Returns the visible public Download directory
-  Directory _getDownloadDirectory() {
-    if (Platform.isAndroid) {
-      // Direct path to the user's public download folder
-      return Directory('/storage/emulated/0/Music');
-    }
-    // Fallback for iOS (Documents directory)
-    return Directory.systemTemp; 
+  static String _sanitize(String s) =>
+      s.replaceAll(RegExp(r'[^\w\s-]'), '').trim();
+
+  /// Path of a verse saved to Music/OneVerse/<language>/<reciter>/<surah>/.
+  static String publicVersePath({
+    required String language,
+    required String reciterName,
+    required String surahName,
+    required int surahNumber,
+    required int ayahNumber,
+    String? baseDir,
+  }) {
+    final base = baseDir ?? _androidMusicDir;
+    final surahFolder =
+        "${surahNumber.toString().padLeft(3, '0')}_${_sanitize(surahName)}";
+    return '$base/OneVerse/${language.toLowerCase()}/${_sanitize(reciterName)}/$surahFolder/$ayahNumber.mp3';
   }
 
-  Future<void> downloadAudio({
+  Future<String> _baseDir() async {
+    if (Platform.isAndroid) return _androidMusicDir;
+    return (await getApplicationDocumentsDirectory()).path;
+  }
+
+  /// Downloads (or copies, when [url] is a local file path) one verse.
+  /// Returns the saved path, or null on failure.
+  Future<String?> downloadAudio({
     required String url,
     required String language,
     required String reciterName,
     required String surahName,
     required int surahNumber,
     required int ayahNumber,
+    bool showToasts = true,
   }) async {
     // 1. Check Permissions
     final hasPermission = await _requestPermission();
-    if (!hasPermission) return;
+    if (!hasPermission) return null;
 
     try {
-      // 2. Prepare the public download path
-      final baseDir = _getDownloadDirectory();
-      
-      if (!await baseDir.exists()) {
-        // Just in case the Download folder doesn't exist (rare)
-        await baseDir.create(recursive: true);
-      }
-
-      // 3. Create structure: Downloads/OneVerse/Language/Reciter/Surah/
-      final sanitizedLanguage = language.toLowerCase();
-      // Remove special characters from names to avoid file system errors
-      final sanitizedReciter = reciterName.replaceAll(RegExp(r'[^\w\s-]'), '').trim();
-      final sanitizedSurah = "${surahNumber.toString().padLeft(3, '0')}_${surahName.replaceAll(RegExp(r'[^\w\s-]'), '').trim()}";
-
-      final targetDir = Directory('${baseDir.path}/OneVerse/$sanitizedLanguage/$sanitizedReciter/$sanitizedSurah');
-
-      if (!await targetDir.exists()) {
-        await targetDir.create(recursive: true);
-      }
-
-      // 4. Check if file exists
-      final savePath = '${targetDir.path}/$ayahNumber.mp3';
+      final savePath = publicVersePath(
+        language: language,
+        reciterName: reciterName,
+        surahName: surahName,
+        surahNumber: surahNumber,
+        ayahNumber: ayahNumber,
+        baseDir: await _baseDir(),
+      );
       final file = File(savePath);
 
-      if (await file.exists()) {
-        Fluttertoast.showToast(
-          msg: "File already exists in Downloads/OneVerse",
-          toastLength: Toast.LENGTH_SHORT,
-        );
-        return;
+      if (await file.exists() && await file.length() > 0) {
+        if (showToasts) {
+          Fluttertoast.showToast(
+            msg: "Already saved in Music/OneVerse",
+            toastLength: Toast.LENGTH_SHORT,
+          );
+        }
+        return savePath;
       }
 
-      // 5. Download
-      Fluttertoast.showToast(
-        msg: "Downloading...",
-        toastLength: Toast.LENGTH_SHORT,
-      );
+      await file.parent.create(recursive: true);
 
-      await _dio.download(url, savePath);
+      if (showToasts) {
+        Fluttertoast.showToast(
+          msg: "Downloading...",
+          toastLength: Toast.LENGTH_SHORT,
+        );
+      }
 
-      Fluttertoast.showToast(
-        msg: "Saved to: Downloads/OneVerse/...",
-        toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.BOTTOM,
-      );
+      if (url.startsWith('/')) {
+        await File(url).copy(savePath);
+      } else {
+        // Download to app cache first so a failed download never leaves a
+        // broken mp3 behind (Music/ only accepts audio files, so the temp
+        // file can't live there).
+        final tmp = File(
+            '${(await getTemporaryDirectory()).path}/verse_${DateTime.now().microsecondsSinceEpoch}.mp3');
+        try {
+          await _dio.download(url, tmp.path);
+          await tmp.copy(savePath);
+        } finally {
+          if (await tmp.exists()) await tmp.delete();
+        }
+      }
 
+      if (showToasts) {
+        Fluttertoast.showToast(
+          msg: "Saved to Music/OneVerse",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+        );
+      }
+      return savePath;
     } catch (e) {
       debugPrint("Download Error: $e");
-      Fluttertoast.showToast(
-        msg: "Download failed: ${e.toString()}",
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-      );
+      if (showToasts) {
+        Fluttertoast.showToast(
+          msg: e is DioException
+              ? "Download failed. Please check your internet connection."
+              : "Download failed. Please try again.",
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
+      }
+      return null;
     }
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:oneverse/providers/quran_provider.dart';
+import 'package:oneverse/screens/downloads_screen.dart';
 import 'package:oneverse/providers/settings_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -31,12 +31,26 @@ class VerseDisplay extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            if (quranProvider.isAyahOfflineError)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Icon(Icons.wifi_off_rounded, size: 56, color: Colors.grey),
+              ),
             Text(quranProvider.ayahErrorMessage!, textAlign: TextAlign.center),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: onRetry,
               child: const Text("Retry"),
             ),
+            if (quranProvider.isAyahOfflineError) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.download_done_rounded),
+                label: const Text("Open Offline Downloads"),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const DownloadsScreen())),
+              ),
+            ],
           ],
         ),
       );

@@ -5,6 +5,7 @@ import 'package:oneverse/models/ayah_model.dart';
 import 'package:oneverse/models/edition_model.dart';
 import 'package:oneverse/models/surah_detail_model.dart';
 import 'package:oneverse/models/surah_model.dart';
+import 'package:oneverse/services/offline_store.dart';
 
 /// Service class to handle all network requests to the Quran Cloud API.
 class QuranApiService {
@@ -38,7 +39,8 @@ class QuranApiService {
         return Ayah.fromJson(response.data['data']);
       }
       throw Exception('Failed to load Ayah');
-    } catch (_) {
+    } catch (e) {
+      if (isNetworkError(e)) throw const OfflineException();
       throw Exception('Failed to load Ayah details');
     }
   }
@@ -66,6 +68,42 @@ class QuranApiService {
       throw Exception(e.toString());
     }
   }
+
+  /// Fetches one surah in several editions with a single request. Returns
+  /// the raw API surah objects keyed by edition identifier.
+  Future<Map<String, Map<String, dynamic>>> getSurahEditionsRaw(
+      int surahNumber, List<String> editions) async {
+    final endpoint =
+        '${AppConstants.baseUrl}/surah/$surahNumber/editions/${editions.join(',')}';
+    try {
+      final response = await _dio.get(endpoint);
+      final data = response.data is Map ? response.data['data'] : null;
+      if (response.statusCode != 200 || data is! List) {
+        throw Exception(
+            'This reciter or translation is not available. Please choose another.');
+      }
+      final result = <String, Map<String, dynamic>>{};
+      for (int i = 0; i < data.length; i++) {
+        final surah = Map<String, dynamic>.from(data[i]);
+        final id = surah['edition']?['identifier'] ??
+            (i < editions.length ? editions[i] : null);
+        if (id != null) result[id] = surah;
+      }
+      return result;
+    } on DioException catch (e) {
+      debugPrint("DioError on getSurahEditions: ${e.type} | ${e.message}");
+      if (isNetworkError(e)) throw const OfflineException();
+      throw Exception('Failed to load Surah. Please try again.');
+    }
+  }
+
+  static bool isNetworkError(Object e) =>
+      e is DioException &&
+      (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          (e.type == DioExceptionType.unknown && e.error is Exception));
 
   /// Fetches the list of available language codes for text editions.
   Future<List<String>> getAvailableLanguages() async {

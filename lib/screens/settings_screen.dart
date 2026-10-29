@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:oneverse/models/edition_model.dart';
+import 'package:oneverse/models/playback_config.dart';
 import 'package:oneverse/models/selection_type.dart';
 import 'package:oneverse/providers/settings_provider.dart';
+import 'package:oneverse/screens/downloads_screen.dart';
+import 'package:oneverse/screens/settings/edition_selection_screen.dart';
 import 'package:oneverse/screens/settings/language_selection_screen.dart';
+import 'package:oneverse/services/offline_store.dart';
 import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -35,10 +39,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (settings.editionErrorMessage != null) {
-            return _buildErrorState(context, settings);
-          }
-
           final currentTextEdition = _getCurrentEdition(
             settings.allTextEditions,
             settings.translationLanguage,
@@ -56,8 +56,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildThemeSelector(context, settings),
               const SizedBox(height: 24),
               _buildSectionHeader(context, "CONTENT"),
-              _buildContentCard(
-                  context, currentTextEdition, currentAudioEdition),
+              // Theme, offline downloads and fonts stay usable offline.
+              if (settings.editionErrorMessage != null)
+                Card(child: _buildErrorState(context, settings))
+              else ...[
+                _buildContentCard(
+                    context, settings, currentTextEdition, currentAudioEdition),
+                const SizedBox(height: 24),
+                _buildSectionHeader(context, "PLAYBACK"),
+                _buildPlaybackModeCard(context, settings),
+              ],
+              const SizedBox(height: 24),
+              _buildSectionHeader(context, "OFFLINE"),
+              _buildOfflineCard(context),
               const SizedBox(height: 24),
               _buildSectionHeader(context, "TYPOGRAPHY"),
               _buildTypographyCard(context, settings),
@@ -73,6 +84,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.cloud_off, size: 64, color: Colors.grey),
@@ -159,8 +171,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildContentCard(BuildContext context, Edition? currentTextEdition,
-      Edition? currentAudioEdition) {
+  Widget _buildContentCard(BuildContext context, SettingsProvider settings,
+      Edition? currentTextEdition, Edition? currentAudioEdition) {
+    final translationAudio =
+        settings.findEdition(settings.translationAudioEdition);
     return Card(
       child: Column(
         children: [
@@ -183,7 +197,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(height: 1, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.mic_none),
-            title: const Text("Audio Recitation"),
+            title: const Text("Arabic Reciter"),
             subtitle: Text(
               currentAudioEdition?.englishName ?? "Default",
               style: TextStyle(color: Theme.of(context).primaryColor),
@@ -191,13 +205,128 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => const LanguageSelectionScreen(
+                builder: (_) => const EditionSelectionScreen(
+                  languageCode: 'ar',
                   selectionType: SelectionType.audio,
                 ),
               ),
             ),
           ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          ListTile(
+            leading: const Icon(Icons.record_voice_over_outlined),
+            title: const Text("Translation Audio"),
+            subtitle: Text(
+              translationAudio != null
+                  ? "${translationAudio.englishName} (${translationAudio.language.toUpperCase()})"
+                  : "None",
+              style: TextStyle(color: Theme.of(context).primaryColor),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const LanguageSelectionScreen(
+                  selectionType: SelectionType.translationAudio,
+                ),
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPlaybackModeCard(
+      BuildContext context, SettingsProvider settings) {
+    final hasTranslationAudio = settings.translationAudioEdition != null;
+    final mode = settings.playbackConfig.mode;
+    final description = switch (mode) {
+      PlaybackMode.arabic => "Plays the Arabic recitation only.",
+      PlaybackMode.arabicWithTranslation =>
+        "Verse by verse: each Arabic verse is followed by its translation.",
+      PlaybackMode.translation => "Plays the translation recitation only.",
+    };
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Playback Mode", style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<PlaybackMode>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: PlaybackMode.arabic,
+                    label: Text('Arabic'),
+                  ),
+                  ButtonSegment(
+                    value: PlaybackMode.arabicWithTranslation,
+                    label: Text('Arabic + Trans.'),
+                  ),
+                  ButtonSegment(
+                    value: PlaybackMode.translation,
+                    label: Text('Translation'),
+                  ),
+                ],
+                selected: {mode},
+                onSelectionChanged: (newSelection) {
+                  final selected = newSelection.first;
+                  if (selected != PlaybackMode.arabic && !hasTranslationAudio) {
+                    // Need a translation reciter first.
+                    settings.setPlaybackMode(selected);
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const LanguageSelectionScreen(
+                        selectionType: SelectionType.translationAudio,
+                      ),
+                    ));
+                    return;
+                  }
+                  settings.setPlaybackMode(selected);
+                },
+                style: SegmentedButton.styleFrom(
+                  textStyle: const TextStyle(fontSize: 12),
+                  selectedBackgroundColor:
+                      Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                  selectedForegroundColor:
+                      Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              hasTranslationAudio
+                  ? description
+                  : "Choose a Translation Audio reciter to hear each verse's translation after the Arabic.",
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOfflineCard(BuildContext context) {
+    final store = context.watch<OfflineStore>();
+    final count = store.packages.length;
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.download_for_offline_outlined),
+        title: const Text("Offline Downloads"),
+        subtitle: Text(
+          count == 0
+              ? "No surahs downloaded yet"
+              : "$count surah${count == 1 ? '' : 's'} · ${formatBytes(store.totalBytes)}",
+          style: TextStyle(color: Theme.of(context).primaryColor),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const DownloadsScreen()),
+        ),
       ),
     );
   }

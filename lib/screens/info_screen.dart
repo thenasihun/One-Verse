@@ -15,7 +15,7 @@ class InfoScreen extends StatefulWidget {
 
 class _InfoScreenState extends State<InfoScreen> {
   // app version ko dynamically load karne ke liye
-  String _appVersion = "1.0.1";     
+  String _appVersion = "1.1.0";     
 
   @override
   void initState() {
@@ -132,7 +132,7 @@ class _InfoScreenState extends State<InfoScreen> {
 }
 
 class _LinkTile extends StatelessWidget {
-  final IconData icon;
+  final Object icon; // Material IconData or FontAwesome FaIconData
   final String label;
   final Color color;
   final VoidCallback onTap;
@@ -154,7 +154,9 @@ class _LinkTile extends StatelessWidget {
         onTap: onTap,
         leading: CircleAvatar(
           backgroundColor: color.withOpacity(0.1),
-          child: FaIcon(icon, color: color, size: 18), // FaIcon for better scaling
+          child: icon is FaIconData
+              ? FaIcon(icon as FaIconData, color: color, size: 18) // FaIcon for better scaling
+              : Icon(icon as IconData, color: color, size: 18),
         ),
         title: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
         trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
@@ -211,7 +213,7 @@ class _SocialMediaCard extends StatelessWidget {
 }
 
 class _SocialButton extends StatelessWidget {
-  final IconData icon;
+  final FaIconData icon;
   final Color color;
   final VoidCallback onTap;
 

@@ -1,1 +1,1 @@
-enum SelectionType { text, audio }
+enum SelectionType { text, audio, translationAudio }

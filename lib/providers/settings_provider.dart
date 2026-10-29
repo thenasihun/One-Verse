@@ -1,8 +1,8 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:oneverse/core/constants.dart';
 import 'package:oneverse/models/edition_model.dart';
+import 'package:oneverse/models/playback_config.dart';
+import 'package:oneverse/services/offline_store.dart';
 import 'package:oneverse/services/quran_api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,6 +13,8 @@ class SettingsProvider with ChangeNotifier {
   // --- Stored Preferences ---
   String _translationLanguage = AppConstants.defaultTranslation;
   String _audioEdition = AppConstants.defaultAudio;
+  String? _translationAudioEdition;
+  PlaybackMode _playbackMode = PlaybackMode.arabic;
   ThemeMode _themeMode = ThemeMode.system;
   double _arabicFontSize = AppConstants.defaultArabicFontSize;
   double _translationFontSize = AppConstants.defaultTranslationFontSize;
@@ -26,18 +28,18 @@ class SettingsProvider with ChangeNotifier {
   bool _isEditionsLoading = false;
   String? _editionErrorMessage;
 
-  final List<String> availableAudioLanguages = const [
-    'ar',
-    'en',
-    'ur',
-    'fr',
-    'zh',
-    'ru'
-  ];
-
   // --- Getters ---
   String get translationLanguage => _translationLanguage;
   String get audioEdition => _audioEdition;
+  String? get translationAudioEdition => _translationAudioEdition;
+  PlaybackMode get playbackMode => _playbackMode;
+
+  PlaybackConfig get playbackConfig => PlaybackConfig(
+        audioEdition: _audioEdition,
+        translationAudioEdition: _translationAudioEdition,
+        textEdition: _translationLanguage,
+        mode: _playbackMode,
+      );
   ThemeMode get themeMode => _themeMode;
   double get arabicFontSize => _arabicFontSize;
   double get translationFontSize => _translationFontSize;
@@ -49,6 +51,36 @@ class SettingsProvider with ChangeNotifier {
   List<Edition> get allAudioEditions => _allAudioEditions;
   bool get isEditionsLoading => _isEditionsLoading;
   String? get editionErrorMessage => _editionErrorMessage;
+
+  /// Arabic reciters that have per-verse audio.
+  List<Edition> get arabicAudioEditions => _allAudioEditions
+      .where((e) => e.language == 'ar' && e.hasVerseAudio)
+      .toList();
+
+  /// Translation recitations that have per-verse audio.
+  List<Edition> get translationAudioEditions => _allAudioEditions
+      .where((e) => e.language != 'ar' && e.hasVerseAudio)
+      .toList();
+
+  List<String> get translationAudioLanguages =>
+      translationAudioEditions.map((e) => e.language).toSet().toList();
+
+  Edition? findEdition(String? identifier) {
+    if (identifier == null) return null;
+    for (final e in [..._allAudioEditions, ..._allTextEditions]) {
+      if (e.identifier == identifier) return e;
+    }
+    return null;
+  }
+
+  /// Human readable name for an edition, falling back to names saved with
+  /// offline downloads, then the identifier itself.
+  String editionName(String? identifier) {
+    if (identifier == null) return 'None';
+    return findEdition(identifier)?.englishName ??
+        OfflineStore.instance.editionName(identifier) ??
+        identifier;
+  }
 
   double getLineHeight(double fontSize, String fontFamily) {
     // check for Urdu fonts
@@ -94,6 +126,19 @@ class SettingsProvider with ChangeNotifier {
     _translationLanguage =
         _prefs.getString('translation') ?? AppConstants.defaultTranslation;
     _audioEdition = _prefs.getString('audio') ?? AppConstants.defaultAudio;
+    _translationAudioEdition = _prefs.getString('translationAudio');
+    _playbackMode = PlaybackModeX.fromName(_prefs.getString('playbackMode'));
+
+    // Older versions let a translation recitation be the main reciter. Move it
+    // to the translation slot so the Arabic reciter is always Arabic.
+    if (!_audioEdition.startsWith('ar.')) {
+      _translationAudioEdition = _audioEdition;
+      _playbackMode = PlaybackMode.translation;
+      _audioEdition = AppConstants.defaultAudio;
+      _prefs.setString('audio', _audioEdition);
+      _prefs.setString('translationAudio', _translationAudioEdition!);
+      _prefs.setString('playbackMode', _playbackMode.name);
+    }
     _arabicFontSize =
         _prefs.getDouble('arabicSize') ?? AppConstants.defaultArabicFontSize;
     _translationFontSize = _prefs.getDouble('translationSize') ??
@@ -122,7 +167,10 @@ class SettingsProvider with ChangeNotifier {
     if (_isEditionsLoading) return;
 
     _clearError();
-    _isEditionsLoading = true;
+    await _loadCachedEditions();
+    final hasCache = _allTextEditions.isNotEmpty && _allAudioEditions.isNotEmpty;
+    // With a cache the settings screen stays usable while we refresh quietly.
+    _isEditionsLoading = !hasCache;
     notifyListeners();
 
     int attempts = 0;
@@ -139,6 +187,7 @@ class SettingsProvider with ChangeNotifier {
         _availableTextLanguages = responses[0] as List<String>;
         _allTextEditions = responses[1] as List<Edition>;
         _allAudioEditions = responses[2] as List<Edition>;
+        _saveEditionsCache();
 
         // Success! Stop loading and return.
         _isEditionsLoading = false;
@@ -150,8 +199,10 @@ class SettingsProvider with ChangeNotifier {
 
         if (attempts >= maxAttempts) {
           // If we failed 3 times, THEN show the error message.
-          _editionErrorMessage =
-              "Failed to load editions. Please check your connection and try again.";
+          if (!hasCache) {
+            _editionErrorMessage =
+                "Failed to load editions. Please check your connection and try again.";
+          }
           _isEditionsLoading = false;
           notifyListeners();
         } else {
@@ -160,6 +211,30 @@ class SettingsProvider with ChangeNotifier {
         }
       }
     }
+  }
+
+  Future<void> _loadCachedEditions() async {
+    try {
+      final cached = await OfflineStore.instance.readCache('editions');
+      if (cached is! Map) return;
+      _availableTextLanguages = List<String>.from(cached['languages'] ?? []);
+      _allTextEditions = (cached['text'] as List)
+          .map((e) => Edition.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+      _allAudioEditions = (cached['audio'] as List)
+          .map((e) => Edition.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (e) {
+      debugPrint("Editions cache unreadable: $e");
+    }
+  }
+
+  void _saveEditionsCache() {
+    OfflineStore.instance.writeCache('editions', {
+      'languages': _availableTextLanguages,
+      'text': _allTextEditions.map((e) => e.toJson()).toList(),
+      'audio': _allAudioEditions.map((e) => e.toJson()).toList(),
+    }).catchError((e) => debugPrint("Editions cache write failed: $e"));
   }
 
   void _clearError() {
@@ -191,6 +266,48 @@ class SettingsProvider with ChangeNotifier {
   void setAudioEdition(String value) {
     _audioEdition = value;
     _prefs.setString('audio', value);
+    notifyListeners();
+  }
+
+  /// Selecting a translation reciter turns on Arabic + Translation playback
+  /// if only Arabic was playing before. Passing null turns translation off.
+  void setTranslationAudioEdition(String? value) {
+    _translationAudioEdition = value;
+    if (value == null) {
+      _prefs.remove('translationAudio');
+      _playbackMode = PlaybackMode.arabic;
+    } else {
+      _prefs.setString('translationAudio', value);
+      if (_playbackMode == PlaybackMode.arabic) {
+        _playbackMode = PlaybackMode.arabicWithTranslation;
+      }
+    }
+    _prefs.setString('playbackMode', _playbackMode.name);
+    notifyListeners();
+  }
+
+  void setPlaybackMode(PlaybackMode value) {
+    _playbackMode = value;
+    _prefs.setString('playbackMode', value.name);
+    notifyListeners();
+  }
+
+  /// Applies a whole config at once (e.g. when playing an offline download),
+  /// notifying listeners only once.
+  void applyPlaybackConfig(PlaybackConfig config) {
+    _audioEdition = config.audioEdition;
+    _playbackMode = config.mode;
+    _prefs.setString('audio', _audioEdition);
+    // Keep the user's translation reciter when the download has none.
+    if (config.translationAudioEdition != null) {
+      _translationAudioEdition = config.translationAudioEdition;
+      _prefs.setString('translationAudio', _translationAudioEdition!);
+    }
+    _prefs.setString('playbackMode', _playbackMode.name);
+    if (config.textEdition != _translationLanguage) {
+      setTranslationLanguage(config.textEdition); // notifies
+      return;
+    }
     notifyListeners();
   }
 

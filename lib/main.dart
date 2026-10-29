@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:oneverse/providers/audio_provider.dart';
+import 'package:oneverse/providers/download_provider.dart';
 import 'package:oneverse/providers/quran_provider.dart';
 import 'package:oneverse/providers/settings_provider.dart';
 import 'package:oneverse/screens/home_screen.dart';
+import 'package:oneverse/services/offline_store.dart';
 import 'package:provider/provider.dart';
 import 'core/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await OfflineStore.instance.init();
+  } catch (e) {
+    debugPrint("Offline storage unavailable: $e");
+  }
 
   final settingsProvider = SettingsProvider();
   await settingsProvider.loadPreferences();
@@ -32,6 +39,8 @@ class OneVerseApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: settingsProvider),
+        ChangeNotifierProvider.value(value: OfflineStore.instance),
+        ChangeNotifierProvider(create: (_) => SurahDownloadProvider()),
         // --- UPDATED: Create and immediately fetch Surah list ---
         ChangeNotifierProvider(
             create: (_) => QuranProvider()..fetchSurahList()),

@@ -45,15 +45,15 @@ android {
     val password = keystoreProperties["keyPassword"] as String?
     val spasswords = keystoreProperties["storePassword"] as String?
 
+    val hasReleaseKeystore = alias != null &&
+        password != null &&
+        spasswords != null &&
+        sfile != null &&
+        sfile.exists()
+
     signingConfigs {
         create("release") {
-            if (
-                alias != null &&
-                password != null &&
-                spasswords != null &&
-                sfile != null &&
-                sfile.exists()
-            ) {
+            if (hasReleaseKeystore) {
                 storeFile = sfile
                 keyAlias = alias
                 keyPassword = password
@@ -61,14 +61,14 @@ android {
 
                 println("✔ Using release keystore")
             } else {
-                println("⚠ Keystore not found. Release will use debug signing.")
+                println("⚠ Keystore not found. Release will use debug signing (NOT uploadable to Play Store).")
             }
         }
     }
 
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName(if (hasReleaseKeystore) "release" else "debug")
             
             isMinifyEnabled = true 
             isShrinkResources = true
