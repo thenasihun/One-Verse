@@ -24,6 +24,7 @@ class Settings extends ChangeNotifier {
   int goalMinutes = 20;
   List<String> quickTranslations = List.of(defaultQuickTranslations);
   bool wifiPrefetch = true;
+  bool autoNext = true; // play the next surah when one ends
   Map<String, bool> reminders = {'daily': true, 'streak': true, 'kahf': true, 'mulk': true, 'special': true};
   TimeOfDay dailyTime = const TimeOfDay(hour: 21, minute: 30);
 
@@ -47,6 +48,7 @@ class Settings extends ChangeNotifier {
     goalMinutes = _p.getInt('goal') ?? goalMinutes;
     quickTranslations = _p.getStringList('quickTr') ?? quickTranslations;
     wifiPrefetch = _p.getBool('wifiPrefetch') ?? wifiPrefetch;
+    autoNext = _p.getBool('autoNext') ?? autoNext;
     final rem = _p.getString('reminders');
     if (rem != null) reminders = Map<String, bool>.from(jsonDecode(rem) as Map);
     final dt = _p.getInt('dailyTime');
@@ -69,6 +71,7 @@ class Settings extends ChangeNotifier {
     _p.setInt('goal', goalMinutes);
     _p.setStringList('quickTr', quickTranslations);
     _p.setBool('wifiPrefetch', wifiPrefetch);
+    _p.setBool('autoNext', autoNext);
     _p.setString('reminders', jsonEncode(reminders));
     _p.setInt('dailyTime', dailyTime.hour * 60 + dailyTime.minute);
   }
@@ -79,8 +82,12 @@ class Settings extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Picks a translation and, where one exists, the voice in its language, so
+  /// the audio follows the text (Jalandhry text with Shamshad Ali Khan audio).
   void setTranslation(String id) => update((s) {
         s.translationId = id;
+        final v = voiceFor(id);
+        if (v != null) s.translationVoiceId = v.id;
         if (s.show == ShowMode.arabic) s.show = ShowMode.both;
         if (!s.quickTranslations.contains(id)) {
           s.quickTranslations = [id, ...s.quickTranslations].take(4).toList();

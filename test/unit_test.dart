@@ -196,6 +196,20 @@ void main() {
     });
   });
 
+  group('translation audio follows the text', () {
+    test('each voice reads one translation, and that text picks that voice', () {
+      expect(voiceFor('ur.jalandhry')!.id, 'ur.khan');
+      expect(voiceFor('en.sahih')!.id, 'en.walk');
+      expect(voiceFor('tr.vakfi')!.id, 'tr.vakfi-audio');
+      expect(exactVoiceFor('ur.maududi'), isNull);
+      expect(voiceFor('ur.maududi')!.id, 'ur.khan', reason: 'same language when no exact match');
+      expect(voiceFor('hi.hindi'), isNull);
+      for (final v in translationVoices) {
+        expect(exactVoiceFor(v.textEdition!), v, reason: v.id);
+      }
+    });
+  });
+
   group('catalog', () {
     test('ids are unique and every reciter can play', () {
       final ids = [...reciters, ...translationVoices].map((r) => r.id).toList();

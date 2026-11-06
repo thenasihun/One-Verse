@@ -33,7 +33,7 @@ void main() {
   });
 
   test('alquran.cloud translations and translation list', () async {
-    for (final ed in ['en.sahih', 'en.asad', 'ur.jalandhry', 'fr.hamidullah', 'ru.kuliev', 'fa.fooladvand', 'zh.jian', 'uz.sodik']) {
+    for (final ed in ['en.sahih', 'en.asad', 'ur.jalandhry', 'fr.hamidullah', 'ru.kuliev', 'fa.fooladvand', 'zh.jian', 'uz.sodik', 'tr.vakfi']) {
       final t = await repo.translation(ed, 67);
       expect(t.length, 30, reason: ed);
       expect(t.first.trim(), isNotEmpty, reason: ed);
@@ -84,6 +84,17 @@ void main() {
     expect(sizes['ar.alafasy'], inInclusiveRange(1.6e9, 1.9e9), reason: 'exact Quran.com file sizes');
     final withUrdu = await dl.estimateQuranBytes(reciterById('ar.alafasy'), voice: reciterById('ur.khan'));
     expect(withUrdu! - sizes['ar.alafasy']!, inInclusiveRange(1e8, 1.5e9));
+  });
+
+  test('ayah lengths from file sizes add up to the surah', () async {
+    final dl = Downloads(repo);
+    // Al-Ikhlas by Alafasy: the ayah files should add up to its full-surah file.
+    final ayahs = await dl.ayahDurations('ar.alafasy', 112);
+    expect(ayahs, hasLength(4));
+    expect(ayahs.every((ms) => ms != null && ms > 1500 && ms < 20000), isTrue, reason: '$ayahs');
+    final full = (await repo.timing(reciterById('ar.alafasy'), 112))!;
+    final total = ayahs.fold<int>(0, (t, ms) => t + ms!);
+    expect((total - full.ayahs.last.to).abs(), lessThan(4000), reason: 'ayah files $total ms, full surah ${full.ayahs.last.to} ms');
   });
 
   test('QuranHub reciter photos and bios', () async {

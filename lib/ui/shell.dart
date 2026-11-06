@@ -196,11 +196,11 @@ class MiniPlayer extends StatelessWidget {
               left: 10,
               right: 10,
               bottom: 3,
-              child: ValueListenableBuilder<double>(
-                valueListenable: pb.ayahProgress,
-                builder: (_, v, _) => ClipRRect(
+              child: ValueListenableBuilder<Duration>(
+                valueListenable: pb.surahPosition,
+                builder: (_, p, _) => ClipRRect(
                   borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(value: v, minHeight: 2, color: c.fg, backgroundColor: c.line2),
+                  child: LinearProgressIndicator(value: pb.surahFraction, minHeight: 2, color: c.fg, backgroundColor: c.line2),
                 ),
               ),
             ),

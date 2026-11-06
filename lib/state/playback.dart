@@ -84,6 +84,15 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   final ValueNotifier<Duration> ayahPosition = ValueNotifier(Duration.zero);
   final ValueNotifier<Duration> ayahLength = ValueNotifier(Duration.zero);
 
+  // The surah clock: time across the whole surah, for the player bar, the
+  // mini player and the notification. Playlist items whose length is not
+  // known yet count as the average of the known ones.
+  final ValueNotifier<Duration> surahPosition = ValueNotifier(Duration.zero);
+  final ValueNotifier<Duration> surahLength = ValueNotifier(Duration.zero);
+  List<int?> _itemMs = const [];
+  List<int> _startMs = const [0]; // start of each item in surah time; last = total
+  int _buildGen = 0;
+
   int _reps = 0;
   bool _repeatSeek = false;
   int _pendingPosMs = 0;
@@ -93,6 +102,11 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   bool sleepEndOfSurah = false;
   Timer? _sleepTimer;
   int _sinceSave = 0;
+
+  double get surahFraction {
+    final t = surahLength.value.inMilliseconds;
+    return t > 0 ? (surahPosition.value.inMilliseconds / t).clamp(0.0, 1.0) : 0;
+  }
 
   bool get playing => player.playing && player.processingState != ProcessingState.completed;
   bool get wordExact => timing != null && settings.listenMode != ListenMode.translation;
@@ -158,6 +172,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   }
 
   Future<void> _build(int startAyah, int offsetMs) async {
+    final gen = ++_buildGen;
     final mode = settings.listenMode;
     final r = settings.reciter;
     final voice = settings.translationVoice;
@@ -187,6 +202,8 @@ class Playback extends ChangeNotifier implements PlayerCommands {
       items = const [];
       final start = timing!.ayahs[startAyah - 1].from + offsetMs;
       await player.setAudioSource(chapterSource(), initialPosition: Duration(milliseconds: start));
+      surahLength.value = player.duration ?? Duration(milliseconds: timing!.ayahs.last.to);
+      surahPosition.value = Duration(milliseconds: start);
     } else {
       singleFile = false;
       final sources = <AudioSource>[];
@@ -217,6 +234,12 @@ class Playback extends ChangeNotifier implements PlayerCommands {
         }
       }
       items = plan;
+      _itemMs = [
+        for (final p in plan)
+          p.phase == Phase.arabic && timing != null ? timing!.ayahs[p.ayah - 1].to - timing!.ayahs[p.ayah - 1].from : null,
+      ];
+      _recomputeClock();
+      unawaited(_measureItems(gen, surah, mode == ListenMode.translation || timing != null ? null : r, mode == ListenMode.arabic ? null : voice));
       final idx = plan.indexWhere((p) => p.ayah >= startAyah);
       await player.setAudioSources(sources,
           initialIndex: idx < 0 ? 0 : idx, initialPosition: Duration(milliseconds: offsetMs));
@@ -300,6 +323,9 @@ class Playback extends ChangeNotifier implements PlayerCommands {
         _userNav = false;
         _setAyah(ai + 1, Phase.arabic);
       }
+      surahPosition.value = pos;
+      final d = player.duration;
+      if (d != null && d != surahLength.value) surahLength.value = d;
       final t = timing!.ayahs[ai];
       final len = (t.to - t.from).clamp(1, 1 << 31);
       ayahPosition.value = Duration(milliseconds: (ms - t.from).clamp(0, len));
@@ -313,6 +339,11 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     final item = items[idx];
     final dur = player.duration ?? Duration.zero;
     final dms = dur.inMilliseconds.clamp(1, 1 << 31);
+    if (idx < _itemMs.length && dur > Duration.zero && (_itemMs[idx] == null || (_itemMs[idx]! - dms).abs() > 400)) {
+      _itemMs[idx] = dms; // the real length, once the file is loaded
+      _recomputeClock();
+    }
+    surahPosition.value = Duration(milliseconds: (idx + 1 < _startMs.length ? _startMs[idx] : 0) + ms);
     final frac = (ms / dms).clamp(0.0, 1.0);
     ayahPosition.value = pos;
     ayahLength.value = dur;
@@ -343,6 +374,9 @@ class Playback extends ChangeNotifier implements PlayerCommands {
       log.addAyah();
       if (sleepEndOfSurah) {
         sleepEndOfSurah = false;
+      } else if (settings.autoNext && surah < 114) {
+        unawaited(play(surah + 1));
+        return;
       }
       player.pause();
       word.value = verse?.wordCount ?? 0;
@@ -373,7 +407,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
       displaySubtitle: phase == Phase.translation ? 'Translation · ${settings.translationVoice.name}' : leadVoice.name,
       displayDescription: verse?.plain(),
       artUri: photo != null ? Uri.file(photo) : (url != null ? Uri.parse(url) : null),
-      duration: singleFile ? player.duration : null,
+      duration: surahLength.value > Duration.zero ? surahLength.value : null,
       extras: {'surah': surah, 'ayah': ayah},
     ));
   }
@@ -439,6 +473,58 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     }
   }
 
+  /// Seek to a point in the whole surah (the player bar and notification).
+  Future<void> seekInSurah(Duration d) async {
+    final ms = d.inMilliseconds.clamp(0, surahLength.value.inMilliseconds);
+    _reps = 0;
+    if (singleFile) {
+      await player.seek(Duration(milliseconds: ms));
+      final ai = timing!.ayahAt(ms);
+      if (ai >= 0) _setAyah(ai + 1, Phase.arabic);
+      _userNav = false;
+    } else {
+      var i = 0;
+      while (i + 2 < _startMs.length && _startMs[i + 1] <= ms) {
+        i++;
+      }
+      _userNav = i != player.currentIndex;
+      await player.seek(Duration(milliseconds: ms - _startMs[i]), index: i);
+    }
+    surahPosition.value = Duration(milliseconds: ms);
+    saveSession();
+  }
+
+  void _recomputeClock() {
+    final known = _itemMs.whereType<int>();
+    final avg = known.isEmpty ? 6000 : known.reduce((a, b) => a + b) ~/ known.length;
+    var t = 0;
+    final starts = <int>[];
+    for (final m in _itemMs) {
+      starts.add(t);
+      t += m ?? avg;
+    }
+    _startMs = [...starts, t];
+    surahLength.value = Duration(milliseconds: t);
+  }
+
+  /// Fills in the lengths of ayah files from their sizes, in the background.
+  Future<void> _measureItems(int gen, int n, Reciter? arabic, Reciter? voice) async {
+    Future<List<int?>> lengths(Reciter? who) async =>
+        who?.ayahEdition == null ? const [] : await downloads.ayahDurations(who!.ayahEdition!, n).catchError((_) => <int?>[]);
+    final ar = await lengths(arabic);
+    final tr = await lengths(voice);
+    if (gen != _buildGen) return; // a different surah or setting by now
+    for (var i = 0; i < items.length && i < _itemMs.length; i++) {
+      if (_itemMs[i] != null) continue;
+      final it = items[i];
+      final l = it.phase == Phase.arabic ? ar : tr;
+      if (it.ayah - 1 < l.length) _itemMs[i] = l[it.ayah - 1];
+    }
+    _recomputeClock();
+    _publishMediaItem();
+    handler.refresh();
+  }
+
   void setSpeed(double s) {
     settings.update((x) => x.speed = s);
     player.setSpeed(s);
@@ -491,7 +577,13 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   }
 
   @override
-  Future<void> cmdSeek(Duration p) => player.seek(p);
+  Future<void> cmdSeek(Duration p) => seekInSurah(p);
+  @override
+  Duration get positionInSurah {
+    if (singleFile) return player.position;
+    final i = player.currentIndex ?? 0;
+    return Duration(milliseconds: (i + 1 < _startMs.length ? _startMs[i] : 0)) + player.position;
+  }
   @override
   Future<void> cmdToggleRepeat() async => cycleRepeat();
   @override

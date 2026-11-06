@@ -195,6 +195,34 @@ class Downloads extends ChangeNotifier {
 
   void cancel(int surah) => jobs[surah]?.cancel.cancel();
 
+  /// Length in ms of each ayah file of [edition] in surah [n], worked out from
+  /// the file sizes: alquran.cloud files are constant bitrate, named in the URL.
+  /// Null where a size could not be read.
+  Future<List<int?>> ayahDurations(String edition, int n) async {
+    final key = 'dur_${edition}_$n';
+    final e = await repo.store.read(key);
+    if (e?.data is List) return [for (final x in e!.data as List) (x as num?)?.toInt()];
+    final urls = await repo.ayahAudio(edition, n);
+    final out = List<int?>.filled(urls.length, null);
+    var next = 0;
+    Future<void> worker() async {
+      while (next < urls.length) {
+        final i = next++;
+        try {
+          final local = ayahFile(edition, n, i + 1);
+          final bytes = local != null ? await File(local).length() : await _headSize(urls[i]);
+          if (bytes > 0) out[i] = bytes * 8 ~/ _kbps(urls[i]);
+        } catch (_) {}
+      }
+    }
+
+    await Future.wait([for (var w = 0; w < 6; w++) worker()]);
+    if (!out.contains(null)) await repo.store.write(key, out);
+    return out;
+  }
+
+  static int _kbps(String url) => int.tryParse(RegExp(r'/audio/(\d+)/').firstMatch(url)?.group(1) ?? '') ?? 128;
+
   // ---------------------------------------------------------------- complete Quran
 
   static const _planKey = 'quran_download';

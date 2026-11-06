@@ -176,12 +176,12 @@ class NowPlayingScreen extends StatelessWidget {
                 ],
                 const Label('Script and translation'),
                 Wrap(spacing: 8, runSpacing: 8, children: [
-                  OvChip(s.script.short, tint: c.gold, trailing: Icon(Icons.expand_more_rounded, size: 16, color: c.gold), onTap: () => showDisplaySheet(context)),
+                  ScriptChip(onTap: () => showDisplaySheet(context)),
                   for (final id in s.quickTranslations)
                     OvChip(repo.translationById(id).englishName,
                         selected: s.show != ShowMode.arabic && s.translationId == id, onTap: () => s.setTranslation(id)),
                   OvChip('Arabic only', selected: s.show == ShowMode.arabic, onTap: () => s.update((x) => x.show = ShowMode.arabic)),
-                  OvChip('More', onTap: () => showTranslationSheet(context)),
+                  PickerChip(label: 'All translations', icon: Icons.translate_rounded, onTap: () => showTranslationSheet(context)),
                 ]),
                 const SizedBox(height: 22),
                 const _Lyric(),
@@ -217,6 +217,16 @@ class NowPlayingScreen extends StatelessWidget {
                   ],
                 ]),
                 const Label('Up next'),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: s.autoNext,
+                  activeTrackColor: c.gold,
+                  onChanged: (v) => s.update((x) => x.autoNext = v),
+                  title: Text('Play the next surah', style: T.ui(14, w: FontWeight.w600, color: c.fg)),
+                  subtitle: Text(
+                      pb.surah < 114 ? 'When ${pb.info.nameEn} ends, ${repo.surah(pb.surah + 1).nameEn} starts by itself' : 'An-Nas is the last surah',
+                      style: T.ui(12, color: c.fg3)),
+                ),
                 const _UpNext(),
               ]),
             ),
@@ -227,44 +237,65 @@ class NowPlayingScreen extends StatelessWidget {
   }
 }
 
-class _Seek extends StatelessWidget {
+/// The player bar: time across the whole surah. Each ayah card in the reader
+/// shows the ayah's own progress.
+class _Seek extends StatefulWidget {
   const _Seek();
+  @override
+  State<_Seek> createState() => _SeekState();
+}
+
+class _SeekState extends State<_Seek> {
+  double? _drag;
+
   @override
   Widget build(BuildContext context) {
     final c = context.ov;
     final pb = context.read<Playback>();
     final s = context.watch<Settings>();
-    return Column(children: [
-      ValueListenableBuilder<double>(
-        valueListenable: pb.ayahProgress,
-        builder: (_, v, _) => SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            trackHeight: 5,
-            activeTrackColor: c.fg,
-            thumbColor: c.fg,
-            inactiveTrackColor: c.line2,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-            overlayShape: SliderComponentShape.noOverlay,
-          ),
-          child: Slider(value: v.clamp(0, 1), onChanged: s.listenMode == ListenMode.arabicTranslation ? null : pb.seekWithinAyah),
-        ),
-      ),
-      const SizedBox(height: 8),
-      ValueListenableBuilder<Duration>(
-        valueListenable: pb.ayahPosition,
-        builder: (_, p, _) => Row(children: [
-          Text(fmtDur(p), style: T.ui(11.5, color: c.fg3)),
-          Expanded(
-            child: Text(
-              s.listenMode == ListenMode.arabicTranslation ? (pb.phase == Phase.translation ? 'Translation' : 'Arabic') : '',
-              textAlign: TextAlign.center,
-              style: T.ui(11.5, w: FontWeight.w600, color: c.fg3),
+    return ValueListenableBuilder<Duration>(
+      valueListenable: pb.surahLength,
+      builder: (_, len, _) => ValueListenableBuilder<Duration>(
+        valueListenable: pb.surahPosition,
+        builder: (_, pos, _) {
+          final total = len.inMilliseconds;
+          final v = _drag ?? (total > 0 ? pos.inMilliseconds / total : 0.0);
+          final shown = _drag != null ? Duration(milliseconds: (_drag! * total).round()) : pos;
+          return Column(children: [
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 5,
+                activeTrackColor: c.fg,
+                thumbColor: c.fg,
+                inactiveTrackColor: c.line2,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                overlayShape: SliderComponentShape.noOverlay,
+              ),
+              child: Slider(
+                value: v.clamp(0.0, 1.0),
+                onChanged: total == 0 ? null : (x) => setState(() => _drag = x),
+                onChangeEnd: (x) async {
+                  await pb.seekInSurah(Duration(milliseconds: (x * total).round()));
+                  if (mounted) setState(() => _drag = null);
+                },
+              ),
             ),
-          ),
-          Text('-${fmtDur(pb.ayahLength.value - p)}', style: T.ui(11.5, color: c.fg3)),
-        ]),
+            const SizedBox(height: 8),
+            Row(children: [
+              Text(fmtDur(shown), style: T.ui(11.5, color: c.fg3)),
+              Expanded(
+                child: Text(
+                  s.listenMode == ListenMode.arabicTranslation ? (pb.phase == Phase.translation ? 'Translation' : 'Arabic') : '',
+                  textAlign: TextAlign.center,
+                  style: T.ui(11.5, w: FontWeight.w600, color: c.fg3),
+                ),
+              ),
+              Text('-${fmtDur(len - shown)}', style: T.ui(11.5, color: c.fg3)),
+            ]),
+          ]);
+        },
       ),
-    ]);
+    );
   }
 }
 

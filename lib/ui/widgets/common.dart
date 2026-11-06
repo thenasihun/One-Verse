@@ -9,6 +9,7 @@ import '../../core/theme.dart';
 import '../../data/models.dart';
 import '../../data/offline_sync.dart';
 import '../../data/repository.dart';
+import '../../state/settings.dart';
 
 const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
 String arNum(int n) => n.toString().split('').map((d) => arabicDigits[int.parse(d)]).join();
@@ -171,6 +172,49 @@ class _Monogram extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(gradient: LinearGradient(colors: c, begin: Alignment.topLeft, end: Alignment.bottomRight)),
       child: Center(child: Text(r.initials, style: T.display(size * 0.3, w: FontWeight.w700, color: Colors.white))),
+    );
+  }
+}
+
+/// Opens the script sheet. Always reads "Script", with the chosen one beside
+/// it, so it is clear what the button changes.
+class ScriptChip extends StatelessWidget {
+  final VoidCallback onTap;
+  const ScriptChip({super.key, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) =>
+      PickerChip(label: 'Script', icon: Icons.menu_book_rounded, value: context.watch<Settings>().script.short, onTap: onTap);
+}
+
+/// A gold chip that opens a picker: its name, then the current choice.
+class PickerChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final String? value;
+  final VoidCallback onTap;
+  const PickerChip({super.key, required this.label, required this.icon, this.value, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    return Material(
+      color: c.goldWash,
+      shape: StadiumBorder(side: BorderSide(color: c.gold.withValues(alpha: 0.4))),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 15, color: c.gold),
+            const SizedBox(width: 6),
+            Text(label, style: T.ui(13, w: FontWeight.w700, color: c.gold)),
+            if (value != null) ...[const SizedBox(width: 6), Text(value!, style: T.ui(12, w: FontWeight.w600, color: c.fg2))],
+            Icon(Icons.expand_more_rounded, size: 16, color: c.gold),
+          ]),
+        ),
+      ),
     );
   }
 }

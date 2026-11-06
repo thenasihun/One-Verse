@@ -39,7 +39,33 @@ const translationVoices = <Reciter>[
   Reciter(id: 'fa.hedayatfarfooladvand', name: 'Fooladvand', initials: 'FA', style: 'Translation', ayahEdition: 'fa.hedayatfarfooladvand', language: 'Persian', textEdition: 'fa.fooladvand'),
   Reciter(id: 'zh.chinese', name: 'Chinese', initials: 'ZH', style: 'Translation', ayahEdition: 'zh.chinese', language: 'Chinese', textEdition: 'zh.jian'),
   Reciter(id: 'uz.sodik-audio', name: 'Muhammad Sodik', initials: 'UZ', style: 'Translation', ayahEdition: 'uz.sodik-audio', language: 'Uzbek', textEdition: 'uz.sodik'),
+  Reciter(id: 'tr.vakfi-audio', name: 'Diyanet Vakfı', initials: 'TR', style: 'Translation', ayahEdition: 'tr.vakfi-audio', language: 'Turkish', textEdition: 'tr.vakfi'),
 ];
+
+/// Language code of a translation id such as `ur.jalandhry`.
+String languageOf(String translationId) => translationId.split('.').first;
+
+/// The translation voice that reads [translationId] word for word, if any.
+Reciter? exactVoiceFor(String translationId) {
+  for (final v in translationVoices) {
+    if (v.textEdition == translationId) return v;
+  }
+  return null;
+}
+
+/// The voice to hear with [translationId]: the one reading that very
+/// translation, else another translation in the same language.
+Reciter? voiceFor(String translationId) {
+  return exactVoiceFor(translationId) ?? voiceForLanguage(languageOf(translationId));
+}
+
+/// A translation voice in language [lang] (`ur`, `en`…), if any.
+Reciter? voiceForLanguage(String lang) {
+  for (final v in translationVoices) {
+    if (languageOf(v.textEdition!) == lang) return v;
+  }
+  return null;
+}
 
 Reciter reciterById(String? id) =>
     [...reciters, ...translationVoices].firstWhere((r) => r.id == id, orElse: () => reciters.first);
