@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family: Bricolage; font-weight: 800; src: url(../../assets/fonts/BricolageGrotesque-800.ttf); }
+@font-face { font-family: Bricolage; font-weight: 700; src: url(../../assets/fonts/BricolageGrotesque-700.ttf); }
+@font-face { font-family: Figtree; font-weight: 600; src: url(../../assets/fonts/Figtree-600.ttf); }
+@font-face { font-family: Figtree; font-weight: 500; src: url(../../assets/fonts/Figtree-500.ttf); }
+html, body { margin: 0; }
+body { width: 1800px; background: #EEF3F0; font-family: Figtree; color: #0A1F18; }
+.wrap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; padding: 40px; }
+.card { background: #fff; border-radius: 28px; padding: 28px; box-shadow: 0 10px 30px rgba(6,40,30,.08); }
+.tag { font: 600 13px Figtree; letter-spacing: 2px; color: #9E7A12; }
+h2 { margin: 6px 0 4px; font: 800 30px Bricolage; letter-spacing: -.6px; }
+p { margin: 0 0 18px; font: 500 15px/1.45 Figtree; color: #4B6158; }
+.hero { display: grid; place-items: center; background: #060D0B; border-radius: 22px; padding: 34px 0; }
+.row { display: flex; align-items: center; gap: 18px; margin-top: 18px; }
+.lock { display: flex; align-items: center; gap: 14px; margin-top: 18px; padding: 16px 18px; border-radius: 18px; background: #060D0B; }
+.lock b { font: 800 30px Bricolage; color: #EAF2EE; letter-spacing: -.6px; }
+.lock.light { background: #F2F6F4; }
+.lock.light b { color: #0A1F18; }
+.small { display: flex; align-items: flex-end; gap: 14px; }
+.home { display: flex; gap: 10px; padding: 14px; border-radius: 18px; background: linear-gradient(160deg, #3b5a7a, #1d2b3a); }
+.home div { width: 48px; height: 48px; border-radius: 12px; background: rgba(255,255,255,.25); }
+.note { font: 600 12px Figtree; color: #7A8E86; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0E5A43"/><stop offset="1" stop-color="#04150F"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F6DE86"/><stop offset=".55" stop-color="#E2BE4F"/><stop offset="1" stop-color="#B98A22"/></linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".42" r=".6"><stop offset="0" stop-color="#22A87D" stop-opacity=".45"/><stop offset="1" stop-color="#22A87D" stop-opacity="0"/></radialGradient>
+
+    <!-- A · Ayah seal: the verse-end rosette holding the Arabic one -->
+    <g id="sealMark">
+      <path d="M0,-80 L22.9,-55.4 L56.6,-56.6 L55.4,-22.9 L80,0 L55.4,22.9 L56.6,56.6 L22.9,55.4 L0,80 L-22.9,55.4 L-56.6,56.6 L-55.4,22.9 L-80,0 L-55.4,-22.9 L-56.6,-56.6 L-22.9,-55.4 Z"
+            fill="none" stroke="url(#gold)" stroke-width="8" stroke-linejoin="round"/>
+      <circle r="47" fill="none" stroke="url(#gold)" stroke-width="5"/>
+      <path transform="rotate(-9)" d="M-2,-33 C5,-31 9,-27 9,-21 L5,29 C4.6,33.5 -4.6,33.5 -5,29 L-8.5,-21 C-8.5,-28 -6,-32 -2,-33 Z" fill="url(#gold)"/>
+    </g>
+
+    <!-- B · Verse wave: an open mushaf with the recitation rising from it -->
+    <g id="waveMark">
+      <path d="M-82,22 C-55,6 -22,8 0,26 C22,8 55,6 82,22 L82,40 C55,24 22,26 0,44 C-22,26 -55,24 -82,40 Z" fill="url(#gold)"/>
+      <g fill="url(#gold)">
+        <rect x="-6" y="-62" width="12" height="74" rx="6"/>
+        <rect x="-26" y="-40" width="12" height="52" rx="6"/>
+        <rect x="14" y="-40" width="12" height="52" rx="6"/>
+        <rect x="-46" y="-20" width="12" height="32" rx="6"/>
+        <rect x="34" y="-20" width="12" height="32" rx="6"/>
+        <rect x="-66" y="-4" width="12" height="16" rx="6"/>
+        <rect x="54" y="-4" width="12" height="16" rx="6"/>
+      </g>
+    </g>
+
+    <!-- C · Play star: Rub el Hizb with a play triangle -->
+    <g id="starMark">
+      <rect x="-56" y="-56" width="112" height="112" rx="10" fill="none" stroke="url(#gold)" stroke-width="8"/>
+      <rect x="-56" y="-56" width="112" height="112" rx="10" fill="none" stroke="url(#gold)" stroke-width="8" transform="rotate(45)"/>
+      <path d="M-14,-24 Q-14,-30 -9,-27.5 L24,-4 Q28,0 24,4 L-9,27.5 Q-14,30 -14,24 Z" fill="url(#gold)"/>
+    </g>
+  </defs>
+</svg>
+
+<div class="wrap" id="wrap"></div>
+<script>
+const concepts = [
+  ['A · RECOMMENDED', 'Ayah Seal', 'The verse-end ornament with the Arabic one (١) inside: literally “one verse”. It is a sign every Quran reader knows, and still reads at 32 px.', 'sealMark'],
+  ['B', 'Verse Wave', 'An open mushaf with the recitation rising from it as sound: reading and listening in one mark.', 'waveMark'],
+  ['C', 'Play Star', 'The eight-pointed Rub el Hizb star with a play button inside: the Quran, to listen to.', 'starMark'],
+];
+const icon = (mark, size, round = .225) => `<svg width="${size}" height="${size}" viewBox="-128 -128 256 256">
+  <rect x="-128" y="-128" width="256" height="256" rx="${256 * round}" fill="url(#bg)"/>
+  <rect x="-128" y="-128" width="256" height="256" rx="${256 * round}" fill="url(#glow)"/>
+  <use href="#${mark}" transform="scale(1.05)"/></svg>`;
+const bare = (mark, size, color) => `<svg width="${size}" height="${size}" viewBox="-100 -100 200 200"><use href="#${mark}"/></svg>`;
+document.getElementById('wrap').innerHTML = concepts.map(([tag, name, text, mark]) => `
+  <div class="card">
+    <div class="tag">${tag}</div><h2>${name}</h2><p>${text}</p>
+    <div class="hero">${icon(mark, 280)}</div>
+    <div class="row">
+      <div class="small">${icon(mark, 96)}${icon(mark, 64)}${icon(mark, 48)}${icon(mark, 32)}${icon(mark, 64, .5)}</div>
+    </div>
+    <div class="note" style="margin-top:8px">96 · 64 · 48 · 32 px · round (Android adaptive)</div>
+    <div class="lock">${bare(mark, 54)}<b>One Verse</b></div>
+    <div class="lock light"><svg width="54" height="54" viewBox="-128 -128 256 256"><rect x="-128" y="-128" width="256" height="256" rx="58" fill="url(#bg)"/><use href="#${mark}" transform="scale(1.05)"/></svg><b>One Verse</b></div>
+  </div>`).join('');
+for (const [, , , mark] of concepts) {
+  const d = document.createElement('div');
+  d.id = 'big-' + mark;
+  d.style.cssText = 'width:1024px;height:1024px;position:absolute;left:-3000px;top:0';
+  d.innerHTML = icon(mark, 1024);
+  document.body.appendChild(d);
+}
+document.fonts.ready.then(() => setTimeout(() => document.body.dataset.ready = '1', 200));
+</script>
+</body>
+</html>
