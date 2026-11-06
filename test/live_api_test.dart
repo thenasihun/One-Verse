@@ -5,6 +5,7 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oneverse/data/cache_store_memory.dart';
 import 'package:oneverse/data/catalog.dart';
+import 'package:oneverse/data/downloads.dart';
 import 'package:oneverse/data/models.dart';
 import 'package:oneverse/data/repository.dart';
 
@@ -69,6 +70,20 @@ void main() {
         expect(exact / verses.length, greaterThan(0.85), reason: '${r.id} $n word positions match the text');
       }
     }
+  });
+
+  test('size of the complete Quran for each kind of reciter', () async {
+    final dl = Downloads(repo);
+    final sizes = {
+      for (final id in ['ar.alafasy', 'ar.mahermuaiqly', 'ov.luhaidan', 'ar.husarymujawwad', 'ar.muhammadayyoub'])
+        id: await dl.estimateQuranBytes(reciterById(id)),
+    };
+    for (final e in sizes.entries) {
+      expect(e.value, inInclusiveRange(4e8, 4e9), reason: '${e.key}: ${e.value}');
+    }
+    expect(sizes['ar.alafasy'], inInclusiveRange(1.6e9, 1.9e9), reason: 'exact Quran.com file sizes');
+    final withUrdu = await dl.estimateQuranBytes(reciterById('ar.alafasy'), voice: reciterById('ur.khan'));
+    expect(withUrdu! - sizes['ar.alafasy']!, inInclusiveRange(1e8, 1.5e9));
   });
 
   test('QuranHub reciter photos and bios', () async {

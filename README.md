@@ -73,7 +73,10 @@ Android. See [docs/quran-scripts-and-fonts.md](docs/quran-scripts-and-fonts.md).
   - your translation
   - the word timings for your reciter
 - On Wi-Fi, anything older than 3 days refreshes in the background, so the 30-day window keeps moving forward.
-- Any surah's recitation can be downloaded.
+- **Download the complete Quran** with one tap, or any single surah.
+  - The size is shown before starting.
+  - Pause and resume any time. It waits for Wi-Fi, carries on after the app is closed, and shows its progress in a
+    notification.
 - Close the app or restart the phone, and One Verse opens on the same ayah with the same settings.
 
 ---

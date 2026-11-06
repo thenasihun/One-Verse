@@ -53,7 +53,7 @@ class AppServices {
     await settings.load();
     final repo = QuranRepository();
     await repo.init();
-    final downloads = Downloads(repo);
+    final downloads = Downloads(repo)..onQuranProgress = Reminders.instance.showDownloadProgress;
     await downloads.init();
     final sync = OfflineSync(repo, translationId: settings.translationId, reciterId: settings.reciterId);
     await sync.init();

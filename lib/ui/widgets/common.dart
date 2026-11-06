@@ -233,7 +233,7 @@ class GoldButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
             if (icon != null) ...[Icon(icon, color: c.goldInk, size: 22), const SizedBox(width: 8)],
-            Text(label, style: T.ui(15, w: FontWeight.w700, color: c.goldInk)),
+            Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(15, w: FontWeight.w700, color: c.goldInk))),
           ]),
         ),
       ),
@@ -262,7 +262,7 @@ class GhostButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 18),
           child: Row(mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
             if (icon != null) ...[Icon(icon, size: 20, color: color ?? c.fg), const SizedBox(width: 8)],
-            Text(label, style: T.ui(14, w: FontWeight.w600, color: color ?? c.fg)),
+            Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(14, w: FontWeight.w600, color: color ?? c.fg))),
           ]),
         ),
       ),

@@ -8,6 +8,7 @@ import 'api.dart';
 import 'cache_store.dart';
 import 'catalog.dart';
 import 'models.dart';
+import 'network.dart';
 import 'repository.dart';
 
 /// One downloaded surah.
@@ -34,13 +35,33 @@ class DownloadJob {
   DownloadJob(this.surah);
 }
 
+/// What "Download complete Quran" saves: every surah with one reciter.
+class QuranPlan {
+  final String reciterId;
+  final List<String> translations;
+  final String? voiceId;
+  final bool wifiOnly;
+  const QuranPlan(this.reciterId, this.translations, this.voiceId, {this.wifiOnly = true});
+
+  Map<String, dynamic> toJson() => {'r': reciterId, 't': translations, 'v': voiceId, 'w': wifiOnly};
+  factory QuranPlan.fromJson(Map j) =>
+      QuranPlan(j['r'] as String, List<String>.from(j['t'] as List), j['v'] as String?, wifiOnly: j['w'] as bool? ?? true);
+}
+
+enum QuranState { idle, running, waitingForNetwork, paused, done }
+
 /// Saves recitations, text in every script and the chosen translations so a
 /// surah plays and reads with no connection.
 class Downloads extends ChangeNotifier {
-  Downloads(this.repo);
+  Downloads(this.repo, {NetworkStatus? net}) : net = net ?? NetworkStatus.instance;
   final QuranRepository repo;
+  final NetworkStatus net;
   final Map<String, DownloadRecord> _records = {};
   final Map<int, DownloadJob> jobs = {};
+
+  /// Called while the complete Quran downloads (surahs done, the surah in
+  /// progress) and with null when it stops, to show a progress notification.
+  void Function(int done, String? current)? onQuranProgress;
 
   bool get supported => !kIsWeb && repo.store.filesRoot != null;
   Iterable<DownloadRecord> get records => _records.values;
@@ -60,6 +81,16 @@ class Downloads extends ChangeNotifier {
         _records['${r.surah}_${r.reciterId}'] = r;
       }
     }
+    final plan = await repo.store.read(_planKey);
+    if (supported && plan?.data is Map) {
+      quranPlan = QuranPlan.fromJson(plan!.data as Map);
+      quranState = quranDone >= 114 ? QuranState.done : QuranState.paused;
+      // It was stopped by the app closing, not by the user: carry on.
+      if ((plan.data as Map)['active'] == true && quranState != QuranState.done) {
+        unawaited(Future.delayed(const Duration(seconds: 6), resumeQuran));
+      }
+    }
+    net.addListener(_onNetwork);
     notifyListeners();
   }
 
@@ -107,19 +138,12 @@ class Downloads extends ChangeNotifier {
         bytes += await _fetch(timing.audioUrl, '${_audioDir(reciter.id)}/$surah.mp3', job, 0.15, voice == null ? 1 : 0.7);
       } else if (reciter.ayahEdition != null) {
         final urls = await repo.ayahAudio(reciter.ayahEdition!, surah);
-        for (var i = 0; i < urls.length; i++) {
-          job.step.value = 'Recitation · ayah ${i + 1} of $count';
-          bytes += await _fetch(urls[i], '${_audioDir(reciter.ayahEdition!)}/$surah/${i + 1}.mp3', job,
-              0.15 + (voice == null ? 0.85 : 0.55) * i / urls.length, 0.15 + (voice == null ? 0.85 : 0.55) * (i + 1) / urls.length);
-        }
+        bytes += await _fetchAyahs(urls, _audioDir(reciter.ayahEdition!), surah, job, 0.15, voice == null ? 1 : 0.7,
+            (i) => 'Recitation · ayah $i of $count');
       }
       if (voice?.ayahEdition != null) {
         final urls = await repo.ayahAudio(voice!.ayahEdition!, surah);
-        for (var i = 0; i < urls.length; i++) {
-          job.step.value = 'Translation audio · ayah ${i + 1} of $count';
-          bytes += await _fetch(urls[i], '${_audioDir(voice.ayahEdition!)}/$surah/${i + 1}.mp3', job,
-              0.7 + 0.3 * i / urls.length, 0.7 + 0.3 * (i + 1) / urls.length);
-        }
+        bytes += await _fetchAyahs(urls, _audioDir(voice.ayahEdition!), surah, job, 0.7, 1, (i) => 'Translation audio · ayah $i of $count');
       }
       final rec = DownloadRecord(surah, reciter.id, translations, voice?.id, bytes, DateTime.now());
       _records['${surah}_${reciter.id}'] = rec;
@@ -148,7 +172,239 @@ class Downloads extends ChangeNotifier {
     return File(path).length();
   }
 
+  /// Ayah files, a few at a time; progress counts finished files.
+  Future<int> _fetchAyahs(List<String> urls, String dir, int surah, DownloadJob job, double from, double to,
+      String Function(int done) step) async {
+    var next = 0, done = 0, bytes = 0;
+    Future<void> worker() async {
+      while (next < urls.length) {
+        final i = next++;
+        // Await first: `bytes += await …` would read bytes before the await and
+        // lose what the other workers added meanwhile.
+        final n = await _fetch(urls[i], '$dir/$surah/${i + 1}.mp3', job, job.progress.value, job.progress.value);
+        bytes += n;
+        done++;
+        job.step.value = step(done);
+        job.progress.value = from + (to - from) * done / urls.length;
+      }
+    }
+
+    await Future.wait([for (var w = 0; w < 4; w++) worker()]);
+    return bytes;
+  }
+
   void cancel(int surah) => jobs[surah]?.cancel.cancel();
+
+  // ---------------------------------------------------------------- complete Quran
+
+  static const _planKey = 'quran_download';
+  QuranPlan? quranPlan;
+  QuranState quranState = QuranState.idle;
+  int? quranCurrent;
+  String? quranError;
+  final Set<int> quranFailed = {};
+  bool _stop = false;
+  Future<void>? _run;
+
+  /// First wait before retrying a surah that failed; doubles each attempt.
+  @visibleForTesting
+  Duration retryDelay = const Duration(seconds: 2);
+
+  /// Completes when the complete-Quran run in progress has stopped.
+  @visibleForTesting
+  Future<void> get quranIdle => _run ?? Future.value();
+
+  @visibleForTesting
+  void debugAddRecord(DownloadRecord r) => _records['${r.surah}_${r.reciterId}'] = r;
+
+  /// Surahs of the plan's reciter that are fully saved.
+  int get quranDone => quranPlan == null ? 0 : _quranRecords(quranPlan!).length;
+
+  int get quranBytes => _quranRecords(quranPlan).fold(0, (t, r) => t + r.bytes);
+
+  Iterable<DownloadRecord> _quranRecords(QuranPlan? p) =>
+      p == null ? const [] : _records.values.where((r) => r.reciterId == p.reciterId && (p.voiceId == null || r.voiceId == p.voiceId));
+
+  /// Reciters with all 114 surahs saved.
+  Set<String> get completeReciters {
+    final count = <String, int>{};
+    for (final r in _records.values) {
+      count[r.reciterId] = (count[r.reciterId] ?? 0) + 1;
+    }
+    return {for (final e in count.entries) if (e.value >= 114) e.key};
+  }
+
+  bool _networkAllows(QuranPlan p) => p.wifiOnly ? net.unmetered : net.online;
+
+  /// Starts (or restarts with new options) the complete Quran download.
+  Future<void> startQuran(QuranPlan plan) async {
+    if (!supported) return;
+    if (_run != null) await pauseQuran();
+    quranPlan = plan;
+    quranFailed.clear();
+    quranError = null;
+    await resumeQuran();
+  }
+
+  Future<void> resumeQuran({bool allowMobileData = false}) async {
+    final p = quranPlan;
+    if (p == null || _run != null || !supported) return;
+    if (allowMobileData && p.wifiOnly) quranPlan = QuranPlan(p.reciterId, p.translations, p.voiceId, wifiOnly: false);
+    quranError = null;
+    _stop = false;
+    await _savePlan(active: true);
+    _run = _runQuran().whenComplete(() => _run = null);
+  }
+
+  /// Stops after cancelling the surah in progress; what is saved stays.
+  Future<void> pauseQuran() async {
+    _stop = true;
+    final n = quranCurrent;
+    if (n != null) cancel(n);
+    await _run;
+    if (quranPlan != null && quranState != QuranState.done) quranState = QuranState.paused;
+    await _savePlan(active: false);
+    notifyListeners();
+  }
+
+  /// Stops and forgets the plan. Surahs already saved stay downloaded.
+  Future<void> cancelQuran() async {
+    await pauseQuran();
+    quranPlan = null;
+    quranState = QuranState.idle;
+    quranFailed.clear();
+    await repo.store.delete(_planKey);
+    notifyListeners();
+  }
+
+  Future<void> _savePlan({required bool active}) async {
+    final p = quranPlan;
+    if (p != null) await repo.store.write(_planKey, {...p.toJson(), 'active': active});
+  }
+
+  void _onNetwork() {
+    final p = quranPlan;
+    if (p == null) return;
+    if (quranState == QuranState.running && !_networkAllows(p)) {
+      final n = quranCurrent;
+      if (n != null) cancel(n);
+    } else if (quranState == QuranState.waitingForNetwork && _networkAllows(p) && _run == null) {
+      resumeQuran();
+    }
+  }
+
+  Future<void> _runQuran() async {
+    final p = quranPlan!;
+    final reciter = reciterById(p.reciterId);
+    final voice = p.voiceId == null ? null : reciterById(p.voiceId);
+    quranState = QuranState.running;
+    notifyListeners();
+    for (var n = 1; n <= 114 && !_stop; n++) {
+      final have = recordFor(n, p.reciterId);
+      if (have != null && (voice == null || have.voiceId == voice.id)) continue;
+      if (!_networkAllows(p)) {
+        quranState = QuranState.waitingForNetwork;
+        break;
+      }
+      quranCurrent = n;
+      onQuranProgress?.call(quranDone, repo.surah(n).nameEn);
+      notifyListeners();
+      var ok = false;
+      for (var attempt = 0; attempt < 3 && !ok && !_stop && _networkAllows(p); attempt++) {
+        try {
+          ok = await download(surah: n, reciter: reciter, translations: p.translations, voice: voice) != null;
+        } on DioException catch (e) {
+          if (e.type == DioExceptionType.cancel) break;
+          await Future.delayed(retryDelay * (1 << attempt));
+        } on FileSystemException catch (e) {
+          quranError = 'Not enough storage on this device (${e.osError?.message ?? e.message}).';
+          _stop = true;
+        } catch (_) {
+          await Future.delayed(retryDelay * (1 << attempt));
+        }
+      }
+      if (!ok && !_stop && _networkAllows(p)) quranFailed.add(n);
+      if (ok) quranFailed.remove(n);
+      if (!_networkAllows(p)) {
+        quranState = QuranState.waitingForNetwork;
+        break;
+      }
+    }
+    quranCurrent = null;
+    if (quranState == QuranState.running) {
+      quranState = _stop ? QuranState.paused : quranDone >= 114 ? QuranState.done : QuranState.paused;
+      if (quranState == QuranState.paused && !_stop && quranFailed.isNotEmpty) {
+        quranError = '${quranFailed.length} surah${quranFailed.length == 1 ? '' : 's'} could not be downloaded. Tap Resume to try again.';
+      }
+    }
+    await _savePlan(active: quranState == QuranState.waitingForNetwork);
+    onQuranProgress?.call(quranDone, null);
+    notifyListeners();
+  }
+
+  /// Bytes of the whole Quran for [r], and for the translation voice when
+  /// given: exact for Quran.com recitations, otherwise measured on Surah
+  /// Ya-Sin and scaled to the whole Quran.
+  Future<int?> estimateQuranBytes(Reciter r, {Reciter? voice}) async {
+    final key = '${r.id}|${voice?.id}';
+    final cached = _estimates[key];
+    if (cached != null) return cached;
+    try {
+      var total = await _estimateFor(r);
+      if (voice != null) total += await _estimateFor(voice, ayahOnly: true);
+      return _estimates[key] = total;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  final Map<String, int> _estimates = {};
+
+  /// Surah Ya-Sin is about 1/101 of the whole Quran's recitation time.
+  static const _yasinShare = 101.5;
+
+  Future<int> _estimateFor(Reciter r, {bool ayahOnly = false}) async {
+    final t = r.timing;
+    if (!ayahOnly && t != null && t.kind == TimingKind.qdc) {
+      final d = await repo.api.getJson('${Endpoints.qdc}/audio/reciters/${t.qdcId}/audio_files');
+      return [for (final f in d['audio_files'] as List) (f['file_size'] as num? ?? 0).toInt()].fold<int>(0, (a, b) => a + b);
+    }
+    if (!ayahOnly && t != null) {
+      final timing = await repo.timing(r, 36);
+      if (timing != null) return ((await _headSize(timing.audioUrl)) * _yasinShare).round();
+    }
+    final urls = await repo.ayahAudio(r.ayahEdition!, 36);
+    var sum = 0, next = 0;
+    Future<void> worker() async {
+      while (next < urls.length) {
+        final n = await _headSize(urls[next++]);
+        sum += n;
+      }
+    }
+
+    await Future.wait([for (var w = 0; w < 6; w++) worker()]);
+    return (sum * _yasinShare).round();
+  }
+
+  /// File size from a HEAD request, or from a one-byte range request when the
+  /// server leaves the length out of HEAD replies.
+  Future<int> _headSize(String url) async {
+    final plain = Options(headers: {'accept-encoding': 'identity'});
+    final r = await repo.api.dio.head<void>(url, options: plain);
+    final n = int.tryParse(r.headers.value(Headers.contentLengthHeader) ?? '') ?? 0;
+    if (n > 0) return n;
+    final g = await repo.api.dio.get<List<int>>(url,
+        options: Options(headers: {'accept-encoding': 'identity', 'range': 'bytes=0-0'}, responseType: ResponseType.bytes));
+    return int.tryParse((g.headers.value('content-range') ?? '').split('/').last) ?? 0;
+  }
+
+  /// Removes every saved surah of one reciter.
+  Future<void> removeReciter(String reciterId) async {
+    if (quranPlan?.reciterId == reciterId) await cancelQuran();
+    for (final r in _records.values.where((r) => r.reciterId == reciterId).toList()) {
+      await remove(r);
+    }
+  }
 
   Future<void> remove(DownloadRecord r) async {
     final reciter = reciterById(r.reciterId);

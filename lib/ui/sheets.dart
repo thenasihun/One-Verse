@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../data/catalog.dart';
 import '../data/downloads.dart';
 import '../data/models.dart';
+import '../data/network.dart';
 import '../data/repository.dart';
 import '../state/playback.dart';
 import '../state/settings.dart';
@@ -451,38 +452,8 @@ class _DownloadSheetState extends State<_DownloadSheet> {
     final r = s.reciter;
     final estimate = info.ayahs * 0.3 + (voice ? info.ayahs * 0.2 : 0) + 0.05 * (texts.length + 1);
 
-    Widget row(String title, String sub, {bool on = true, String? lock, VoidCallback? onTap}) => InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Row(children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(title, style: T.ui(14.5, w: FontWeight.w600, color: c.fg)),
-                  Text(sub, style: T.ui(12.5, color: c.fg3)),
-                ]),
-              ),
-              if (lock != null)
-                Container(
-                  margin: const EdgeInsets.only(right: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: c.emeraldWash, borderRadius: BorderRadius.circular(99)),
-                  child: Text(lock.toUpperCase(), style: T.ui(10, w: FontWeight.w800, color: c.emerald)),
-                ),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: on ? c.gold : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: on ? c.gold : c.line2, width: 2),
-                ),
-                child: on ? Icon(Icons.check_rounded, size: 15, color: c.goldInk) : null,
-              ),
-            ]),
-          ),
-        );
+    Widget row(String title, String sub, {bool on = true, String? lock, VoidCallback? onTap}) =>
+        _OptionRow(title, sub, on: on, lock: lock, onTap: onTap);
 
     if (done != null && job == null) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -543,6 +514,195 @@ class _DownloadSheetState extends State<_DownloadSheet> {
             if (context.mounted) toast(context, 'Download stopped. ${e is Exception ? 'Check your connection.' : ''}');
           }
         }),
+      if (job == null)
+        TextButton.icon(
+          onPressed: () {
+            final nav = Navigator.of(context);
+            nav.pop();
+            showQuranDownloadSheet(nav.context);
+          },
+          icon: Icon(Icons.library_books_rounded, size: 18, color: c.gold),
+          label: Text('Download the complete Quran instead', style: T.ui(13.5, w: FontWeight.w700, color: c.gold)),
+        ),
+    ]);
+  }
+}
+
+/// A row with a checkbox, or a badge such as "Included", in download sheets.
+class _OptionRow extends StatelessWidget {
+  final String title, sub;
+  final bool on;
+  final String? lock;
+  final VoidCallback? onTap;
+  const _OptionRow(this.title, this.sub, {this.on = true, this.lock, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: T.ui(14.5, w: FontWeight.w600, color: c.fg)),
+              Text(sub, style: T.ui(12.5, color: c.fg3)),
+            ]),
+          ),
+          if (lock != null)
+            Container(
+              margin: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(color: c.emeraldWash, borderRadius: BorderRadius.circular(99)),
+              child: Text(lock!.toUpperCase(), style: T.ui(10, w: FontWeight.w800, color: c.emerald)),
+            ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: on ? c.gold : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: on ? c.gold : c.line2, width: 2),
+            ),
+            child: on ? Icon(Icons.check_rounded, size: 15, color: c.goldInk) : null,
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ------------------------------------------------------------------ complete Quran
+
+void showQuranDownloadSheet(BuildContext context) {
+  if (!context.read<Downloads>().supported) {
+    toast(context, 'Downloads are available in the Android and iOS app');
+    return;
+  }
+  showOvSheet(context, title: 'Download the complete Quran', builder: (_) => const _QuranDownloadSheet());
+}
+
+class _QuranDownloadSheet extends StatefulWidget {
+  const _QuranDownloadSheet();
+  @override
+  State<_QuranDownloadSheet> createState() => _QuranDownloadSheetState();
+}
+
+class _QuranDownloadSheetState extends State<_QuranDownloadSheet> {
+  late bool voice;
+  bool wifiOnly = true;
+  String? _sizeKey;
+  Future<int?>? _size;
+
+  @override
+  void initState() {
+    super.initState();
+    voice = context.read<Settings>().listenMode != ListenMode.arabic;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    final s = context.watch<Settings>();
+    final dl = context.watch<Downloads>();
+    final net = context.watch<NetworkStatus>();
+    final repo = context.read<QuranRepository>();
+    final r = s.reciter;
+    final v = s.translationVoice;
+    final key = '${r.id}|${voice ? v.id : ''}';
+    if (key != _sizeKey) {
+      _sizeKey = key;
+      _size = dl.estimateQuranBytes(r, voice: voice ? v : null);
+    }
+    final saved = dl.records.where((x) => x.reciterId == r.id).length;
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Art(
+        seed: 'quran',
+        radius: BorderRadius.circular(20),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 112),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text('114 surahs · 6,236 ayahs', style: T.display(20, color: Colors.white)),
+                  const SizedBox(height: 4),
+                  Text('Listen anywhere, with no internet', style: T.ui(13, color: Colors.white.withValues(alpha: 0.85))),
+                ]),
+              ),
+              const SizedBox(width: 10),
+              Text('القرآن', style: TextStyle(fontFamily: 'UthmanicHafs', fontSize: 40, color: Colors.white.withValues(alpha: 0.92))),
+            ]),
+          ),
+        ),
+      ),
+      const SizedBox(height: 14),
+      InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => showReciterSheet(context),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
+          child: Row(children: [
+            ReciterAvatar(r, size: 46),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(r.name, style: T.ui(15, w: FontWeight.w700, color: c.fg)),
+                Text(
+                    '${r.hasWordSync ? 'Full surahs with word timings' : 'Ayah by ayah'}${saved > 0 ? ' · $saved already saved' : ''}',
+                    style: T.ui(12.5, color: c.fg3)),
+              ]),
+            ),
+            Text('Change', style: T.ui(13.5, w: FontWeight.w700, color: c.gold)),
+          ]),
+        ),
+      ),
+      const SizedBox(height: 4),
+      _OptionRow('Quran text', 'All five scripts, so any script works offline', lock: 'Included'),
+      _OptionRow(repo.translationById(s.translationId).englishName, 'Translation text, all 114 surahs', lock: 'Included'),
+      _OptionRow('${v.name} · ${v.language}', 'Translation audio after each ayah', on: voice, onTap: () => setState(() => voice = !voice)),
+      _OptionRow('Wi-Fi only', 'Pauses on mobile data and carries on when Wi-Fi is back',
+          on: wifiOnly, onTap: () => setState(() => wifiOnly = !wifiOnly)),
+      const SizedBox(height: 6),
+      FutureBuilder<int?>(
+        future: _size,
+        builder: (_, snap) {
+          final b = snap.data;
+          final text = snap.connectionState != ConnectionState.done
+              ? 'Working out the size…'
+              : b == null
+                  ? 'Size unknown offline'
+                  : 'About ${fmtBytes(b)} · make sure your phone has room for it';
+          return Row(children: [
+            Icon(Icons.sd_storage_rounded, size: 18, color: c.fg3),
+            const SizedBox(width: 8),
+            Expanded(child: Text(text, style: T.ui(12.5, color: c.fg2))),
+          ]);
+        },
+      ),
+      const SizedBox(height: 6),
+      Text('Saved surahs are skipped. Pause any time; it carries on from where it stopped, even after the app is closed.',
+          style: T.ui(12, color: c.fg3, height: 1.4)),
+      const SizedBox(height: 14),
+      FutureBuilder<int?>(
+        future: _size,
+        builder: (_, snap) => GoldButton(
+          snap.data == null ? 'Download complete Quran' : 'Download · ${fmtBytes(snap.data!)}',
+          icon: Icons.download_for_offline_rounded,
+          expand: true,
+          onTap: () async {
+            await dl.startQuran(QuranPlan(r.id, [s.translationId], voice ? v.id : null, wifiOnly: wifiOnly));
+            if (!context.mounted) return;
+            Navigator.pop(context);
+            toast(context, wifiOnly && !net.unmetered ? 'Will download when you are on Wi-Fi' : 'Downloading the complete Quran');
+          },
+        ),
+      ),
     ]);
   }
 }

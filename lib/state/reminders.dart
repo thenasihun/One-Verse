@@ -94,6 +94,45 @@ class Reminders {
     iOS: DarwinNotificationDetails(),
   );
 
+  static const _downloadId = 900;
+
+  /// Progress of the complete Quran download in the notification shade
+  /// (Android). [current] is the surah downloading, or null when it stopped.
+  Future<void> showDownloadProgress(int done, String? current) async {
+    if (!_ready) return;
+    if (current == null) {
+      await _plugin.cancel(id: _downloadId);
+      if (done >= 114) {
+        await _plugin.show(id: _downloadId, title: 'The complete Quran is saved', body: 'All 114 surahs now play without internet.',
+            notificationDetails: const NotificationDetails(
+              android: AndroidNotificationDetails('ov_downloads', 'Downloads',
+                  channelDescription: 'Progress of the complete Quran download', importance: Importance.low, color: Color(0xFFE2BE4F)),
+              iOS: DarwinNotificationDetails(),
+            ));
+      }
+      return;
+    }
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    await _plugin.show(
+      id: _downloadId,
+      title: 'Downloading the Quran · $done of 114',
+      body: current,
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails('ov_downloads', 'Downloads',
+            channelDescription: 'Progress of the complete Quran download',
+            importance: Importance.low,
+            priority: Priority.low,
+            showProgress: true,
+            maxProgress: 114,
+            progress: done,
+            onlyAlertOnce: true,
+            ongoing: true,
+            silent: true,
+            color: const Color(0xFFE2BE4F)),
+      ),
+    );
+  }
+
   tz.TZDateTime _next(int hour, int minute, {int? weekday, DateTime? day}) {
     final now = tz.TZDateTime.now(tz.local);
     var t = day != null
@@ -122,7 +161,7 @@ class Reminders {
   Future<void> reschedule(Settings s,
       {required String continueLabel, required String continuePayload, required bool goalMetToday}) async {
     if (!_ready) return;
-    await _plugin.cancelAll();
+    await _plugin.cancelAllPendingNotifications();
     final r = s.reminders;
     if (r['daily'] == true) {
       await _at(1, _next(s.dailyTime.hour, s.dailyTime.minute), 'Time for the Quran', continueLabel, continuePayload,

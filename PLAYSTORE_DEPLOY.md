@@ -64,7 +64,7 @@ Listing changes are reviewed together with the release.
 
 ## 4. Release notes ("What's new", maximum 500 characters each)
 
-### en-US (431 characters)
+### en-US (480 characters)
 ```
 One Verse 2.0 – all new
 • Word-by-word highlight: every word lights up as it's recited
@@ -72,11 +72,12 @@ One Verse 2.0 – all new
 • 25 reciters with photos; Urdu & 40+ translations in one tap
 • New player: repeat ayah, speed, sleep timer, lock-screen controls
 • Focus view, streaks, listening stats and gentle reminders
+• Download the complete Quran and listen offline
 • Works offline for 30 days and syncs on Wi-Fi
 • Continues exactly where you left off
 ```
 
-### ur (Urdu, 419 characters)
+### ur (Urdu, 467 characters)
 ```
 ون ورس 2.0 – بالکل نئی ایپ
 • لفظ بہ لفظ ہائی لائٹ: تلاوت کے ساتھ ہر لفظ روشن ہوتا ہے
@@ -84,6 +85,7 @@ One Verse 2.0 – all new
 • تصاویر کے ساتھ 25 قاری، اردو اور 40 سے زائد ترجمے ایک ٹیپ پر
 • نیا پلیئر: آیت دہرائیں، رفتار، سلیپ ٹائمر، لاک اسکرین کنٹرول
 • فوکس ویو، اسٹریک، سننے کے اعداد و شمار اور یاددہانیاں
+• مکمل قرآن ڈاؤن لوڈ کریں اور بغیر انٹرنیٹ سنیں
 • 30 دن تک بغیر انٹرنیٹ، وائی فائی پر خودکار اپڈیٹ
 • جہاں چھوڑا تھا وہیں سے جاری
 ```
@@ -106,7 +108,7 @@ Quran audio with word-by-word highlight, 5 scripts, Urdu & 40+ translations.
 ```
 
 ### Full description (maximum 4000 characters)
-2957 characters:
+3029 characters:
 ```
 One Verse – Hear the Quran. See every word.
 
@@ -153,7 +155,7 @@ One Verse is a calm, beautiful Quran app for listening, reading and understandin
 📶 ALWAYS READY, EVEN OFFLINE
 • The whole Quran text in all five scripts, your translation and word timings are kept on your phone for 30 days
 • On Wi-Fi it refreshes by itself, so it is always ready without internet
-• Download any surah's recitation to listen offline
+• Download the complete Quran with one tap, or any single surah. Pause and resume any time; it continues on Wi-Fi by itself
 
 ⏯️ CONTINUE WHERE YOU LEFT OFF
 • Close the app or restart your phone – One Verse opens on the same ayah, with the same reciter and settings
@@ -340,7 +342,10 @@ Rebuilt from scratch on a new design: a dark emerald and gold theme, plus a ligh
 - The whole Quran text in all scripts, the chosen translation, and timings for the chosen reciter are cached
   for 30 days.
 - On Wi-Fi, anything older than 3 days is refreshed in the background.
-- Surah recitations can be downloaded to private storage.
+- Surah recitations can be downloaded to private storage, one surah at a time or the complete Quran in one go:
+  - the size is shown before starting (exact for Quran.com recitations, measured for the others)
+  - pause, resume and cancel; Wi-Fi only by default, with an option to use mobile data
+  - it carries on after the app is closed, retries failed surahs, and shows progress in a notification
 
 **Habits**
 - Listening log with day, week, month and year charts, our own streak algorithm (60 s/day), a goal ring and a
@@ -355,7 +360,7 @@ Rebuilt from scratch on a new design: a dark emerald and gold theme, plus a ligh
 - Storage permissions, `permission_handler` and `device_info_plus`.
 
 **Tests**
-- 19 unit tests.
+- 19 unit tests, plus 6 tests for the complete-Quran download and 3 widget tests for the Library screen.
 - Live API tests: every script, translations, audio for all reciters, timings for all 16 synced reciters,
   photos.
 - A Playwright walkthrough of every screen (`tool/web_e2e.js`).
