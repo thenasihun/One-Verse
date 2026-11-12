@@ -7,7 +7,10 @@ import 'package:oneverse/data/network.dart';
 import 'package:oneverse/data/repository.dart';
 import 'package:oneverse/state/listening_log.dart';
 import 'package:oneverse/state/reminders.dart';
+import 'package:oneverse/state/settings.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:oneverse/ui/screens/home_screen.dart';
+import 'package:oneverse/ui/screens/surahs_screen.dart';
 import 'package:oneverse/ui/widgets/quran_text.dart';
 
 void main() {
@@ -193,6 +196,81 @@ void main() {
       await store.write(QuranRepository.trKey('en.sahih', 1), ['a', 'b'], fetchedAt: DateTime(2020));
       expect(await repo.translation('en.sahih', 1), ['a', 'b']);
       NetworkStatus.instance.debugSet(NetKind.unmetered);
+    });
+  });
+
+  group('translation audio follows the text', () {
+    test('each voice reads one translation, and that text picks that voice', () {
+      expect(voiceFor('ur.jalandhry')!.id, 'ur.khan');
+      expect(voiceFor('en.sahih')!.id, 'en.walk');
+      expect(voiceFor('tr.vakfi')!.id, 'tr.vakfi-audio');
+      expect(exactVoiceFor('ur.maududi'), isNull);
+      expect(voiceFor('ur.maududi')!.id, 'ur.khan', reason: 'same language when no exact match');
+      expect(voiceFor('hi.hindi'), isNull);
+      for (final v in translationVoices) {
+        expect(exactVoiceFor(v.textEdition!), v, reason: v.id);
+      }
+    });
+  });
+
+  group('mp3quran reciters', () {
+    test('ayah timings: ayah 0 skipped, a missing ayah keeps its place', () {
+      final t = QuranRepository.parseMp3QuranTiming('u', [
+        {'ayah': 0, 'start_time': 0, 'end_time': 3000},
+        {'ayah': 1, 'start_time': 3900, 'end_time': 6560},
+        {'ayah': 3, 'start_time': 9000, 'end_time': 12000},
+      ], 3);
+      expect(t.ayahs.map((a) => (a.from, a.to)).toList(), [(3900, 6560), (6560, 6560), (9000, 12000)]);
+      expect(t.ayahAt(10000), 2);
+    });
+
+    test('estimated ayahs follow the text length and fill the recording', () {
+      final t = SurahTiming.estimated('u', 100000, [10, 30, 60], introMs: 10000);
+      expect(t.ayahs.first.from, 10000);
+      expect(t.ayahs.last.to, 100000);
+      expect(t.ayahs[1].to - t.ayahs[1].from, 27000);
+    });
+
+    test('labels say how closely each reciter is followed', () {
+      expect(reciterById('ar.alafasy').syncLabel, 'Word sync');
+      expect(reciterById('ov.saadghamdi').syncLabel, 'Ayah sync');
+      expect(reciterById('ov.badrturki').syncLabel, 'Full surah');
+      expect(reciterById('ar.husarymujawwad').hasAyahSync, isTrue);
+      expect(reciters.where((r) => r.timing?.kind == TimingKind.mp3quran).length, 26);
+    });
+  });
+
+  group('favourites', () {
+    test('surahs and reciters toggle and persist', () async {
+      SharedPreferences.setMockInitialValues({});
+      final s = Settings();
+      await s.load();
+      expect(s.toggleFavSurah(67), isTrue);
+      expect(s.toggleFavReciter('ov.saadghamdi'), isTrue);
+      final again = Settings();
+      await again.load();
+      expect(again.favSurahs, [67]);
+      expect(again.isFavReciter('ov.saadghamdi'), isTrue);
+      expect(again.toggleFavSurah(67), isFalse);
+      expect(again.isFavSurah(67), isFalse);
+    });
+  });
+
+  group('surah search', () {
+    test('common spellings find the surah', () {
+      expect(surahKey('Al-Ikhlaas'), surahKey('ikhlas'));
+      expect(surahKey('Yaseen'), surahKey('yasin'));
+      expect(surahKey('Al-Faatiha'), surahKey('fatiha'));
+      expect(surahKey('Ar-Rahmaan'), surahKey('rahman'));
+      expect(surahKey('Al-Kahf'), surahKey('kahf'));
+      expect(surahKey('Al-Mulk').contains(surahKey('mul')), isTrue);
+      expect(surahKey('Al-Kawthar'), surahKey('kausar'));
+      expect(surahKey('Ar-Rahmaan'), surahKey('rehman'));
+      expect(surahKey('Adh-Dhaariyat'), surahKey('zariyat'));
+      expect(surahKey('At-Tawba'), surahKey('tauba'));
+      expect(surahKey('Al-Waaqia'), surahKey('waqia'));
+      expect(surahKey('Al-Baqara'), surahKey('baqarah'));
+      expect(surahKey('Al-Baqara'), isNot(surahKey('Al-Kahf')));
     });
   });
 

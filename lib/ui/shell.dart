@@ -59,6 +59,16 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     tabIndex.addListener(() => setState(() => tab = tabIndex.value));
     WidgetsBinding.instance.addPostFrameCallback((_) => _afterLaunch());
+    _notice = context.read<Playback>().notice..addListener(_showNotice);
+  }
+
+  late final ValueNotifier<String?> _notice;
+
+  void _showNotice() {
+    final m = _notice.value;
+    if (m == null || !mounted) return;
+    toast(context, m);
+    _notice.value = null;
   }
 
   Future<void> _afterLaunch() async {
@@ -110,6 +120,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _notice.removeListener(_showNotice);
     super.dispose();
   }
 
@@ -196,11 +207,11 @@ class MiniPlayer extends StatelessWidget {
               left: 10,
               right: 10,
               bottom: 3,
-              child: ValueListenableBuilder<double>(
-                valueListenable: pb.ayahProgress,
-                builder: (_, v, _) => ClipRRect(
+              child: ValueListenableBuilder<Duration>(
+                valueListenable: pb.surahPosition,
+                builder: (_, p, _) => ClipRRect(
                   borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(value: v, minHeight: 2, color: c.fg, backgroundColor: c.line2),
+                  child: LinearProgressIndicator(value: pb.surahFraction, minHeight: 2, color: c.fg, backgroundColor: c.line2),
                 ),
               ),
             ),

@@ -9,6 +9,7 @@ class Endpoints {
   static const wordAudio = 'https://audio.qurancdn.com/';
   static const quranHub = 'https://api.quranhub.com/v1';
   static const baklarrrr = 'https://baklarrrr.github.io/quran-timings';
+  static const mp3quranTiming = 'https://www.mp3quran.net/api/v3/ayat_timing';
   static const luhaidan = 'https://its3li.github.io/quran-word-timings/data/muhammad-al-luhaidan/quran-com';
 }
 

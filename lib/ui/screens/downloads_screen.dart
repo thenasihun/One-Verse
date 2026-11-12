@@ -7,7 +7,9 @@ import '../../data/downloads.dart';
 import '../../data/network.dart';
 import '../../data/offline_sync.dart';
 import '../../data/repository.dart';
+import '../../state/playback.dart';
 import '../../state/settings.dart';
+import '../sheets.dart';
 import '../shell.dart';
 import '../widgets/common.dart';
 
@@ -29,7 +31,8 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     final s = context.watch<Settings>();
     final repo = context.read<QuranRepository>();
     _sizes ??= _loadSizes(dl);
-    final records = dl.records.toList()..sort((a, b) => a.surah.compareTo(b.surah));
+    final complete = dl.completeReciters;
+    final records = dl.records.where((r) => !complete.contains(r.reciterId)).toList()..sort((a, b) => a.surah.compareTo(b.surah));
     final until = sync.validUntil;
 
     return RefreshIndicator(
@@ -39,60 +42,67 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       },
       child: ListView(padding: EdgeInsets.fromLTRB(0, MediaQuery.paddingOf(context).top + 10, 0, 28), children: [
         Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text('Library', style: T.display(26, color: c.fg))),
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(22), border: Border.all(color: c.line)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Row(children: [
-              Icon(Icons.offline_pin_rounded, color: c.emerald),
-              const SizedBox(width: 8),
-              Expanded(child: Text('Offline library', style: T.ui(16, w: FontWeight.w700, color: c.fg))),
-              Text(net.unmetered ? 'Wi-Fi' : net.online ? 'Mobile data' : 'Offline', style: T.ui(12, w: FontWeight.w600, color: c.fg3)),
-            ]),
-            const SizedBox(height: 12),
-            Text('${sync.textSurahsReady} of 114 surahs', style: T.display(24, color: c.fg)),
-            Text('Quran text in all five scripts and ${repo.translationById(s.translationId).englishName}', style: T.ui(12.5, color: c.fg2)),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: sync.running && sync.total > 0 ? sync.done / sync.total : sync.textSurahsReady / 114,
-                minHeight: 6,
-                color: c.emerald,
-                backgroundColor: c.raised2,
-              ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          // A Material, not a coloured box, so the switch row's ripple shows.
+          child: Material(
+            color: c.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22), side: BorderSide(color: c.line)),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Row(children: [
+                  Icon(Icons.offline_pin_rounded, color: c.emerald),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('Offline library', style: T.ui(16, w: FontWeight.w700, color: c.fg))),
+                  Text(net.unmetered ? 'Wi-Fi' : net.online ? 'Mobile data' : 'Offline', style: T.ui(12, w: FontWeight.w600, color: c.fg3)),
+                ]),
+                const SizedBox(height: 12),
+                Text('${sync.textSurahsReady} of 114 surahs', style: T.display(24, color: c.fg)),
+                Text('Quran text in all five scripts and ${repo.translationById(s.translationId).englishName}', style: T.ui(12.5, color: c.fg2)),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: sync.running && sync.total > 0 ? sync.done / sync.total : sync.textSurahsReady / 114,
+                    minHeight: 6,
+                    color: c.emerald,
+                    backgroundColor: c.raised2,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  sync.running
+                      ? 'Syncing ${sync.done} of ${sync.total}…'
+                      : until != null
+                          ? 'Available offline until at least ${_date(until)}${sync.lastComplete != null ? ' · last synced ${_ago(sync.lastComplete!)}' : ''}'
+                          : 'Connect to Wi-Fi to save the whole Quran on this device.',
+                  style: T.ui(12.5, color: c.fg3, height: 1.4),
+                ),
+                const SizedBox(height: 6),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: s.wifiPrefetch,
+                  activeTrackColor: c.emerald,
+                  onChanged: (v) {
+                    s.update((x) => x.wifiPrefetch = v);
+                    if (v) sync.run();
+                  },
+                  title: Text('Keep in sync on Wi-Fi', style: T.ui(14, w: FontWeight.w600, color: c.fg)),
+                  subtitle: Text('Refreshes anything older than 3 days so it stays usable for 30 days without internet',
+                      style: T.ui(12, color: c.fg3)),
+                ),
+                GhostButton(sync.running ? 'Syncing…' : 'Sync now', icon: Icons.sync_rounded, expand: true, onTap: sync.running || !net.online
+                    ? null
+                    : () async {
+                        await sync.run(force: true);
+                        if (mounted) setState(() => _sizes = null);
+                      }),
+              ]),
             ),
-            const SizedBox(height: 10),
-            Text(
-              sync.running
-                  ? 'Syncing ${sync.done} of ${sync.total}…'
-                  : until != null
-                      ? 'Available offline until at least ${_date(until)}${sync.lastComplete != null ? ' · last synced ${_ago(sync.lastComplete!)}' : ''}'
-                      : 'Connect to Wi-Fi to save the whole Quran on this device.',
-              style: T.ui(12.5, color: c.fg3, height: 1.4),
-            ),
-            const SizedBox(height: 6),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: s.wifiPrefetch,
-              activeTrackColor: c.emerald,
-              onChanged: (v) {
-                s.update((x) => x.wifiPrefetch = v);
-                if (v) sync.run();
-              },
-              title: Text('Keep in sync on Wi-Fi', style: T.ui(14, w: FontWeight.w600, color: c.fg)),
-              subtitle: Text('Refreshes anything older than 3 days so it stays usable for 30 days without internet',
-                  style: T.ui(12, color: c.fg3)),
-            ),
-            GhostButton(sync.running ? 'Syncing…' : 'Sync now', icon: Icons.sync_rounded, expand: true, onTap: sync.running || !net.online
-                ? null
-                : () async {
-                    await sync.run(force: true);
-                    if (mounted) setState(() => _sizes = null);
-                  }),
-          ]),
+          ),
         ),
+        if (dl.supported) const _QuranCard(),
         FutureBuilder<(int, int)>(
           future: _sizes,
           builder: (_, snap) {
@@ -124,12 +134,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           },
         ),
         SectionTitle('Downloaded surahs', action: records.isEmpty ? null : '${records.length}'),
+        for (final id in complete)
+          _CompleteRow(id, onRemoved: () {
+            if (mounted) setState(() => _sizes = null);
+          }),
         if (!dl.supported)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text('Audio downloads are available in the Android and iOS app.', style: T.ui(13.5, color: c.fg3)),
           )
-        else if (records.isEmpty)
+        else if (records.isEmpty && complete.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text('Nothing downloaded yet. Open a surah and tap the download button to keep its recitation offline.',
@@ -163,6 +177,175 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   }
 }
 
+/// "Download complete Quran": start, progress, pause and resume.
+class _QuranCard extends StatelessWidget {
+  const _QuranCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    final dl = context.watch<Downloads>();
+    final s = context.watch<Settings>();
+    final repo = context.read<QuranRepository>();
+    final plan = dl.quranPlan;
+    final state = dl.quranState;
+    final reciter = plan != null ? reciterById(plan.reciterId) : s.reciter;
+    final active = plan != null && state != QuranState.done;
+    final done = active ? dl.quranDone : dl.records.where((r) => r.reciterId == reciter.id).length;
+    final complete = done >= 114;
+    final job = dl.quranCurrent == null ? null : dl.jobs[dl.quranCurrent];
+
+    final String status;
+    if (complete) {
+      status = 'All 114 surahs play without internet · ${fmtBytes(dl.records.where((r) => r.reciterId == reciter.id).fold(0, (t, r) => t + r.bytes))}';
+    } else if (state == QuranState.running) {
+      status = dl.quranCurrent != null ? 'Now: ${repo.surah(dl.quranCurrent!).nameEn} · ${fmtBytes(dl.quranBytes)} saved' : 'Starting…';
+    } else if (state == QuranState.waitingForNetwork) {
+      status = plan!.wifiOnly ? 'Waiting for Wi-Fi. It carries on by itself when you connect.' : 'Waiting for a connection.';
+    } else if (state == QuranState.paused) {
+      status = dl.quranError ?? 'Paused · ${fmtBytes(dl.quranBytes)} saved';
+    } else {
+      status = 'All 114 surahs with ${reciter.name}, to listen anywhere without internet.';
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [c.goldWash, c.surface], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: c.gold.withValues(alpha: 0.35)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: c.gold, borderRadius: BorderRadius.circular(12)),
+            child: Icon(complete ? Icons.check_rounded : Icons.download_for_offline_rounded, color: c.goldInk),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(complete ? 'Complete Quran saved' : 'Complete Quran', style: T.ui(16, w: FontWeight.w700, color: c.fg)),
+              Text(reciter.name, style: T.ui(12.5, color: c.fg3)),
+            ]),
+          ),
+          ReciterAvatar(reciter, size: 40),
+        ]),
+        if (active || complete) ...[
+          const SizedBox(height: 14),
+          Text('$done of 114 surahs', style: T.display(22, color: c.fg)),
+          const SizedBox(height: 8),
+          ValueListenableBuilder<double>(
+            valueListenable: job?.progress ?? ValueNotifier(0),
+            builder: (_, p, _) => ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(value: ((done + p) / 114).clamp(0, 1), minHeight: 6, color: c.gold, backgroundColor: c.raised2),
+            ),
+          ),
+        ],
+        const SizedBox(height: 10),
+        Text(status, style: T.ui(12.5, color: dl.quranError != null && state == QuranState.paused ? c.gold : c.fg2, height: 1.4)),
+        const SizedBox(height: 12),
+        if (!active && !complete)
+          GoldButton('Download complete Quran', icon: Icons.download_rounded, expand: true, onTap: () => showQuranDownloadSheet(context))
+        else if (complete)
+          GhostButton('Download for another reciter', icon: Icons.person_add_alt_1_rounded, expand: true, onTap: () => showQuranDownloadSheet(context))
+        else
+          Row(children: [
+            Expanded(
+              child: state == QuranState.running
+                  ? GhostButton('Pause', icon: Icons.pause_rounded, expand: true, onTap: dl.pauseQuran)
+                  : state == QuranState.waitingForNetwork && plan!.wifiOnly
+                      ? GhostButton('Use mobile data', icon: Icons.signal_cellular_alt_rounded, expand: true,
+                          onTap: () => dl.resumeQuran(allowMobileData: true))
+                      : GoldButton('Resume', icon: Icons.play_arrow_rounded, expand: true, onTap: dl.resumeQuran),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: GhostButton('Cancel', icon: Icons.close_rounded, expand: true, onTap: dl.cancelQuran)),
+          ]),
+      ]),
+    );
+  }
+}
+
+/// Plays a saved surah with the reciter it was saved with, so it plays
+/// offline whichever reciter was chosen before.
+void _playSaved(BuildContext context, String reciterId, int surah) {
+  final s = context.read<Settings>();
+  final pb = context.read<Playback>();
+  if (s.reciterId != reciterId) {
+    s.update((x) => x.reciterId = reciterId);
+    toast(context, 'Playing with ${reciterById(reciterId).name}, saved on this phone');
+  }
+  pb.play(surah);
+  Nav.surah(context, surah);
+}
+
+/// One row for a reciter whose whole Quran is saved.
+class _CompleteRow extends StatelessWidget {
+  final String reciterId;
+  final VoidCallback onRemoved;
+  const _CompleteRow(this.reciterId, {required this.onRemoved});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    final dl = context.watch<Downloads>();
+    final r = reciterById(reciterId);
+    final bytes = dl.records.where((x) => x.reciterId == reciterId).fold(0, (t, x) => t + x.bytes);
+    final current = context.watch<Settings>().reciterId == reciterId;
+    return InkWell(
+      onTap: () {
+        context.read<Settings>().update((x) => x.reciterId = reciterId);
+        toast(context, '${r.name} chosen · every surah plays offline');
+        goToTab(1);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(children: [
+          SizedBox(
+            width: 56,
+            height: 56,
+            child: Art(seed: 'quran', radius: BorderRadius.circular(14), child: const Center(child: Icon(Icons.menu_book_rounded, color: Colors.white))),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Complete Quran', style: T.ui(15, w: FontWeight.w600, color: c.fg)),
+              Text('114 surahs · ${fmtBytes(bytes)}${current ? ' · in use' : ' · tap to use'}', style: T.ui(12.5, color: c.fg3)),
+              const SizedBox(height: 6),
+              _Tag(r.name, c.raised, c.fg3),
+            ]),
+          ),
+          IconButton(
+            tooltip: 'Remove the complete Quran',
+            icon: Icon(Icons.delete_outline_rounded, color: c.fg3),
+            onPressed: () async {
+              final yes = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Remove the complete Quran?'),
+                  content: Text('This deletes ${fmtBytes(bytes)} of ${r.name} recitations from this phone. The Quran text stays.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
+                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
+                  ],
+                ),
+              );
+              if (yes == true) {
+                await dl.removeReciter(reciterId);
+                onRemoved();
+              }
+            },
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
 class _Legend extends StatelessWidget {
   final Color color;
   final String text;
@@ -184,7 +367,7 @@ class _DownloadRow extends StatelessWidget {
     final c = context.ov;
     final s = repo.surah(r.surah);
     return InkWell(
-      onTap: () => Nav.surah(context, r.surah),
+      onTap: () => _playSaved(context, r.reciterId, r.surah),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(children: [

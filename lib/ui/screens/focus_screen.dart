@@ -86,19 +86,27 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
             vx < 0 ? pb.next() : pb.previous();
           },
           child: Column(children: [
+            // One slim row, so the ayah gets the screen.
             SizedBox(
-              height: 58,
+              height: 46,
               child: Row(children: [
-                const SizedBox(width: 6),
-                RoundIcon(Icons.keyboard_arrow_down_rounded, tooltip: 'Close focus view', onTap: () => Navigator.pop(context)),
+                const SizedBox(width: 2),
+                RoundIcon(Icons.keyboard_arrow_down_rounded, tooltip: 'Close focus view', size: 40, onTap: () => Navigator.pop(context)),
                 Expanded(
-                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Text(info.nameEn, style: T.ui(14, w: FontWeight.w700, color: c.fg)),
-                    Text('${info.meaning} · Ayah ${pb.ayah} of ${info.ayahs}', style: T.ui(11.5, color: c.fg3)),
-                  ]),
+                  child: Text.rich(
+                    TextSpan(children: [
+                      TextSpan(text: info.nameEn, style: T.ui(14, w: FontWeight.w700, color: c.fg)),
+                      TextSpan(text: '  ${pb.surah}:${pb.ayah}', style: T.ui(13, w: FontWeight.w800, color: c.gold)),
+                      TextSpan(text: ' / ${info.ayahs}', style: T.ui(12, color: c.fg3)),
+                    ]),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                RoundIcon(Icons.text_fields_rounded, tooltip: 'Script and size', onTap: () => showDisplaySheet(context)),
-                const SizedBox(width: 6),
+                if (pb.wordExact) Tooltip(message: 'Word-exact timing', child: Icon(Icons.graphic_eq_rounded, size: 18, color: c.emerald)),
+                RoundIcon(Icons.text_fields_rounded, tooltip: 'Script and size', size: 40, onTap: () => showDisplaySheet(context)),
+                const SizedBox(width: 2),
               ]),
             ),
             Expanded(
@@ -107,17 +115,7 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                   if (n.dragDetails != null) _manual = DateTime.now();
                   return false;
                 },
-                child: ListView(controller: scroll, padding: const EdgeInsets.fromLTRB(22, 10, 22, 40), children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(99), border: Border.all(color: c.gold.withValues(alpha: 0.45))),
-                      child: Text('${pb.surah}:${pb.ayah}', style: T.display(13, w: FontWeight.w800, color: c.gold).copyWith(letterSpacing: 2)),
-                    ),
-                    const SizedBox(width: 8),
-                    SyncBadge(pb.wordExact),
-                  ]),
-                  const SizedBox(height: 18),
+                child: ListView(controller: scroll, padding: const EdgeInsets.fromLTRB(20, 6, 20, 40), children: [
                   if (v == null)
                     const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
                   else
@@ -159,9 +157,9 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
               padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
               decoration: BoxDecoration(border: Border(top: BorderSide(color: c.line))),
               child: Column(children: [
-                ValueListenableBuilder<double>(
-                  valueListenable: pb.ayahProgress,
-                  builder: (_, p, _) => LinearProgressIndicator(value: p, minHeight: 3, color: c.gold, backgroundColor: c.line2),
+                ValueListenableBuilder<Duration>(
+                  valueListenable: pb.surahPosition,
+                  builder: (_, _, _) => LinearProgressIndicator(value: pb.surahFraction, minHeight: 3, color: c.gold, backgroundColor: c.line2),
                 ),
                 const SizedBox(height: 10),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [

@@ -28,7 +28,7 @@ class AboutScreen extends StatelessWidget {
     ('AlQuran Cloud', 'Translations in 40+ languages, ayah-by-ayah recitations and translation audio.', 'https://alquran.cloud'),
     ('QuranHub (Misraj AI)', 'Reciter photos, countries and biographies.', 'https://qurani.ai'),
     ('Quranic Audio', 'Full-surah recitations used with word timings.', 'https://quranicaudio.com'),
-    ('mp3quran.net', 'Recordings of Maher Al-Muaiqly, Nasser Al-Qatami, Islam Sobhi and Muhammad Al-Luhaidan.', 'https://mp3quran.net'),
+    ('mp3quran.net', 'Full-surah recordings and ayah timings for Saad Al-Ghamdi, Khalid Al-Jaleel, Idrees Abkar and 30 more reciters.', 'https://mp3quran.net'),
     ('its3li/quran-word-timings', 'Word timings for Muhammad Al-Luhaidan (CC0).', 'https://github.com/its3li/quran-word-timings'),
     ('baklarrrr/quran-timings', 'Word timings for Maher Al-Muaiqly, Nasser Al-Qatami, Yasser Al-Dosari and Islam Sobhi.', 'https://github.com/baklarrrr/quran-timings'),
     ('Tajweed colours', 'Tajweed rule markup from Quran.com.', 'https://quran.com'),

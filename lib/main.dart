@@ -53,7 +53,7 @@ class AppServices {
     await settings.load();
     final repo = QuranRepository();
     await repo.init();
-    final downloads = Downloads(repo);
+    final downloads = Downloads(repo)..onQuranProgress = Reminders.instance.showDownloadProgress;
     await downloads.init();
     final sync = OfflineSync(repo, translationId: settings.translationId, reciterId: settings.reciterId);
     await sync.init();
@@ -63,10 +63,25 @@ class AppServices {
 
     var h = handler;
     if (h == null) {
-      final player = AudioPlayer();
+      // Large buffers so a weak connection does not stop the recitation.
+      final player = AudioPlayer(
+        audioLoadConfiguration: const AudioLoadConfiguration(
+          androidLoadControl: AndroidLoadControl(
+            minBufferDuration: Duration(seconds: 60),
+            maxBufferDuration: Duration(minutes: 4),
+            bufferForPlaybackDuration: Duration(milliseconds: 1500),
+            bufferForPlaybackAfterRebufferDuration: Duration(seconds: 4),
+            prioritizeTimeOverSizeThresholds: true,
+            backBufferDuration: Duration(seconds: 30),
+          ),
+          darwinLoadControl: DarwinLoadControl(preferredForwardBufferDuration: Duration(minutes: 2)),
+        ),
+      );
       try {
         final session = await AudioSession.instance;
         await session.configure(const AudioSessionConfiguration.music());
+        // Headphones unplugged: pause instead of playing out loud.
+        session.becomingNoisyEventStream.listen((_) => player.pause());
         h = await AudioService.init(
           builder: () => OvAudioHandler(player),
           config: const AudioServiceConfig(

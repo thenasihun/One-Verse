@@ -191,6 +191,10 @@ class QuranRepository extends ChangeNotifier {
   Future<SurahTiming?> timing(Reciter r, int n, {bool force = false}) async {
     final t = r.timing;
     if (t == null) return null;
+    if (t.kind == TimingKind.mp3quran && t.read == null) {
+      // No timings published: the player estimates them once it knows the length.
+      return SurahTiming(mp3quranUrl(t, n), const []);
+    }
     if (t.kind == TimingKind.github && t.slug != 'luhaidan') {
       final chapters = await githubChapters(t.slug!);
       if (chapters != null && !chapters.contains(n)) return null;
@@ -204,7 +208,13 @@ class QuranRepository extends ChangeNotifier {
     }
   }
 
+  static String mp3quranUrl(TimingSource t, int n) => '${t.server}${n.toString().padLeft(3, '0')}.mp3';
+
   Future<Object?> fetchTiming(TimingSource t, int n) async {
+    if (t.kind == TimingKind.mp3quran) {
+      final d = await api.getJson(Endpoints.mp3quranTiming, query: {'surah': n, 'read': t.read});
+      return parseMp3QuranTiming(mp3quranUrl(t, n), d as List, surahs.isEmpty ? null : surah(n).ayahs).toJson();
+    }
     if (t.kind == TimingKind.qdc) {
       final d = await api.getJson('${Endpoints.qdc}/audio/reciters/${t.qdcId}/audio_files', query: {'chapter': n, 'segments': 'true'});
       return parseQdcTiming((d['audio_files'] as List).first as Map).toJson();
@@ -231,6 +241,26 @@ class QuranRepository extends ChangeNotifier {
               if (s is List && s.length == 3 && s.every((x) => x is num)) [for (final x in s) (x as num).toInt()]
           ],
         ),
+    ]);
+  }
+
+  /// mp3quran ayah timings: `[{ayah, start_time, end_time}, …]` in ms. Ayahs
+  /// missing from the list get a zero-length slot so positions stay aligned.
+  static SurahTiming parseMp3QuranTiming(String url, List rows, int? ayahCount) {
+    final byAyah = <int, (int, int)>{
+      for (final r in rows)
+        if (r is Map && (r['ayah'] as num? ?? 0) > 0) (r['ayah'] as num).toInt(): ((r['start_time'] as num).toInt(), (r['end_time'] as num).toInt()),
+    };
+    final count = ayahCount ?? (byAyah.keys.isEmpty ? 0 : byAyah.keys.reduce((a, b) => a > b ? a : b));
+    var last = 0;
+    return SurahTiming(url, [
+      for (var a = 1; a <= count; a++)
+        () {
+          final t = byAyah[a];
+          if (t == null) return AyahTiming(last, last, const []);
+          last = t.$2;
+          return AyahTiming(t.$1, t.$2, const []);
+        }(),
     ]);
   }
 

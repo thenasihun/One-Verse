@@ -64,6 +64,10 @@ class HomeScreen extends StatelessWidget {
     final top = MediaQuery.paddingOf(context).top;
     final hour = DateTime.now().hour;
     final greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    final shown = [
+      for (final id in settings.favReciters.reversed) reciterById(id),
+      ...reciters.where((r) => !settings.isFavReciter(r.id)),
+    ].take(14).toList();
 
     return ListView(padding: EdgeInsets.only(top: top, bottom: 24), children: [
       Padding(
@@ -106,16 +110,30 @@ class HomeScreen extends StatelessWidget {
           ],
         ]),
       ),
+      if (settings.favSurahs.isNotEmpty) ...[
+        SectionTitle('Your favourites', action: '${settings.favSurahs.length}', onAction: () => goToTab(1)),
+        SizedBox(
+          height: 112,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: settings.favSurahs.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (_, i) => SizedBox(width: 168, child: _SurahTile(repo.surah(settings.favSurahs[settings.favSurahs.length - 1 - i]))),
+          ),
+        ),
+      ],
       SectionTitle('Reciters', action: 'See all ${reciters.length}', onAction: () => showReciterSheet(context)),
+      // Favourite reciters first, then the best known.
       SizedBox(
         height: 150,
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           scrollDirection: Axis.horizontal,
-          itemCount: 12,
+          itemCount: shown.length,
           separatorBuilder: (_, _) => const SizedBox(width: 14),
           itemBuilder: (_, i) {
-            final r = reciters[i];
+            final r = shown[i];
             final on = r.id == settings.reciterId;
             return InkWell(
               borderRadius: BorderRadius.circular(16),
@@ -134,7 +152,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(r.name, maxLines: 2, textAlign: TextAlign.center, style: T.ui(12.5, w: FontWeight.w600, color: c.fg, height: 1.2)),
-                  Text(r.hasWordSync ? 'Word sync' : r.style, style: T.ui(11, color: r.hasWordSync ? c.emerald : c.fg3)),
+                  Text(r.hasWordSync || r.timing != null ? r.syncLabel : r.style, style: T.ui(11, color: r.hasWordSync ? c.emerald : c.fg3)),
                 ]),
               ),
             );

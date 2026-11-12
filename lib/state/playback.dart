@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import '../data/catalog.dart';
 import '../data/downloads.dart';
 import '../data/models.dart';
+import '../data/network.dart';
 import '../data/offline_sync.dart';
 import '../data/repository.dart';
 import 'audio_handler.dart';
@@ -48,10 +49,8 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     _subs.add(player.currentIndexStream.listen(_onIndex));
     _subs.add(player.createPositionStream(steps: 2000, minPeriod: const Duration(milliseconds: 40), maxPeriod: const Duration(milliseconds: 120)).listen(_onPosition));
     _subs.add(player.playerStateStream.listen(_onState));
-    _subs.add(player.playbackEventStream.listen((_) {}, onError: (Object e, StackTrace _) {
-      error = 'Playback stopped. Check the connection or download this surah.';
-      notifyListeners();
-    }));
+    _subs.add(player.playbackEventStream.listen((_) {}, onError: (Object e, StackTrace _) => _recover()));
+    NetworkStatus.instance.addListener(_onNetwork);
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
 
@@ -84,7 +83,21 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   final ValueNotifier<Duration> ayahPosition = ValueNotifier(Duration.zero);
   final ValueNotifier<Duration> ayahLength = ValueNotifier(Duration.zero);
 
+  // The surah clock: time across the whole surah, for the player bar, the
+  // mini player and the notification. Playlist items whose length is not
+  // known yet count as the average of the known ones.
+  final ValueNotifier<Duration> surahPosition = ValueNotifier(Duration.zero);
+  final ValueNotifier<Duration> surahLength = ValueNotifier(Duration.zero);
+  List<int?> _itemMs = const [];
+  List<int> _startMs = const [0]; // start of each item in surah time; last = total
+  int _buildGen = 0;
+
+  /// One-off messages for the user (shown as a toast by the shell).
+  final ValueNotifier<String?> notice = ValueNotifier(null);
+
   int _reps = 0;
+  int _recoveries = 0;
+  bool _resumeWhenOnline = false;
   bool _repeatSeek = false;
   int _pendingPosMs = 0;
   bool _userNav = false;
@@ -94,8 +107,13 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   Timer? _sleepTimer;
   int _sinceSave = 0;
 
+  double get surahFraction {
+    final t = surahLength.value.inMilliseconds;
+    return t > 0 ? (surahPosition.value.inMilliseconds / t).clamp(0.0, 1.0) : 0;
+  }
+
   bool get playing => player.playing && player.processingState != ProcessingState.completed;
-  bool get wordExact => timing != null && settings.listenMode != ListenMode.translation;
+  bool get wordExact => timing != null && reciter.hasWordSync && settings.listenMode != ListenMode.translation;
   SurahInfo get info => repo.surah(surah);
   VerseText? get verse => ayah - 1 < verses.length ? verses[ayah - 1] : null;
   Reciter get reciter => settings.reciter;
@@ -132,6 +150,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   /// Loads [n] and starts at [startAyah]. Keeps the current position when
   /// only a setting changed.
   Future<void> play(int n, {int startAyah = 1, bool autoplay = true, int offsetMs = 0}) async {
+    _useDownloadedReciter(n);
     surah = n;
     ayah = startAyah;
     hasSession = true;
@@ -158,10 +177,12 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   }
 
   Future<void> _build(int startAyah, int offsetMs) async {
+    final gen = ++_buildGen;
     final mode = settings.listenMode;
     final r = settings.reciter;
     final voice = settings.translationVoice;
     timing = mode == ListenMode.translation ? null : await repo.timing(r, surah);
+    if (timing != null && timing!.ayahs.isEmpty) timing = await _estimateTiming(timing!, r);
     final count = info.ayahs;
 
     AudioSource chapterSource() {
@@ -187,6 +208,8 @@ class Playback extends ChangeNotifier implements PlayerCommands {
       items = const [];
       final start = timing!.ayahs[startAyah - 1].from + offsetMs;
       await player.setAudioSource(chapterSource(), initialPosition: Duration(milliseconds: start));
+      surahLength.value = player.duration ?? Duration(milliseconds: timing!.ayahs.last.to);
+      surahPosition.value = Duration(milliseconds: start);
     } else {
       singleFile = false;
       final sources = <AudioSource>[];
@@ -217,6 +240,12 @@ class Playback extends ChangeNotifier implements PlayerCommands {
         }
       }
       items = plan;
+      _itemMs = [
+        for (final p in plan)
+          p.phase == Phase.arabic && timing != null ? timing!.ayahs[p.ayah - 1].to - timing!.ayahs[p.ayah - 1].from : null,
+      ];
+      _recomputeClock();
+      unawaited(_measureItems(gen, surah, mode == ListenMode.translation || timing != null ? null : r, mode == ListenMode.arabic ? null : voice));
       final idx = plan.indexWhere((p) => p.ayah >= startAyah);
       await player.setAudioSources(sources,
           initialIndex: idx < 0 ? 0 : idx, initialPosition: Duration(milliseconds: offsetMs));
@@ -224,6 +253,67 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     await player.setSpeed(settings.speed);
     _lastIndex = player.currentIndex;
     _publishMediaItem();
+  }
+
+  /// Offline, a surah saved with another reciter plays with that reciter
+  /// rather than failing with the chosen one.
+  void _useDownloadedReciter(int n) {
+    if (NetworkStatus.instance.online || downloads.recordFor(n, settings.reciterId) != null) return;
+    final saved = downloads.recordFor(n);
+    if (saved == null) return;
+    settings.update((x) => x.reciterId = saved.reciterId);
+    notice.value = 'Offline: playing ${reciterById(saved.reciterId).name}, saved on this phone';
+  }
+
+  /// A stream that stops (a dropped connection, a server hiccup) is reloaded
+  /// at the same place, a few times, and again when the network returns.
+  Future<void> _recover() async {
+    final wasPlaying = player.playing || player.processingState == ProcessingState.buffering;
+    if (!NetworkStatus.instance.online || _recoveries >= 3) {
+      error = NetworkStatus.instance.online
+          ? 'Playback stopped. Check the connection or download this surah.'
+          : 'You are offline. Playback carries on when the connection is back, or download this surah.';
+      _resumeWhenOnline = wasPlaying || _resumeWhenOnline;
+      notifyListeners();
+      return;
+    }
+    _recoveries++;
+    final a = ayah, at = ayahPosition.value.inMilliseconds;
+    await Future.delayed(Duration(seconds: 2 * _recoveries));
+    _loadedKey = null;
+    await play(surah, startAyah: a, autoplay: true, offsetMs: at);
+  }
+
+  void _onNetwork() {
+    if (!NetworkStatus.instance.online || !_resumeWhenOnline || !hasSession) return;
+    _resumeWhenOnline = false;
+    _recoveries = 0;
+    error = null;
+    _loadedKey = null;
+    play(surah, startAyah: ayah, offsetMs: ayahPosition.value.inMilliseconds);
+  }
+
+  /// For recordings without published timings: ayah boundaries estimated from
+  /// the length of each ayah's text, once the file's length is known.
+  Future<SurahTiming> _estimateTiming(SurahTiming t, Reciter r) async {
+    final key = 'len_${r.id}_$surah';
+    var ms = (await repo.store.read(key))?.data as int?;
+    if (ms == null) {
+      final probe = AudioPlayer();
+      try {
+        final local = downloads.chapterFile(r.id, surah);
+        ms = (await probe.setAudioSource(local != null ? AudioSource.file(local) : AudioSource.uri(Uri.parse(t.audioUrl))))?.inMilliseconds;
+      } catch (_) {
+      } finally {
+        await probe.dispose();
+      }
+      if (ms != null && ms > 0) await repo.store.write(key, ms);
+    }
+    final total = ms ?? 60000;
+    final marks = RegExp('[\u064B-\u065F\u0670\u06D6-\u06ED]');
+    final letters = [for (final v in verses) v.of(QuranScript.simple).join().replaceAll(marks, '').replaceAll(' ', '').length];
+    final intro = surah == 1 || surah == 9 ? 1500 : (total ~/ 12).clamp(2000, 7000);
+    return SurahTiming.estimated(t.audioUrl, total, letters, introMs: intro);
   }
 
   /// Rebuilds the plan after a reciter, voice or mode change, staying on the
@@ -267,6 +357,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
 
   void _setAyah(int a, Phase p) {
     final changed = a != ayah || p != phase;
+    if (changed) _recoveries = 0;
     if (a != ayah) _reps = _userNav ? 0 : _reps;
     ayah = a;
     phase = p;
@@ -300,6 +391,9 @@ class Playback extends ChangeNotifier implements PlayerCommands {
         _userNav = false;
         _setAyah(ai + 1, Phase.arabic);
       }
+      surahPosition.value = pos;
+      final d = player.duration;
+      if (d != null && d != surahLength.value) surahLength.value = d;
       final t = timing!.ayahs[ai];
       final len = (t.to - t.from).clamp(1, 1 << 31);
       ayahPosition.value = Duration(milliseconds: (ms - t.from).clamp(0, len));
@@ -313,6 +407,11 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     final item = items[idx];
     final dur = player.duration ?? Duration.zero;
     final dms = dur.inMilliseconds.clamp(1, 1 << 31);
+    if (idx < _itemMs.length && dur > Duration.zero && (_itemMs[idx] == null || (_itemMs[idx]! - dms).abs() > 400)) {
+      _itemMs[idx] = dms; // the real length, once the file is loaded
+      _recomputeClock();
+    }
+    surahPosition.value = Duration(milliseconds: (idx + 1 < _startMs.length ? _startMs[idx] : 0) + ms);
     final frac = (ms / dms).clamp(0.0, 1.0);
     ayahPosition.value = pos;
     ayahLength.value = dur;
@@ -343,6 +442,9 @@ class Playback extends ChangeNotifier implements PlayerCommands {
       log.addAyah();
       if (sleepEndOfSurah) {
         sleepEndOfSurah = false;
+      } else if (settings.autoNext && surah < 114) {
+        unawaited(play(surah + 1));
+        return;
       }
       player.pause();
       word.value = verse?.wordCount ?? 0;
@@ -373,7 +475,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
       displaySubtitle: phase == Phase.translation ? 'Translation · ${settings.translationVoice.name}' : leadVoice.name,
       displayDescription: verse?.plain(),
       artUri: photo != null ? Uri.file(photo) : (url != null ? Uri.parse(url) : null),
-      duration: singleFile ? player.duration : null,
+      duration: surahLength.value > Duration.zero ? surahLength.value : null,
       extras: {'surah': surah, 'ayah': ayah},
     ));
   }
@@ -439,6 +541,58 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     }
   }
 
+  /// Seek to a point in the whole surah (the player bar and notification).
+  Future<void> seekInSurah(Duration d) async {
+    final ms = d.inMilliseconds.clamp(0, surahLength.value.inMilliseconds);
+    _reps = 0;
+    if (singleFile) {
+      await player.seek(Duration(milliseconds: ms));
+      final ai = timing!.ayahAt(ms);
+      if (ai >= 0) _setAyah(ai + 1, Phase.arabic);
+      _userNav = false;
+    } else {
+      var i = 0;
+      while (i + 2 < _startMs.length && _startMs[i + 1] <= ms) {
+        i++;
+      }
+      _userNav = i != player.currentIndex;
+      await player.seek(Duration(milliseconds: ms - _startMs[i]), index: i);
+    }
+    surahPosition.value = Duration(milliseconds: ms);
+    saveSession();
+  }
+
+  void _recomputeClock() {
+    final known = _itemMs.whereType<int>();
+    final avg = known.isEmpty ? 6000 : known.reduce((a, b) => a + b) ~/ known.length;
+    var t = 0;
+    final starts = <int>[];
+    for (final m in _itemMs) {
+      starts.add(t);
+      t += m ?? avg;
+    }
+    _startMs = [...starts, t];
+    surahLength.value = Duration(milliseconds: t);
+  }
+
+  /// Fills in the lengths of ayah files from their sizes, in the background.
+  Future<void> _measureItems(int gen, int n, Reciter? arabic, Reciter? voice) async {
+    Future<List<int?>> lengths(Reciter? who) async =>
+        who?.ayahEdition == null ? const [] : await downloads.ayahDurations(who!.ayahEdition!, n).catchError((_) => <int?>[]);
+    final ar = await lengths(arabic);
+    final tr = await lengths(voice);
+    if (gen != _buildGen) return; // a different surah or setting by now
+    for (var i = 0; i < items.length && i < _itemMs.length; i++) {
+      if (_itemMs[i] != null) continue;
+      final it = items[i];
+      final l = it.phase == Phase.arabic ? ar : tr;
+      if (it.ayah - 1 < l.length) _itemMs[i] = l[it.ayah - 1];
+    }
+    _recomputeClock();
+    _publishMediaItem();
+    handler.refresh();
+  }
+
   void setSpeed(double s) {
     settings.update((x) => x.speed = s);
     player.setSpeed(s);
@@ -491,7 +645,13 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   }
 
   @override
-  Future<void> cmdSeek(Duration p) => player.seek(p);
+  Future<void> cmdSeek(Duration p) => seekInSurah(p);
+  @override
+  Duration get positionInSurah {
+    if (singleFile) return player.position;
+    final i = player.currentIndex ?? 0;
+    return Duration(milliseconds: (i + 1 < _startMs.length ? _startMs[i] : 0)) + player.position;
+  }
   @override
   Future<void> cmdToggleRepeat() async => cycleRepeat();
   @override
@@ -504,6 +664,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     }
     _ticker.cancel();
     _sleepTimer?.cancel();
+    NetworkStatus.instance.removeListener(_onNetwork);
     player.dispose();
     super.dispose();
   }

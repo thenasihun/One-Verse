@@ -68,22 +68,35 @@ class VerseText {
       );
 }
 
-enum TimingKind { qdc, github }
+enum TimingKind { qdc, github, mp3quran }
 
-/// Where a reciter's full-surah audio and word timings come from.
+/// Where a reciter's full-surah audio and timings come from.
 @immutable
 class TimingSource {
   final TimingKind kind;
   final int? qdcId;
   final String? slug; // baklarrrr reciter slug or 'luhaidan'
+  final String? server; // mp3quran folder, files are 001.mp3 … 114.mp3
+  final int? read; // mp3quran ayah-timing id; null = no timings published
   const TimingSource.qdc(int id)
       : kind = TimingKind.qdc,
         qdcId = id,
-        slug = null;
+        slug = null,
+        server = null,
+        read = null;
   const TimingSource.github(String s)
       : kind = TimingKind.github,
         qdcId = null,
-        slug = s;
+        slug = s,
+        server = null,
+        read = null;
+
+  /// mp3quran.net full surahs, with ayah (not word) timings when [read] is set.
+  const TimingSource.mp3quran(String folder, {this.read})
+      : kind = TimingKind.mp3quran,
+        qdcId = null,
+        slug = null,
+        server = folder;
 }
 
 @immutable
@@ -107,7 +120,19 @@ class Reciter {
   });
 
   bool get isTranslationVoice => language != null;
-  bool get hasWordSync => timing != null;
+
+  /// Each word lights up as it is recited (Quran.com and GitHub timings).
+  bool get hasWordSync => timing != null && timing!.kind != TimingKind.mp3quran;
+
+  /// The ayah being recited is known exactly.
+  bool get hasAyahSync => ayahEdition != null || (timing != null && (timing!.kind != TimingKind.mp3quran || timing!.read != null));
+
+  /// Shown on reciter cards and the player.
+  String get syncLabel => hasWordSync
+      ? 'Word sync'
+      : hasAyahSync
+          ? 'Ayah sync'
+          : 'Full surah';
 }
 
 @immutable
@@ -147,6 +172,23 @@ class SurahTiming {
   final String audioUrl;
   final List<AyahTiming> ayahs;
   const SurahTiming(this.audioUrl, this.ayahs);
+
+  /// Ayah boundaries estimated from the length of each ayah's text, for
+  /// recordings without published timings. [introMs] covers the isti'adha
+  /// and basmala before the first ayah.
+  factory SurahTiming.estimated(String audioUrl, int totalMs, List<int> letters, {int introMs = 0}) {
+    final sum = letters.fold<int>(0, (a, b) => a + b).clamp(1, 1 << 31);
+    final body = (totalMs - introMs).clamp(1, 1 << 31);
+    var t = introMs.toDouble();
+    return SurahTiming(audioUrl, [
+      for (final l in letters)
+        () {
+          final from = t.round();
+          t += body * l / sum;
+          return AyahTiming(from, t.round(), const []);
+        }(),
+    ]);
+  }
 
   /// Index of the ayah playing at [ms], or -1 before the first ayah.
   int ayahAt(int ms) {

@@ -11,6 +11,9 @@ abstract class PlayerCommands {
   Future<void> cmdSeek(Duration position);
   Future<void> cmdToggleRepeat();
   int get repeatSetting;
+
+  /// Where playback is in the whole surah (not just the current file).
+  Duration get positionInSurah;
 }
 
 /// Bridges just_audio to the system media session, so the notification and
@@ -58,7 +61,7 @@ class OvAudioHandler extends BaseAudioHandler with SeekHandler {
       }[player.processingState]!,
       repeatMode: repeat == 0 ? AudioServiceRepeatMode.none : AudioServiceRepeatMode.one,
       playing: playing,
-      updatePosition: player.position,
+      updatePosition: commands?.positionInSurah ?? player.position,
       bufferedPosition: player.bufferedPosition,
       speed: player.speed,
       queueIndex: player.currentIndex,

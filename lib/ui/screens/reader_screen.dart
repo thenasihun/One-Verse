@@ -31,6 +31,7 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
   final keys = <int, GlobalKey>{};
   late final Ticker _ticker;
   bool follow = true;
+  bool _heardHere = false, _turning = false;
   bool showPill = false;
   int? _jumpTo;
   final titleVisible = ValueNotifier(false);
@@ -66,7 +67,8 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
 
   GlobalKey _key(int a) => keys.putIfAbsent(a, GlobalKey.new);
 
-  double get _headerPad => MediaQuery.paddingOf(context).top + _barHeight + _trHeight + 8;
+  // The bars slide away while the reader follows the recitation.
+  double get _headerPad => MediaQuery.paddingOf(context).top + 8;
 
   /// Scroll offset that puts ayah [a] under the pinned headers, or an estimate
   /// when its card has not been built yet.
@@ -151,6 +153,14 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
       _future = _load(repo, settings);
     }
     if (pb.surah == widget.surah && pb.playing && !follow && !showPill) showPill = true;
+    // The next surah started by itself: follow it, like a book turning the page.
+    if (pb.surah == widget.surah) _heardHere = true;
+    if (_heardHere && follow && pb.surah == widget.surah + 1 && !_turning && ModalRoute.of(context)?.isCurrent == true) {
+      _turning = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => ReaderScreen(surah: pb.surah)));
+      });
+    }
 
     return Scaffold(
       bottomNavigationBar: const SafeArea(top: false, child: Column(mainAxisSize: MainAxisSize.min, children: [MiniPlayer(), SizedBox(height: 6)])),
@@ -161,9 +171,13 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
             future: _future,
             builder: (context, snap) {
               return CustomScrollView(controller: controller, slivers: [
+                // The bar and the translation chips slide away while reading and
+                // come back on scrolling up.
                 SliverAppBar(
-                  pinned: true,
+                  floating: true,
+                  snap: true,
                   toolbarHeight: _barHeight,
+                  bottom: const PreferredSize(preferredSize: Size.fromHeight(_trHeight), child: SizedBox(height: _trHeight, child: _TranslationBarContent())),
                   backgroundColor: c.bg.withValues(alpha: 0.94),
                   surfaceTintColor: Colors.transparent,
                   title: ValueListenableBuilder<bool>(
@@ -181,7 +195,6 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
                   ],
                 ),
                 SliverToBoxAdapter(child: _Hero(info: info)),
-                SliverPersistentHeader(pinned: true, delegate: _TranslationBar(_trHeight)),
                 if (snap.hasError)
                   SliverToBoxAdapter(child: _Offline(onRetry: () => setState(() => _future = _load(repo, settings))))
                 else if (!snap.hasData)
@@ -250,6 +263,8 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
             ),
           ),
         ),
+        // Keeps the text from running under the status bar when the bars are away.
+        Positioned(top: 0, left: 0, right: 0, height: MediaQuery.paddingOf(context).top, child: ColoredBox(color: c.bg)),
       ]),
     );
   }
@@ -328,6 +343,8 @@ class _Hero extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
+          FavButton.surah(info.number),
+          const SizedBox(width: 8),
           Material(
             color: downloaded ? c.emeraldWash : c.raised,
             shape: CircleBorder(side: BorderSide(color: downloaded ? c.emerald.withValues(alpha: 0.4) : c.line)),
@@ -350,7 +367,7 @@ class _Hero extends StatelessWidget {
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        child: Align(alignment: Alignment.centerLeft, child: SyncBadge(r.hasWordSync, suffix: ' · ${r.name}')),
+        child: Align(alignment: Alignment.centerLeft, child: SyncBadge(r, suffix: ' · ${r.name}')),
       ),
       if (pb.error != null && current)
         Padding(
@@ -360,22 +377,6 @@ class _Hero extends StatelessWidget {
       const SizedBox(height: 14),
     ]);
   }
-}
-
-class _TranslationBar extends SliverPersistentHeaderDelegate {
-  final double height;
-  _TranslationBar(this.height);
-  @override
-  double get minExtent => height;
-  @override
-  double get maxExtent => height;
-  @override
-  bool shouldRebuild(covariant _TranslationBar old) => false;
-
-  // The bar is its own widget so it rebuilds when settings change; a header
-  // delegate's build is not reliably re-run on dependency changes.
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => const _TranslationBarContent();
 }
 
 class _TranslationBarContent extends StatelessWidget {
@@ -395,9 +396,9 @@ class _TranslationBarContent extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(color: c.bg.withValues(alpha: 0.96), border: Border(bottom: BorderSide(color: c.line))),
       child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), children: [
-        OvChip(s.script.short, tint: c.gold, trailing: Icon(Icons.expand_more_rounded, size: 16, color: c.gold), onTap: () => showDisplaySheet(context)),
-        const SizedBox(width: 12),
-        Center(child: Text('TRANSLATION', style: T.label(c.fg3))),
+        ScriptChip(onTap: () => showDisplaySheet(context)),
+        const SizedBox(width: 8),
+        PickerChip(label: 'Translation', icon: Icons.translate_rounded, onTap: () => showTranslationSheet(context)),
         const SizedBox(width: 8),
         for (final id in s.quickTranslations) ...[
           OvChip(
@@ -410,7 +411,7 @@ class _TranslationBarContent extends StatelessWidget {
         ],
         OvChip('Arabic only', selected: s.show == ShowMode.arabic, onTap: () => s.update((x) => x.show = ShowMode.arabic)),
         const SizedBox(width: 8),
-        OvChip('+ ${repo.translationList.length > 3 ? repo.translationList.length - 3 : 40} more', onTap: () => showTranslationSheet(context)),
+        OvChip('All ${repo.translationList.length} translations', onTap: () => showTranslationSheet(context)),
       ]),
     );
   }
