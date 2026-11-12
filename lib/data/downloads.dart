@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:background_downloader/background_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -32,7 +33,14 @@ class DownloadJob {
   final ValueNotifier<double> progress = ValueNotifier(0);
   final ValueNotifier<String> step = ValueNotifier('Preparing');
   final CancelToken cancel = CancelToken();
+  final Set<String> taskIds = {}; // native downloads in flight
+  bool cancelled = false;
   DownloadJob(this.surah);
+}
+
+/// Thrown when a download was cancelled (pause, cancel, or the network left).
+class DownloadCancelled implements Exception {
+  const DownloadCancelled();
 }
 
 /// What "Download complete Quran" saves: every surah with one reciter.
@@ -59,9 +67,16 @@ class Downloads extends ChangeNotifier {
   final Map<String, DownloadRecord> _records = {};
   final Map<int, DownloadJob> jobs = {};
 
-  /// Called while the complete Quran downloads (surahs done, the surah in
-  /// progress) and with null when it stops, to show a progress notification.
+  /// Called with null when the complete-Quran download stops, to tell the
+  /// user when it has finished. (Progress is in the downloader's notification.)
   void Function(int done, String? current)? onQuranProgress;
+
+  /// Files go through the system downloader on phones (Android WorkManager,
+  /// iOS URLSession): they keep going in the background, several at a time.
+  @visibleForTesting
+  bool useNativeDownloader = true;
+  bool get _native => !kIsWeb && useNativeDownloader && (Platform.isAndroid || Platform.isIOS);
+  static const _group = 'oneverse';
 
   bool get supported => !kIsWeb && repo.store.filesRoot != null;
   Iterable<DownloadRecord> get records => _records.values;
@@ -91,7 +106,34 @@ class Downloads extends ChangeNotifier {
       }
     }
     net.addListener(_onNetwork);
+    if (_native) await _configureNative();
     notifyListeners();
+  }
+
+  Future<void> _configureNative() async {
+    try {
+      await FileDownloader().configure(
+        globalConfig: [
+          (Config.holdingQueue, (6, 4, null)), // six files at once, four per server
+          (Config.checkAvailableSpace, 150), // fail rather than fill the phone
+        ],
+        androidConfig: [(Config.runInForeground, Config.always)], // no 9-minute limit in the background
+      );
+      FileDownloader().configureNotificationForGroup(
+        _group,
+        running: const TaskNotification('Downloading recitations', '{numFinished} of {numTotal} files'),
+        complete: const TaskNotification('Recitations saved', 'Ready to play offline'),
+        error: const TaskNotification('A download stopped', 'Open One Verse to try again'),
+        progressBar: true,
+        groupNotificationId: 'ov-downloads',
+      );
+      // Tasks left over from a closed app; finished files are kept and the
+      // plan carries on from them.
+      await FileDownloader().cancelAll(group: _group);
+    } catch (e) {
+      debugPrint('Native downloader unavailable: $e');
+      useNativeDownloader = false;
+    }
   }
 
   Future<void> _saveIndex() =>
@@ -157,19 +199,65 @@ class Downloads extends ChangeNotifier {
   }
 
   Future<int> _fetch(String url, String path, DownloadJob job, double from, double to) async {
+    if (job.cancelled) throw const DownloadCancelled();
     final f = File(path);
     if (await f.exists() && await f.length() > 0) {
       job.progress.value = to;
       return f.length();
     }
     await f.parent.create(recursive: true);
-    final tmp = '$path.part';
-    await Api.instance.dio.download(url, tmp, cancelToken: job.cancel, onReceiveProgress: (r, t) {
-      if (t > 0) job.progress.value = from + (to - from) * r / t;
-    });
-    await File(tmp).rename(path);
+    void progress(double p) {
+      if (p >= 0) job.progress.value = from + (to - from) * p;
+    }
+
+    if (_native) {
+      await _fetchNative(url, path, job, progress);
+    } else {
+      final tmp = '$path.part';
+      try {
+        await Api.instance.dio.download(url, tmp, cancelToken: job.cancel, onReceiveProgress: (r, t) {
+          if (t > 0) progress(r / t);
+        });
+      } on DioException catch (e) {
+        if (e.type == DioExceptionType.cancel) throw const DownloadCancelled();
+        rethrow;
+      }
+      await File(tmp).rename(path);
+    }
     job.progress.value = to;
     return File(path).length();
+  }
+
+  Future<void> _fetchNative(String url, String path, DownloadJob job, void Function(double) progress) async {
+    // The downloader takes a folder relative to the app support folder,
+    // where the store keeps its files ('oneverse/files').
+    final root = repo.store.filesRoot!;
+    final i = path.lastIndexOf('/');
+    final task = DownloadTask(
+      url: url,
+      filename: path.substring(i + 1),
+      directory: 'oneverse/files${path.substring(root.length, i)}',
+      baseDirectory: BaseDirectory.applicationSupport,
+      group: _group,
+      updates: Updates.statusAndProgress,
+      retries: 3,
+      displayName: repo.surah(job.surah).nameEn,
+    );
+    job.taskIds.add(task.taskId);
+    try {
+      final r = await FileDownloader().download(task, onProgress: progress);
+      switch (r.status) {
+        case TaskStatus.complete:
+          return;
+        case TaskStatus.canceled:
+          throw const DownloadCancelled();
+        default:
+          if (r.exception is TaskFileSystemException) throw FileSystemException(r.exception!.description, path);
+          throw Exception('Download ${r.status.name}${r.responseStatusCode != null ? ' (${r.responseStatusCode})' : ''}');
+      }
+    } finally {
+      job.taskIds.remove(task.taskId);
+    }
   }
 
   /// Ayah files, a few at a time; progress counts finished files.
@@ -178,6 +266,7 @@ class Downloads extends ChangeNotifier {
     var next = 0, done = 0, bytes = 0;
     Future<void> worker() async {
       while (next < urls.length) {
+        if (job.cancelled) throw const DownloadCancelled();
         final i = next++;
         // Await first: `bytes += await …` would read bytes before the await and
         // lose what the other workers added meanwhile.
@@ -193,7 +282,13 @@ class Downloads extends ChangeNotifier {
     return bytes;
   }
 
-  void cancel(int surah) => jobs[surah]?.cancel.cancel();
+  void cancel(int surah) {
+    final j = jobs[surah];
+    if (j == null) return;
+    j.cancelled = true;
+    j.cancel.cancel();
+    if (j.taskIds.isNotEmpty) unawaited(FileDownloader().cancelTasksWithIds(j.taskIds.toList()));
+  }
 
   /// Length in ms of each ayah file of [edition] in surah [n], worked out from
   /// the file sizes: alquran.cloud files are constant bitrate, named in the URL.
@@ -233,6 +328,17 @@ class Downloads extends ChangeNotifier {
   final Set<int> quranFailed = {};
   bool _stop = false;
   Future<void>? _run;
+
+  /// Surahs downloaded at the same time.
+  @visibleForTesting
+  int quranParallel = 3;
+  final Set<int> _quranActive = {};
+
+  void _cancelActive() {
+    for (final n in _quranActive.toList()) {
+      cancel(n);
+    }
+  }
 
   /// First wait before retrying a surah that failed; doubles each attempt.
   @visibleForTesting
@@ -287,8 +393,7 @@ class Downloads extends ChangeNotifier {
   /// Stops after cancelling the surah in progress; what is saved stays.
   Future<void> pauseQuran() async {
     _stop = true;
-    final n = quranCurrent;
-    if (n != null) cancel(n);
+    _cancelActive();
     await _run;
     if (quranPlan != null && quranState != QuranState.done) quranState = QuranState.paused;
     await _savePlan(active: false);
@@ -314,8 +419,7 @@ class Downloads extends ChangeNotifier {
     final p = quranPlan;
     if (p == null) return;
     if (quranState == QuranState.running && !_networkAllows(p)) {
-      final n = quranCurrent;
-      if (n != null) cancel(n);
+      _cancelActive();
     } else if (quranState == QuranState.waitingForNetwork && _networkAllows(p) && _run == null) {
       resumeQuran();
     }
@@ -327,37 +431,51 @@ class Downloads extends ChangeNotifier {
     final voice = p.voiceId == null ? null : reciterById(p.voiceId);
     quranState = QuranState.running;
     notifyListeners();
-    for (var n = 1; n <= 114 && !_stop; n++) {
-      final have = recordFor(n, p.reciterId);
-      if (have != null && (voice == null || have.voiceId == voice.id)) continue;
-      if (!_networkAllows(p)) {
-        quranState = QuranState.waitingForNetwork;
-        break;
+    var next = 1;
+
+    int? take() {
+      while (next <= 114) {
+        final n = next++;
+        final have = recordFor(n, p.reciterId);
+        if (have == null || (voice != null && have.voiceId != voice.id)) return n;
       }
-      quranCurrent = n;
-      onQuranProgress?.call(quranDone, repo.surah(n).nameEn);
-      notifyListeners();
-      var ok = false;
-      for (var attempt = 0; attempt < 3 && !ok && !_stop && _networkAllows(p); attempt++) {
-        try {
-          ok = await download(surah: n, reciter: reciter, translations: p.translations, voice: voice) != null;
-        } on DioException catch (e) {
-          if (e.type == DioExceptionType.cancel) break;
-          await Future.delayed(retryDelay * (1 << attempt));
-        } on FileSystemException catch (e) {
-          quranError = 'Not enough storage on this device (${e.osError?.message ?? e.message}).';
-          _stop = true;
-        } catch (_) {
-          await Future.delayed(retryDelay * (1 << attempt));
+      return null;
+    }
+
+    Future<void> worker() async {
+      while (!_stop && quranState == QuranState.running) {
+        if (!_networkAllows(p)) {
+          quranState = QuranState.waitingForNetwork;
+          return;
         }
-      }
-      if (!ok && !_stop && _networkAllows(p)) quranFailed.add(n);
-      if (ok) quranFailed.remove(n);
-      if (!_networkAllows(p)) {
-        quranState = QuranState.waitingForNetwork;
-        break;
+        final n = take();
+        if (n == null) return;
+        _quranActive.add(n);
+        quranCurrent = _quranActive.reduce((a, b) => a < b ? a : b);
+        notifyListeners();
+        var ok = false;
+        for (var attempt = 0; attempt < 3 && !ok && !_stop && _networkAllows(p); attempt++) {
+          try {
+            ok = await download(surah: n, reciter: reciter, translations: p.translations, voice: voice) != null;
+          } on DownloadCancelled {
+            break;
+          } on FileSystemException catch (e) {
+            quranError = 'Not enough storage on this device (${e.osError?.message ?? e.message}).';
+            _stop = true;
+          } catch (_) {
+            await Future.delayed(retryDelay * (1 << attempt));
+          }
+        }
+        _quranActive.remove(n);
+        quranCurrent = _quranActive.isEmpty ? null : _quranActive.reduce((a, b) => a < b ? a : b);
+        if (!ok && !_stop && _networkAllows(p)) quranFailed.add(n);
+        if (ok) quranFailed.remove(n);
+        notifyListeners();
       }
     }
+
+    await Future.wait([for (var w = 0; w < quranParallel; w++) worker()]);
+    if (quranState == QuranState.running && !_networkAllows(p)) quranState = QuranState.waitingForNetwork;
     quranCurrent = null;
     if (quranState == QuranState.running) {
       quranState = _stop ? QuranState.paused : quranDone >= 114 ? QuranState.done : QuranState.paused;

@@ -41,9 +41,11 @@ Pairing each text with the font it was encoded for fixes the broken marks that Q
 Android. See [docs/quran-scripts-and-fonts.md](docs/quran-scripts-and-fonts.md).
 
 ### 🎧 Reciters and player
-- **25 reciters with photos and short biographies**, including:
+- **51 reciters with photos and short biographies**, including:
   - Alafasy, Sudais, Shuraim, Maher Al-Muaiqly and Yasser Al-Dosari
+  - Saad Al-Ghamdi, Khalid Al-Jaleel, Idrees Abkar, Fares Abbad and Mansour Al-Salimi
   - Husary, Minshawi, Abdul Basit and Al-Qatami
+- **Favourites:** keep favourite surahs and reciters one tap away.
 - **Now Playing:**
   - repeat an ayah 1×, 3× or forever
   - speed from 0.75× to 1.5×

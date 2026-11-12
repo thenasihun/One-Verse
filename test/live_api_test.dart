@@ -72,11 +72,29 @@ void main() {
     }
   });
 
+  test('every mp3quran reciter: full surahs answer, timings line up', () async {
+    for (final r in reciters.where((r) => r.timing?.kind == TimingKind.mp3quran)) {
+      final t = (await repo.timing(r, 67))!;
+      final head = await repo.api.dio.head<void>(t.audioUrl);
+      expect(head.statusCode, 200, reason: '${r.id} ${t.audioUrl}');
+      if (r.timing!.read == null) {
+        expect(t.ayahs, isEmpty, reason: '${r.id}: estimated by the player');
+        continue;
+      }
+      expect(t.ayahs, hasLength(30), reason: r.id);
+      for (var i = 1; i < 30; i++) {
+        expect(t.ayahs[i].from, greaterThanOrEqualTo(t.ayahs[i - 1].from), reason: '${r.id} ayah ${i + 1}');
+      }
+      expect(t.ayahs.first.from, greaterThan(0), reason: r.id);
+    }
+  });
+
   test('size of the complete Quran for each kind of reciter', () async {
     final dl = Downloads(repo);
     final sizes = {
       for (final id in ['ar.alafasy', 'ar.mahermuaiqly', 'ov.luhaidan', 'ar.husarymujawwad', 'ar.muhammadayyoub'])
         id: await dl.estimateQuranBytes(reciterById(id)),
+      'ov.saadghamdi': await dl.estimateQuranBytes(reciterById('ov.saadghamdi')),
     };
     for (final e in sizes.entries) {
       expect(e.value, inInclusiveRange(4e8, 4e9), reason: '${e.key}: ${e.value}');

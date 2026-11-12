@@ -331,13 +331,56 @@ class RoundIcon extends StatelessWidget {
       );
 }
 
-class SyncBadge extends StatelessWidget {
-  final bool exact;
-  final String? suffix;
-  const SyncBadge(this.exact, {super.key, this.suffix});
+/// Heart that adds a surah or a reciter to the favourites.
+class FavButton extends StatelessWidget {
+  final int? surah;
+  final String? reciterId;
+  final double size;
+  final Color? color;
+  final bool filled; // a round button with a background
+  const FavButton.surah(int this.surah, {super.key, this.size = 46, this.color, this.filled = true}) : reciterId = null;
+  const FavButton.reciter(String this.reciterId, {super.key, this.size = 30, this.color, this.filled = true}) : surah = null;
+
   @override
   Widget build(BuildContext context) {
     final c = context.ov;
+    final s = context.watch<Settings>();
+    final on = surah != null ? s.isFavSurah(surah!) : s.isFavReciter(reciterId!);
+    final icon = Icon(on ? Icons.favorite_rounded : Icons.favorite_border_rounded, size: size * 0.5, color: on ? const Color(0xFFE25B6A) : color ?? c.fg2);
+    return Semantics(
+      button: true,
+      label: on ? 'Remove from favourites' : 'Add to favourites',
+      child: Material(
+        color: filled ? (on ? const Color(0x24E25B6A) : c.raised) : Colors.transparent,
+        shape: CircleBorder(side: filled ? BorderSide(color: on ? const Color(0x66E25B6A) : c.line) : BorderSide.none),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () {
+            final added = surah != null ? s.toggleFavSurah(surah!) : s.toggleFavReciter(reciterId!);
+            toast(context, added ? 'Added to favourites' : 'Removed from favourites');
+          },
+          child: SizedBox(width: size, height: size, child: Center(child: icon)),
+        ),
+      ),
+    );
+  }
+}
+
+/// How precisely a reciter's recitation is followed: word by word, ayah by
+/// ayah, or a full surah with estimated ayahs.
+class SyncBadge extends StatelessWidget {
+  final Reciter reciter;
+  final String? suffix;
+  const SyncBadge(this.reciter, {super.key, this.suffix});
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    final exact = reciter.hasWordSync || reciter.hasAyahSync;
+    final text = reciter.hasWordSync
+        ? 'Word-exact timing'
+        : reciter.hasAyahSync
+            ? 'Ayah-exact timing'
+            : 'Full surah · ayahs estimated';
     return Container(
       height: 24,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -346,7 +389,7 @@ class SyncBadge extends StatelessWidget {
         Icon(exact ? Icons.check_rounded : Icons.graphic_eq_rounded, size: 13, color: exact ? c.emerald : c.fg3),
         const SizedBox(width: 5),
         Flexible(
-          child: Text('${exact ? 'Word-exact timing' : 'Estimated timing'}${suffix ?? ''}',
+          child: Text('$text${suffix ?? ''}',
               overflow: TextOverflow.ellipsis, style: T.ui(11.5, w: FontWeight.w700, color: exact ? c.emerald : c.fg3)),
         ),
       ]),

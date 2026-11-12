@@ -25,6 +25,8 @@ class Settings extends ChangeNotifier {
   List<String> quickTranslations = List.of(defaultQuickTranslations);
   bool wifiPrefetch = true;
   bool autoNext = true; // play the next surah when one ends
+  List<int> favSurahs = [];
+  List<String> favReciters = [];
   Map<String, bool> reminders = {'daily': true, 'streak': true, 'kahf': true, 'mulk': true, 'special': true};
   TimeOfDay dailyTime = const TimeOfDay(hour: 21, minute: 30);
 
@@ -49,6 +51,8 @@ class Settings extends ChangeNotifier {
     quickTranslations = _p.getStringList('quickTr') ?? quickTranslations;
     wifiPrefetch = _p.getBool('wifiPrefetch') ?? wifiPrefetch;
     autoNext = _p.getBool('autoNext') ?? autoNext;
+    favSurahs = [for (final x in _p.getStringList('favSurahs') ?? const <String>[]) ?int.tryParse(x)];
+    favReciters = _p.getStringList('favReciters') ?? [];
     final rem = _p.getString('reminders');
     if (rem != null) reminders = Map<String, bool>.from(jsonDecode(rem) as Map);
     final dt = _p.getInt('dailyTime');
@@ -72,6 +76,8 @@ class Settings extends ChangeNotifier {
     _p.setStringList('quickTr', quickTranslations);
     _p.setBool('wifiPrefetch', wifiPrefetch);
     _p.setBool('autoNext', autoNext);
+    _p.setStringList('favSurahs', [for (final n in favSurahs) '$n']);
+    _p.setStringList('favReciters', favReciters);
     _p.setString('reminders', jsonEncode(reminders));
     _p.setInt('dailyTime', dailyTime.hour * 60 + dailyTime.minute);
   }
@@ -93,6 +99,22 @@ class Settings extends ChangeNotifier {
           s.quickTranslations = [id, ...s.quickTranslations].take(4).toList();
         }
       });
+
+  bool isFavSurah(int n) => favSurahs.contains(n);
+  bool isFavReciter(String id) => favReciters.contains(id);
+
+  /// Adds or removes a favourite surah; returns whether it is now a favourite.
+  bool toggleFavSurah(int n) {
+    final on = !favSurahs.contains(n);
+    update((s) => on ? s.favSurahs.add(n) : s.favSurahs.remove(n));
+    return on;
+  }
+
+  bool toggleFavReciter(String id) {
+    final on = !favReciters.contains(id);
+    update((s) => on ? s.favReciters.add(id) : s.favReciters.remove(id));
+    return on;
+  }
 
   SharedPreferences get prefs => _p;
 }

@@ -49,7 +49,9 @@ void main() {
     await settings.load();
     final repo = QuranRepository(store: store)
       ..surahs = [for (var i = 1; i <= 114; i++) SurahInfo(i, '', 'Surah $i', '', 7, true)];
-    dl = _FakeDownloads(repo)..retryDelay = Duration.zero;
+    dl = _FakeDownloads(repo)
+      ..retryDelay = Duration.zero
+      ..quranParallel = 1;
     await dl.init();
     app = MultiProvider(
       providers: [
@@ -97,7 +99,7 @@ void main() {
     await t.runAsync(() => dl.quranIdle);
     await t.pumpAndSettle();
     expect(find.text('Complete Quran saved'), findsOneWidget);
-    expect(find.text('114 surahs · 1.7 GB'), findsOneWidget, reason: 'one row for the whole Quran, not 114');
+    expect(find.textContaining('114 surahs · 1.7 GB'), findsOneWidget, reason: 'one row for the whole Quran, not 114');
     expect(find.text('Download for another reciter'), findsOneWidget);
   });
 

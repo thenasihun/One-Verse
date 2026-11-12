@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import '../data/catalog.dart';
 import '../data/downloads.dart';
 import '../data/models.dart';
+import '../data/network.dart';
 import '../data/offline_sync.dart';
 import '../data/repository.dart';
 import 'audio_handler.dart';
@@ -48,10 +49,8 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     _subs.add(player.currentIndexStream.listen(_onIndex));
     _subs.add(player.createPositionStream(steps: 2000, minPeriod: const Duration(milliseconds: 40), maxPeriod: const Duration(milliseconds: 120)).listen(_onPosition));
     _subs.add(player.playerStateStream.listen(_onState));
-    _subs.add(player.playbackEventStream.listen((_) {}, onError: (Object e, StackTrace _) {
-      error = 'Playback stopped. Check the connection or download this surah.';
-      notifyListeners();
-    }));
+    _subs.add(player.playbackEventStream.listen((_) {}, onError: (Object e, StackTrace _) => _recover()));
+    NetworkStatus.instance.addListener(_onNetwork);
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
 
@@ -93,7 +92,12 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   List<int> _startMs = const [0]; // start of each item in surah time; last = total
   int _buildGen = 0;
 
+  /// One-off messages for the user (shown as a toast by the shell).
+  final ValueNotifier<String?> notice = ValueNotifier(null);
+
   int _reps = 0;
+  int _recoveries = 0;
+  bool _resumeWhenOnline = false;
   bool _repeatSeek = false;
   int _pendingPosMs = 0;
   bool _userNav = false;
@@ -109,7 +113,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   }
 
   bool get playing => player.playing && player.processingState != ProcessingState.completed;
-  bool get wordExact => timing != null && settings.listenMode != ListenMode.translation;
+  bool get wordExact => timing != null && reciter.hasWordSync && settings.listenMode != ListenMode.translation;
   SurahInfo get info => repo.surah(surah);
   VerseText? get verse => ayah - 1 < verses.length ? verses[ayah - 1] : null;
   Reciter get reciter => settings.reciter;
@@ -146,6 +150,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   /// Loads [n] and starts at [startAyah]. Keeps the current position when
   /// only a setting changed.
   Future<void> play(int n, {int startAyah = 1, bool autoplay = true, int offsetMs = 0}) async {
+    _useDownloadedReciter(n);
     surah = n;
     ayah = startAyah;
     hasSession = true;
@@ -177,6 +182,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     final r = settings.reciter;
     final voice = settings.translationVoice;
     timing = mode == ListenMode.translation ? null : await repo.timing(r, surah);
+    if (timing != null && timing!.ayahs.isEmpty) timing = await _estimateTiming(timing!, r);
     final count = info.ayahs;
 
     AudioSource chapterSource() {
@@ -249,6 +255,67 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     _publishMediaItem();
   }
 
+  /// Offline, a surah saved with another reciter plays with that reciter
+  /// rather than failing with the chosen one.
+  void _useDownloadedReciter(int n) {
+    if (NetworkStatus.instance.online || downloads.recordFor(n, settings.reciterId) != null) return;
+    final saved = downloads.recordFor(n);
+    if (saved == null) return;
+    settings.update((x) => x.reciterId = saved.reciterId);
+    notice.value = 'Offline: playing ${reciterById(saved.reciterId).name}, saved on this phone';
+  }
+
+  /// A stream that stops (a dropped connection, a server hiccup) is reloaded
+  /// at the same place, a few times, and again when the network returns.
+  Future<void> _recover() async {
+    final wasPlaying = player.playing || player.processingState == ProcessingState.buffering;
+    if (!NetworkStatus.instance.online || _recoveries >= 3) {
+      error = NetworkStatus.instance.online
+          ? 'Playback stopped. Check the connection or download this surah.'
+          : 'You are offline. Playback carries on when the connection is back, or download this surah.';
+      _resumeWhenOnline = wasPlaying || _resumeWhenOnline;
+      notifyListeners();
+      return;
+    }
+    _recoveries++;
+    final a = ayah, at = ayahPosition.value.inMilliseconds;
+    await Future.delayed(Duration(seconds: 2 * _recoveries));
+    _loadedKey = null;
+    await play(surah, startAyah: a, autoplay: true, offsetMs: at);
+  }
+
+  void _onNetwork() {
+    if (!NetworkStatus.instance.online || !_resumeWhenOnline || !hasSession) return;
+    _resumeWhenOnline = false;
+    _recoveries = 0;
+    error = null;
+    _loadedKey = null;
+    play(surah, startAyah: ayah, offsetMs: ayahPosition.value.inMilliseconds);
+  }
+
+  /// For recordings without published timings: ayah boundaries estimated from
+  /// the length of each ayah's text, once the file's length is known.
+  Future<SurahTiming> _estimateTiming(SurahTiming t, Reciter r) async {
+    final key = 'len_${r.id}_$surah';
+    var ms = (await repo.store.read(key))?.data as int?;
+    if (ms == null) {
+      final probe = AudioPlayer();
+      try {
+        final local = downloads.chapterFile(r.id, surah);
+        ms = (await probe.setAudioSource(local != null ? AudioSource.file(local) : AudioSource.uri(Uri.parse(t.audioUrl))))?.inMilliseconds;
+      } catch (_) {
+      } finally {
+        await probe.dispose();
+      }
+      if (ms != null && ms > 0) await repo.store.write(key, ms);
+    }
+    final total = ms ?? 60000;
+    final marks = RegExp('[\u064B-\u065F\u0670\u06D6-\u06ED]');
+    final letters = [for (final v in verses) v.of(QuranScript.simple).join().replaceAll(marks, '').replaceAll(' ', '').length];
+    final intro = surah == 1 || surah == 9 ? 1500 : (total ~/ 12).clamp(2000, 7000);
+    return SurahTiming.estimated(t.audioUrl, total, letters, introMs: intro);
+  }
+
   /// Rebuilds the plan after a reciter, voice or mode change, staying on the
   /// same ayah.
   Future<void> reload() async {
@@ -290,6 +357,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
 
   void _setAyah(int a, Phase p) {
     final changed = a != ayah || p != phase;
+    if (changed) _recoveries = 0;
     if (a != ayah) _reps = _userNav ? 0 : _reps;
     ayah = a;
     phase = p;
@@ -596,6 +664,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     }
     _ticker.cancel();
     _sleepTimer?.cancel();
+    NetworkStatus.instance.removeListener(_onNetwork);
     player.dispose();
     super.dispose();
   }

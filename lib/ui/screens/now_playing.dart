@@ -88,7 +88,10 @@ class NowPlayingScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text('${info.nameEn}, Ayah ${pb.ayah}', style: T.display(24, w: FontWeight.w700, color: c.fg)),
+                Row(children: [
+                  Expanded(child: Text('${info.nameEn}, Ayah ${pb.ayah}', style: T.display(24, w: FontWeight.w700, color: c.fg))),
+                  FavButton.surah(pb.surah, size: 40),
+                ]),
                 InkWell(
                   onTap: () => showReciterSheet(context),
                   child: Padding(
@@ -106,7 +109,7 @@ class NowPlayingScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Align(alignment: Alignment.centerLeft, child: SyncBadge(pb.wordExact)),
+                Align(alignment: Alignment.centerLeft, child: SyncBadge(pb.leadVoice)),
                 const SizedBox(height: 14),
                 const _Seek(),
                 if (info.ayahs <= 80) ...[const SizedBox(height: 10), const _AyahStrip()],
@@ -159,6 +162,7 @@ class NowPlayingScreen extends StatelessWidget {
                   kicker: 'Reciter',
                   title: s.reciter.name + (s.reciter.style != 'Murattal' ? ' · ${s.reciter.style}' : ''),
                   onTap: () => showReciterSheet(context),
+                  trailing: FavButton.reciter(s.reciterId, size: 34),
                 ),
                 if (repo.profileOf(s.reciter)?.bio != null)
                   Padding(
@@ -362,7 +366,8 @@ class _RowCard extends StatelessWidget {
   final Widget leading;
   final String kicker, title;
   final VoidCallback onTap;
-  const _RowCard({required this.leading, required this.kicker, required this.title, required this.onTap});
+  final Widget? trailing;
+  const _RowCard({required this.leading, required this.kicker, required this.title, required this.onTap, this.trailing});
   @override
   Widget build(BuildContext context) {
     final c = context.ov;
@@ -383,6 +388,7 @@ class _RowCard extends StatelessWidget {
                 Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(14.5, w: FontWeight.w600, color: c.fg)),
               ]),
             ),
+            if (trailing != null) ...[trailing!, const SizedBox(width: 10)],
             Text('Change', style: T.ui(12.5, w: FontWeight.w700, color: c.gold)),
           ]),
         ),

@@ -1,4 +1,8 @@
-# More reciters: candidates (not added yet)
+# More reciters: candidates
+
+> **Added on 2026-11-12:** all 26 recommended reciters are in the app. 22 have mp3quran ayah timings; Yasser
+> Al-Qurashi, Bader Al-Turki, Muhammad Al-Mohaisany and Hatem Farid play with ayahs estimated from text length.
+> Noreen Siddiq (ad-Duri) was not added.
 
 These are well-known reciters who are not in the app yet. Every one has **all 114 surahs** as full-surah files,
 which was checked on 2026-11-06 (the files for surahs 1 and 114 answer). None has word timings, so they would play

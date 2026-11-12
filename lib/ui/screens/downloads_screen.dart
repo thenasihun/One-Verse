@@ -7,6 +7,7 @@ import '../../data/downloads.dart';
 import '../../data/network.dart';
 import '../../data/offline_sync.dart';
 import '../../data/repository.dart';
+import '../../state/playback.dart';
 import '../../state/settings.dart';
 import '../sheets.dart';
 import '../shell.dart';
@@ -269,6 +270,19 @@ class _QuranCard extends StatelessWidget {
   }
 }
 
+/// Plays a saved surah with the reciter it was saved with, so it plays
+/// offline whichever reciter was chosen before.
+void _playSaved(BuildContext context, String reciterId, int surah) {
+  final s = context.read<Settings>();
+  final pb = context.read<Playback>();
+  if (s.reciterId != reciterId) {
+    s.update((x) => x.reciterId = reciterId);
+    toast(context, 'Playing with ${reciterById(reciterId).name}, saved on this phone');
+  }
+  pb.play(surah);
+  Nav.surah(context, surah);
+}
+
 /// One row for a reciter whose whole Quran is saved.
 class _CompleteRow extends StatelessWidget {
   final String reciterId;
@@ -281,45 +295,53 @@ class _CompleteRow extends StatelessWidget {
     final dl = context.watch<Downloads>();
     final r = reciterById(reciterId);
     final bytes = dl.records.where((x) => x.reciterId == reciterId).fold(0, (t, x) => t + x.bytes);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(children: [
-        SizedBox(
-          width: 56,
-          height: 56,
-          child: Art(seed: 'quran', radius: BorderRadius.circular(14), child: const Center(child: Icon(Icons.menu_book_rounded, color: Colors.white))),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Complete Quran', style: T.ui(15, w: FontWeight.w600, color: c.fg)),
-            Text('114 surahs · ${fmtBytes(bytes)}', style: T.ui(12.5, color: c.fg3)),
-            const SizedBox(height: 6),
-            _Tag(r.name, c.raised, c.fg3),
-          ]),
-        ),
-        IconButton(
-          tooltip: 'Remove the complete Quran',
-          icon: Icon(Icons.delete_outline_rounded, color: c.fg3),
-          onPressed: () async {
-            final yes = await showDialog<bool>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('Remove the complete Quran?'),
-                content: Text('This deletes ${fmtBytes(bytes)} of ${r.name} recitations from this phone. The Quran text stays.'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
-                  TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
-                ],
-              ),
-            );
-            if (yes == true) {
-              await dl.removeReciter(reciterId);
-              onRemoved();
-            }
-          },
-        ),
-      ]),
+    final current = context.watch<Settings>().reciterId == reciterId;
+    return InkWell(
+      onTap: () {
+        context.read<Settings>().update((x) => x.reciterId = reciterId);
+        toast(context, '${r.name} chosen · every surah plays offline');
+        goToTab(1);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(children: [
+          SizedBox(
+            width: 56,
+            height: 56,
+            child: Art(seed: 'quran', radius: BorderRadius.circular(14), child: const Center(child: Icon(Icons.menu_book_rounded, color: Colors.white))),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Complete Quran', style: T.ui(15, w: FontWeight.w600, color: c.fg)),
+              Text('114 surahs · ${fmtBytes(bytes)}${current ? ' · in use' : ' · tap to use'}', style: T.ui(12.5, color: c.fg3)),
+              const SizedBox(height: 6),
+              _Tag(r.name, c.raised, c.fg3),
+            ]),
+          ),
+          IconButton(
+            tooltip: 'Remove the complete Quran',
+            icon: Icon(Icons.delete_outline_rounded, color: c.fg3),
+            onPressed: () async {
+              final yes = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Remove the complete Quran?'),
+                  content: Text('This deletes ${fmtBytes(bytes)} of ${r.name} recitations from this phone. The Quran text stays.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
+                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
+                  ],
+                ),
+              );
+              if (yes == true) {
+                await dl.removeReciter(reciterId);
+                onRemoved();
+              }
+            },
+          ),
+        ]),
+      ),
     );
   }
 }
@@ -345,7 +367,7 @@ class _DownloadRow extends StatelessWidget {
     final c = context.ov;
     final s = repo.surah(r.surah);
     return InkWell(
-      onTap: () => Nav.surah(context, r.surah),
+      onTap: () => _playSaved(context, r.reciterId, r.surah),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(children: [

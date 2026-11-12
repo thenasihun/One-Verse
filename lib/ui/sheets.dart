@@ -42,6 +42,7 @@ class _ReciterPickerState extends State<_ReciterPicker> {
       final hay = '${r.name} ${r.language ?? ''} ${p?.country ?? ''}'.toLowerCase();
       if (q.isNotEmpty && !hay.contains(q.toLowerCase())) return false;
       if (filter == 'Word sync') return r.hasWordSync;
+      if (filter == 'Favourites') return settings.isFavReciter(r.id);
       if (filter != 'All') return r.style == filter;
       return true;
     }).toList();
@@ -61,7 +62,7 @@ class _ReciterPickerState extends State<_ReciterPicker> {
         SizedBox(
           height: 52,
           child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.only(top: 12), children: [
-            for (final f in ['All', 'Word sync', 'Murattal', 'Mujawwad', 'Teaching'])
+            for (final f in ['All', 'Favourites', 'Word sync', 'Murattal', 'Mujawwad', 'Teaching'])
               Padding(padding: const EdgeInsets.only(right: 8), child: OvChip(f, selected: filter == f, onTap: () => setState(() => filter = f))),
           ]),
         ),
@@ -85,7 +86,7 @@ class _ReciterPickerState extends State<_ReciterPicker> {
                 }
                 context.read<Playback>().reload();
                 Navigator.pop(context);
-                toast(context, '${widget.voices ? 'Translation voice' : 'Now reciting'}: ${r.name}${r.hasWordSync ? ' · word-exact' : ''}');
+                toast(context, '${widget.voices ? 'Translation voice' : 'Now reciting'}: ${r.name}${widget.voices ? '' : ' · ${r.syncLabel.toLowerCase()}'}');
               },
               child: Column(children: [
                 Stack(clipBehavior: Clip.none, children: [
@@ -94,7 +95,7 @@ class _ReciterPickerState extends State<_ReciterPicker> {
                     decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: on ? c.gold : Colors.transparent, width: 2)),
                     child: ReciterAvatar(r, size: 80),
                   ),
-                  if (r.hasWordSync)
+                  if (!widget.voices)
                     Positioned(
                       left: 0,
                       right: 0,
@@ -102,8 +103,11 @@ class _ReciterPickerState extends State<_ReciterPicker> {
                       child: Center(
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(color: c.emerald, borderRadius: BorderRadius.circular(99), border: Border.all(color: c.surface, width: 2)),
-                          child: Text('WORD SYNC', style: T.ui(8.5, w: FontWeight.w800, color: Colors.white)),
+                          decoration: BoxDecoration(
+                              color: r.hasWordSync ? c.emerald : r.hasAyahSync ? c.emerald.withValues(alpha: 0.55) : c.raised2,
+                              borderRadius: BorderRadius.circular(99),
+                              border: Border.all(color: c.surface, width: 2)),
+                          child: Text(r.syncLabel.toUpperCase(), style: T.ui(8.5, w: FontWeight.w800, color: r.hasAyahSync ? Colors.white : c.fg2)),
                         ),
                       ),
                     ),
@@ -113,6 +117,7 @@ class _ReciterPickerState extends State<_ReciterPicker> {
                       top: 0,
                       child: CircleAvatar(radius: 12, backgroundColor: c.gold, child: Icon(Icons.check_rounded, size: 15, color: c.goldInk)),
                     ),
+                  if (!widget.voices) Positioned(left: -4, top: -4, child: FavButton.reciter(r.id, size: 28)),
                 ]),
                 const SizedBox(height: 10),
                 Text(r.name, textAlign: TextAlign.center, maxLines: 2, style: T.ui(12.5, w: FontWeight.w600, color: on ? c.gold : c.fg, height: 1.2)),
@@ -657,7 +662,7 @@ class _DownloadSheetState extends State<_DownloadSheet> {
     }
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      row(r.name, '${r.hasWordSync ? 'Full-surah recitation with word timings' : 'Recitation, ${info.ayahs} ayahs'} · ~${(info.ayahs * 0.3).toStringAsFixed(1)} MB',
+      row(r.name, '${r.timing != null ? 'Full-surah recitation · ${r.syncLabel.toLowerCase()}' : 'Recitation, ${info.ayahs} ayahs'} · ~${(info.ayahs * 0.3).toStringAsFixed(1)} MB',
           lock: 'Required'),
       row('Quran text', 'All five scripts, so any script works offline', lock: 'Included'),
       for (final t in {s.translationId, ...s.quickTranslations})
@@ -829,7 +834,7 @@ class _QuranDownloadSheetState extends State<_QuranDownloadSheet> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(r.name, style: T.ui(15, w: FontWeight.w700, color: c.fg)),
                 Text(
-                    '${r.hasWordSync ? 'Full surahs with word timings' : 'Ayah by ayah'}${saved > 0 ? ' · $saved already saved' : ''}',
+                    '${r.timing != null ? 'Full surahs · ${r.syncLabel.toLowerCase()}' : 'Ayah by ayah'}${saved > 0 ? ' · $saved already saved' : ''}',
                     style: T.ui(12.5, color: c.fg3)),
               ]),
             ),

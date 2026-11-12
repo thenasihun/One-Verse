@@ -64,12 +64,12 @@ Listing changes are reviewed together with the release.
 
 ## 4. Release notes ("What's new", maximum 500 characters each)
 
-### en-US (480 characters)
+### en-US (482 characters)
 ```
 One Verse 2.0 – all new
 • Word-by-word highlight: every word lights up as it's recited
 • 5 Quran scripts: Madani, IndoPak, Tajweed colours, Uthmani, Simple
-• 25 reciters with photos; Urdu & 40+ translations in one tap
+• 50+ reciters with photos, favourites; Urdu & 40+ translations
 • New player: repeat ayah, speed, sleep timer, lock-screen controls
 • Focus view, streaks, listening stats and gentle reminders
 • Download the complete Quran and listen offline
@@ -77,12 +77,12 @@ One Verse 2.0 – all new
 • Continues exactly where you left off
 ```
 
-### ur (Urdu, 467 characters)
+### ur (Urdu, 466 characters)
 ```
 ون ورس 2.0 – بالکل نئی ایپ
 • لفظ بہ لفظ ہائی لائٹ: تلاوت کے ساتھ ہر لفظ روشن ہوتا ہے
 • قرآن کے 5 رسم الخط: مدنی، انڈو پاک، تجوید رنگوں کے ساتھ، عثمانی، سادہ
-• تصاویر کے ساتھ 25 قاری، اردو اور 40 سے زائد ترجمے ایک ٹیپ پر
+• تصاویر کے ساتھ 50 سے زائد قاری، پسندیدہ، اردو اور 40+ ترجمے
 • نیا پلیئر: آیت دہرائیں، رفتار، سلیپ ٹائمر، لاک اسکرین کنٹرول
 • فوکس ویو، اسٹریک، سننے کے اعداد و شمار اور یاددہانیاں
 • مکمل قرآن ڈاؤن لوڈ کریں اور بغیر انٹرنیٹ سنیں
@@ -108,7 +108,7 @@ Quran audio with word-by-word highlight, 5 scripts, Urdu & 40+ translations.
 ```
 
 ### Full description (maximum 4000 characters)
-3029 characters:
+3187 characters:
 ```
 One Verse – Hear the Quran. See every word.
 
@@ -126,8 +126,9 @@ One Verse is a calm, beautiful Quran app for listening, reading and understandin
 • Uthmani and Simple (modern spelling)
 • Every mark sits in the right place, so the text reads correctly on Android
 
-🎧 25 RECITERS, WITH THEIR PHOTOS
-• Mishary Alafasy, Sudais, Shuraim, Maher Al-Muaiqly, Yasser Al-Dosari, Husary, Minshawi, Abdul Basit, Nasser Al-Qatami and more
+🎧 50+ RECITERS, WITH THEIR PHOTOS
+• Mishary Alafasy, Sudais, Shuraim, Maher Al-Muaiqly, Yasser Al-Dosari, Saad Al-Ghamdi, Khalid Al-Jaleel, Idrees Abkar, Fares Abbad, Mansour Al-Salimi, Husary, Minshawi, Abdul Basit and many more
+• Keep your favourite reciters and surahs one tap away
 • Short biographies, Murattal, Mujawwad and teaching styles
 
 🌍 UNDERSTAND EVERY AYAH
@@ -155,7 +156,7 @@ One Verse is a calm, beautiful Quran app for listening, reading and understandin
 📶 ALWAYS READY, EVEN OFFLINE
 • The whole Quran text in all five scripts, your translation and word timings are kept on your phone for 30 days
 • On Wi-Fi it refreshes by itself, so it is always ready without internet
-• Download the complete Quran with one tap, or any single surah. Pause and resume any time; it continues on Wi-Fi by itself
+• Download the complete Quran with one tap, or any single surah. It keeps downloading in the background, pauses and resumes, and carries on by itself on Wi-Fi
 
 ⏯️ CONTINUE WHERE YOU LEFT OFF
 • Close the app or restart your phone – One Verse opens on the same ayah, with the same reciter and settings
@@ -190,7 +191,7 @@ Play allows **up to 8 phone screenshots**. Upload them in this order:
 | 3 | `03-player.png` | Now Playing: repeat, speed, sleep timer, lock-screen controls |
 | 4 | `04-scripts.png` | 5 Quran scripts and tajweed colours |
 | 5 | `05-urdu.png` | IndoPak text with Urdu translation |
-| 6 | `06-reciters.png` | 25 reciters with photos |
+| 6 | `06-reciters.png` | 50+ reciters with photos |
 | 7 | `07-focus.png` | Focus view |
 | 8 | `08-progress.png` | Streaks and listening stats |
 
@@ -220,6 +221,15 @@ notification controls.
   *Unlisted*. Show these steps: play a surah → press Home → the notification controls → pause from the
   notification.
 
+The app also declares `FOREGROUND_SERVICE_DATA_SYNC` (used by the `background_downloader` package), so recitation
+downloads the user starts keep going in the background.
+- **Type:** Data sync.
+- **Description to paste:**
+  ```
+  One Verse downloads Quran recitations the user asks for (one surah, or the complete Quran) so they can listen offline. The data sync foreground service keeps these downloads running when the user leaves the app, and shows their progress in a notification. Downloads only start when the user taps Download, and can be paused or cancelled at any time.
+  ```
+- **Video link:** show tapping "Download complete Quran", pressing Home, and the download notification.
+
 ### Data safety
 **No data collected**, unchanged. The answers stay:
 - No data collected and no data shared.
@@ -247,10 +257,11 @@ Added in 2.0.0:
   turns on a reminder.
 - `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK`: background playback.
 - `WAKE_LOCK`: background playback.
+- `FOREGROUND_SERVICE_DATA_SYNC`: downloads keep going in the background.
 - `RECEIVE_BOOT_COMPLETED`: restores scheduled reminders after a restart.
 - `VIBRATE`: reminder notifications.
 
-None of these need a separate declaration except the foreground service above.
+None of these need a separate declaration except the two foreground service types above.
 
 ### Privacy policy
 The repository's `privacy-policy.html` has been updated for 2.0.0:
@@ -342,10 +353,25 @@ Rebuilt from scratch on a new design: a dark emerald and gold theme, plus a ligh
 - The whole Quran text in all scripts, the chosen translation, and timings for the chosen reciter are cached
   for 30 days.
 - On Wi-Fi, anything older than 3 days is refreshed in the background.
-- Surah recitations can be downloaded to private storage, one surah at a time or the complete Quran in one go:
+- Surah recitations can be downloaded to private storage, one surah at a time or the complete Quran in one go.
+  Downloads go through the system downloader (`background_downloader`), six files and three surahs at a time,
+  and keep running in the background as a foreground service:
   - the size is shown before starting (exact for Quran.com recitations, measured for the others)
   - pause, resume and cancel; Wi-Fi only by default, with an option to use mobile data
   - it carries on after the app is closed, retries failed surahs, and shows progress in a notification
+
+**Reciters and favourites**
+- 51 reciters. 26 of them stream full surahs from mp3quran.net:
+  - 22 with published ayah timings, so the reader follows the ayah
+  - 4 with ayahs estimated from the text length
+- Favourite surahs and reciters: hearts in the reader, the player and the reciter picker; a Favourites filter;
+  and a section on Home.
+- A downloaded surah plays with the reciter it was saved with. Offline, the app switches to a saved reciter
+  by itself.
+- Streams that stop are reloaded at the same place, and playback resumes when the connection returns.
+- Large playback buffers, and a pause when headphones are unplugged.
+- The next surah starts by itself, and the reader turns to it.
+- Surah search accepts common spellings: Kausar, Rehman, Yaseen, Zariyat.
 
 **Habits**
 - Listening log with day, week, month and year charts, our own streak algorithm (60 s/day), a goal ring and a

@@ -31,6 +31,7 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
   final keys = <int, GlobalKey>{};
   late final Ticker _ticker;
   bool follow = true;
+  bool _heardHere = false, _turning = false;
   bool showPill = false;
   int? _jumpTo;
   final titleVisible = ValueNotifier(false);
@@ -152,6 +153,14 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
       _future = _load(repo, settings);
     }
     if (pb.surah == widget.surah && pb.playing && !follow && !showPill) showPill = true;
+    // The next surah started by itself: follow it, like a book turning the page.
+    if (pb.surah == widget.surah) _heardHere = true;
+    if (_heardHere && follow && pb.surah == widget.surah + 1 && !_turning && ModalRoute.of(context)?.isCurrent == true) {
+      _turning = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => ReaderScreen(surah: pb.surah)));
+      });
+    }
 
     return Scaffold(
       bottomNavigationBar: const SafeArea(top: false, child: Column(mainAxisSize: MainAxisSize.min, children: [MiniPlayer(), SizedBox(height: 6)])),
@@ -334,6 +343,8 @@ class _Hero extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
+          FavButton.surah(info.number),
+          const SizedBox(width: 8),
           Material(
             color: downloaded ? c.emeraldWash : c.raised,
             shape: CircleBorder(side: BorderSide(color: downloaded ? c.emerald.withValues(alpha: 0.4) : c.line)),
@@ -356,7 +367,7 @@ class _Hero extends StatelessWidget {
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        child: Align(alignment: Alignment.centerLeft, child: SyncBadge(r.hasWordSync, suffix: ' · ${r.name}')),
+        child: Align(alignment: Alignment.centerLeft, child: SyncBadge(r, suffix: ' · ${r.name}')),
       ),
       if (pb.error != null && current)
         Padding(

@@ -45,7 +45,9 @@ void main() {
     net.debugSet(NetKind.unmetered);
     final repo = QuranRepository(store: _FilesStore())
       ..surahs = [for (var i = 1; i <= 114; i++) SurahInfo(i, '', 'Surah $i', '', 7, true)];
-    dl = _FakeDownloads(repo)..retryDelay = Duration.zero;
+    dl = _FakeDownloads(repo)
+      ..retryDelay = Duration.zero
+      ..quranParallel = 1;
     await dl.init();
   });
   tearDown(() => net.debugSet(NetKind.unmetered));
@@ -119,6 +121,16 @@ void main() {
     expect(dl.quranState, QuranState.done);
   });
 
+  test('three surahs download at the same time', () async {
+    var running = 0, most = 0;
+    final par = _ParallelDownloads(dl.repo, onStart: () => most = (++running) > most ? running : most, onEnd: () => running--);
+    await par.init();
+    await par.startQuran(plan);
+    await par.quranIdle;
+    expect(most, 3);
+    expect(par.quranState, QuranState.done);
+  });
+
   test('a plan left running when the app closed is picked up again', () async {
     await dl.repo.store.write('quran_download', {...plan.toJson(), 'active': true});
     final again = _FakeDownloads(dl.repo)..retryDelay = Duration.zero;
@@ -126,4 +138,19 @@ void main() {
     expect(again.quranPlan!.reciterId, 'ar.alafasy');
     expect(again.quranState, QuranState.paused);
   });
+}
+
+class _ParallelDownloads extends Downloads {
+  _ParallelDownloads(super.repo, {required this.onStart, required this.onEnd}) : super(net: NetworkStatus.instance);
+  final void Function() onStart, onEnd;
+
+  @override
+  Future<DownloadRecord?> download({required int surah, required Reciter reciter, required List<String> translations, Reciter? voice}) async {
+    onStart();
+    await Future.delayed(const Duration(milliseconds: 2));
+    onEnd();
+    final r = DownloadRecord(surah, reciter.id, translations, voice?.id, 1000, DateTime(2026));
+    debugAddRecord(r);
+    return r;
+  }
 }
