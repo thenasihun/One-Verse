@@ -9,6 +9,7 @@ import 'cache_store.dart';
 import 'catalog.dart';
 import 'models.dart';
 import 'network.dart';
+import 'tafsir.dart';
 
 /// How long data stays usable offline, and when it is refreshed.
 class SyncPolicy {
@@ -150,6 +151,28 @@ class QuranRepository extends ChangeNotifier {
         },
         (j) => List<String>.from(j as List),
         force: force,
+      );
+
+  // ---------------------------------------------------------------- tafsir
+
+  static String tafsirKey(int book, int n, int a) => 'tafsir_${book}_${n}_$a';
+
+  /// The commentary on one ayah from [book] (see tafsir.dart), cached like the
+  /// rest of the text.
+  Future<TafsirEntry> tafsir(int book, int n, int a) => _cached(
+        tafsirKey(book, n, a),
+        () async {
+          final d = await api.getJson('${Endpoints.qdc}/tafsirs/$book/by_ayah/$n:$a');
+          final t = d['tafsir'] as Map;
+          return {
+            'text': (t['text'] as String?) ?? '',
+            'verses': [for (final k in ((t['verses'] as Map?) ?? const {}).keys) '$k'],
+          };
+        },
+        (j) {
+          final m = Map<String, dynamic>.from(j as Map);
+          return TafsirEntry(parseTafsirHtml(m['text'] as String), List<String>.from(m['verses'] as List));
+        },
       );
 
   Future<void> loadTranslationList() async {

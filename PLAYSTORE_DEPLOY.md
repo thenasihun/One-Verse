@@ -1,10 +1,11 @@
-# One Verse v2.0.0 (build 5): Play Store deployment guide
+# One Verse v2.1.0 (build 6): Play Store deployment guide
 
 This file is a set of instructions for an AI agent (or a person) publishing this update to Google Play.
 Follow the steps in order. Do not change the build files or upload a different file.
 
-Version 2.0.0 is a complete rebuild of the app with a new design. The listing text, screenshots and feature
-graphic all change with it, and one new declaration is needed (foreground service, section 7).
+Version 2.0 is a complete rebuild of the app with a new design, and 2.1 adds tafseer, bookmarks with notes and
+a memorise mode. The listing text, screenshots and feature graphic all change with it, and one new declaration
+is needed (foreground service, section 7).
 
 ---
 
@@ -14,8 +15,8 @@ graphic all change with it, and one new declaration is needed (foreground servic
 |---|---|
 | App name (on device) | One Verse |
 | Package name | `com.nasihun.oneverse` |
-| Version name | `2.0.0` |
-| Version code | `5` (previous release: `4`, version 1.1.0) |
+| Version name | `2.1.0` |
+| Version code | `6` (previous release: `4`, version 1.1.0; or `5` if 2.0.0 was uploaded) |
 | Target SDK / Compile SDK | 36 (Android 16) |
 | Min SDK | 24 (Android 7.0), unchanged |
 | Signing key alias | `oneverse` |
@@ -50,8 +51,8 @@ How to build these files is in section 10.
 4. Go to **Test and release → Production** (or **Closed testing** to test first).
 5. Click **Create new release**.
 6. Under **App bundles**, click **Upload** and choose `build/app/outputs/bundle/release/app-release.aab`.
-   - Wait until it shows **Version 5 (2.0.0)** with no errors.
-7. **Release name:** `2.0.0 (5) – All-new One Verse: word-by-word highlight, 5 scripts, offline`
+   - Wait until it shows **Version 6 (2.1.0)** with no errors.
+7. **Release name:** `2.1.0 (6) – Tafseer, bookmarks, memorise mode, 50+ reciters`
 8. **Release notes:** paste the text from section 4. Add both `en-US` and `ur` if the Urdu listing exists.
 9. Click **Next**. Read the warnings screen (section 8), then click **Save**.
 10. Update the store listing (section 5) and the graphics (section 6).
@@ -64,29 +65,27 @@ Listing changes are reviewed together with the release.
 
 ## 4. Release notes ("What's new", maximum 500 characters each)
 
-### en-US (482 characters)
+### en-US (447 characters)
 ```
-One Verse 2.0 – all new
-• Word-by-word highlight: every word lights up as it's recited
-• 5 Quran scripts: Madani, IndoPak, Tajweed colours, Uthmani, Simple
-• 50+ reciters with photos, favourites; Urdu & 40+ translations
-• New player: repeat ayah, speed, sleep timer, lock-screen controls
-• Focus view, streaks, listening stats and gentle reminders
-• Download the complete Quran and listen offline
-• Works offline for 30 days and syncs on Wi-Fi
+One Verse 2.1
+• NEW Tafseer: Ibn Kathir, Bayan ul Quran (Dr. Israr Ahmad), Ma'arif al-Qur'an and more, in Urdu, English and Arabic
+• NEW Bookmarks with your own notes
+• NEW Memorise mode: loop ayahs 3×, 5×, 10× or more, with a pause between rounds
+• 50+ reciters, favourites, word-by-word highlight, 5 scripts
+• Download the complete Quran; it keeps going in the background
+• Sleep timer now fades out gently
 • Continues exactly where you left off
 ```
 
-### ur (Urdu, 466 characters)
+### ur (Urdu, 409 characters)
 ```
-ون ورس 2.0 – بالکل نئی ایپ
-• لفظ بہ لفظ ہائی لائٹ: تلاوت کے ساتھ ہر لفظ روشن ہوتا ہے
-• قرآن کے 5 رسم الخط: مدنی، انڈو پاک، تجوید رنگوں کے ساتھ، عثمانی، سادہ
-• تصاویر کے ساتھ 50 سے زائد قاری، پسندیدہ، اردو اور 40+ ترجمے
-• نیا پلیئر: آیت دہرائیں، رفتار، سلیپ ٹائمر، لاک اسکرین کنٹرول
-• فوکس ویو، اسٹریک، سننے کے اعداد و شمار اور یاددہانیاں
-• مکمل قرآن ڈاؤن لوڈ کریں اور بغیر انٹرنیٹ سنیں
-• 30 دن تک بغیر انٹرنیٹ، وائی فائی پر خودکار اپڈیٹ
+ون ورس 2.1
+• نیا: تفسیر – ابنِ کثیر، بیان القرآن (ڈاکٹر اسرار احمد)، معارف القرآن اور مزید، اردو، انگریزی اور عربی میں
+• نیا: بک مارکس، اپنے نوٹس کے ساتھ
+• نیا: حفظ موڈ – آیات کو 3، 5، 10 یا زیادہ بار دہرائیں، ہر دور کے بیچ وقفہ
+• 50 سے زائد قاری، پسندیدہ، لفظ بہ لفظ ہائی لائٹ، 5 رسم الخط
+• مکمل قرآن ڈاؤن لوڈ، بیک گراؤنڈ میں بھی جاری
+• سلیپ ٹائمر اب آہستہ آہستہ آواز کم کرتا ہے
 • جہاں چھوڑا تھا وہیں سے جاری
 ```
 
@@ -108,7 +107,7 @@ Quran audio with word-by-word highlight, 5 scripts, Urdu & 40+ translations.
 ```
 
 ### Full description (maximum 4000 characters)
-3187 characters:
+3653 characters:
 ```
 One Verse – Hear the Quran. See every word.
 
@@ -139,9 +138,17 @@ One Verse is a calm, beautiful Quran app for listening, reading and understandin
 
 ▶️ A PLAYER MADE FOR THE QURAN
 • Repeat an ayah 1×, 3× or forever – ideal for memorising
-• Speed from 0.75× to 1.5× and a sleep timer
+• Speed from 0.75× to 1.5× and a sleep timer that fades out gently
 • Keeps playing in the background, with controls in the notification and on the lock screen
 • Arabic only, Arabic + translation, or translation only
+
+📚 TAFSEER, BOOKMARKS AND NOTES
+• Read the tafseer of any ayah: Ibn Kathir, Bayan ul Quran (Dr. Israr Ahmad), Tazkir ul Quran and Fi Zilal al-Quran in Urdu; Ibn Kathir, Ma'arif al-Qur'an and Tazkirul Quran in English; Muyassar and Al-Sa'di in Arabic
+• Bookmark ayahs and write your own notes and reflections
+
+🧠 MEMORISE (HIFZ) MODE
+• Loop a range of ayahs 3, 5, 10, 20 times or until you stop
+• Add a pause between rounds to recite from memory
 
 🕌 FOCUS VIEW
 • One ayah, full screen, with its meaning below
@@ -290,7 +297,7 @@ describes the storage permission of 1.x.
 
 | Error | Fix |
 |---|---|
-| "Version code 5 has already been used" | In `pubspec.yaml`, change `version: 2.0.0+5` to `+6`. Rebuild with `flutter build appbundle --release` and upload again. |
+| "Version code 6 has already been used" | In `pubspec.yaml`, change `version: 2.1.0+6` to `+7`. Rebuild with `flutter build appbundle --release` and upload again. |
 | "Your Android App Bundle is signed with the wrong key" | The bundle must be signed with the `oneverse` key (SHA-256 in section 1). Make sure `android/key.properties` exists and points to `OneVerseKey.jks`. When it does, the build log shows `✔ Using release keystore`. |
 | "signed in debug mode" | `android/key.properties` is missing, so the build fell back to debug signing. Restore it and rebuild. |
 | "You must complete the foreground service declaration" | Do the first part of section 7. |
@@ -324,6 +331,36 @@ It must match the upload certificate SHA-256 in section 1.
 ---
 
 ## 11. Changelog for this version (technical)
+
+### 2.1.0 (build 6)
+
+**Tafseer**
+- Per-ayah commentary from Quran.com (`/qdc/tafsirs/{id}/by_ayah`), cached for offline reading like the rest of
+  the text.
+- Nine books:
+  - Urdu: Ibn Kathir, Bayan ul Quran, Tazkir ul Quran, Fi Zilal al-Quran
+  - English: Ibn Kathir (Abridged), Ma'arif al-Qur'an, Tazkirul Quran
+  - Arabic: Muyassar, Al-Sa'di
+- The first book follows the translation's language; the reader's choice is remembered.
+- Commentary that covers a group of ayahs says so, and the next arrow moves past the group.
+
+**Bookmarks and notes**
+- Bookmark any ayah from the reader, Focus view or Now Playing, with an optional note.
+- Bookmarks screen (from Library) and a Bookmarks row on Home.
+
+**Memorise mode**
+- Loops ayahs A–B of the playing surah 3, 5, 7, 10, 20 times or until stopped, with an optional 3–10 s pause
+  between rounds.
+- Works with full-surah files and ayah-by-ayah audio; the per-ayah repeat still applies inside the loop.
+- It stops after the last round, and a banner in Now Playing shows the round.
+
+**Other**
+- The sleep timer fades out over its last 12 seconds.
+- Now Playing's "More" section is now a grid: Memorise, Tafseer, Bookmark, Sleep timer, Download, Share, Focus and
+  Go to ayah.
+- Fixed chips stretching to the full width in wrapped rows (translation chips in Now Playing).
+
+### 2.0.0 (build 5)
 
 Rebuilt from scratch on a new design: a dark emerald and gold theme, plus a light theme.
 

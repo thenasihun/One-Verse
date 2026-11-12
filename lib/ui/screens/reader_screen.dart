@@ -13,6 +13,7 @@ import '../../state/playback.dart';
 import '../../state/settings.dart';
 import '../sheets.dart';
 import '../shell.dart';
+import '../study.dart';
 import '../widgets/common.dart';
 import '../widgets/quran_text.dart';
 
@@ -456,6 +457,8 @@ class _VerseCard extends StatelessWidget {
                   if (!active) pb.playAyah(surah, verse.ayah);
                   Nav.focus(context);
                 }),
+                RoundIcon(Icons.menu_book_rounded, tooltip: 'Tafseer', size: 36, color: c.fg2, onTap: () => showTafsirSheet(context, surah, verse.ayah)),
+                BookmarkButton(surah, verse.ayah, color: c.fg2),
                 RoundIcon(Icons.ios_share_rounded, tooltip: 'Share ayah', size: 36, color: c.fg2, onTap: () => shareAyah(context, surah, verse.ayah)),
               ]),
               if (s.show != ShowMode.translation)

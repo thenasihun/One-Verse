@@ -239,11 +239,12 @@ class OvChip extends StatelessWidget {
       child: InkWell(
         customBorder: const StadiumBorder(),
         onTap: onTap,
+        // No alignment here: an aligned box grows to the full width a Wrap
+        // offers, so every chip would take a whole line.
         child: Container(
           height: 36,
           padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.center,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
+          child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
             if (leading != null) ...[leading!, const SizedBox(width: 6)],
             Text(label,
                 style: urdu

@@ -9,6 +9,7 @@ import '../../state/playback.dart';
 import '../../state/settings.dart';
 import '../sheets.dart';
 import '../shell.dart';
+import '../study.dart';
 import '../widgets/common.dart';
 import '../widgets/quran_text.dart';
 
@@ -143,6 +144,7 @@ class NowPlayingScreen extends StatelessWidget {
                 ]),
                 if (pb.error != null)
                   Padding(padding: const EdgeInsets.only(top: 12), child: Text(pb.error!, textAlign: TextAlign.center, style: T.ui(13, color: c.gold))),
+                if (pb.looping) const Padding(padding: EdgeInsets.only(top: 12), child: LoopBanner()),
                 const Label('What you hear'),
                 Segmented<ListenMode>(
                   options: const [
@@ -190,25 +192,36 @@ class NowPlayingScreen extends StatelessWidget {
                 const SizedBox(height: 22),
                 const _Lyric(),
                 const Label('More'),
-                Row(children: [
+                GridView.count(
+                  crossAxisCount: 4,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 1.05,
+                  children: [
                   for (final (icon, label, lit, onTap) in [
+                    (Icons.all_inclusive_rounded, pb.looping ? 'Memorising' : 'Memorise', pb.looping, () => showLoopSheet(context)),
+                    (Icons.menu_book_rounded, 'Tafseer', false, () => showTafsirSheet(context, pb.surah, pb.ayah)),
+                    (s.bookmarkOf(pb.surah, pb.ayah) != null ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, 'Bookmark',
+                        s.bookmarkOf(pb.surah, pb.ayah) != null, () => onBookmarkTap(context, pb.surah, pb.ayah)),
                     (Icons.bedtime_rounded, pb.sleepAt != null ? 'Sleep ${fmtDur(pb.sleepAt!.difference(DateTime.now()))}' : pb.sleepEndOfSurah ? 'End of surah' : 'Sleep timer',
                         pb.sleepAt != null || pb.sleepEndOfSurah, () => showSleepSheet(context)),
                     (downloaded ? Icons.download_done_rounded : Icons.download_rounded, downloaded ? 'Offline' : 'Download', downloaded,
                         () => showDownloadSheet(context, pb.surah)),
                     (Icons.ios_share_rounded, 'Share', false, () => shareAyah(context, pb.surah, pb.ayah)),
                     (Icons.open_in_full_rounded, 'Focus', false, () => Nav.focus(context)),
-                  ]) ...[
-                    Expanded(
-                      child: Material(
+                    (Icons.tag_rounded, 'Go to ayah', false, () => showJumpSheet(context, pb.surah, (a) => pb.seekToAyah(a, autoplay: true))),
+                  ])
+                      Material(
                         color: c.surface,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: c.line)),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
                           onTap: onTap,
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Column(children: [
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                               Icon(icon, color: lit ? c.gold : c.fg),
                               const SizedBox(height: 6),
                               Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(11.5, w: FontWeight.w600, color: c.fg2)),
@@ -216,9 +229,6 @@ class NowPlayingScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ),
-                    if (label != 'Focus') const SizedBox(width: 8),
-                  ],
                 ]),
                 const Label('Up next'),
                 SwitchListTile(

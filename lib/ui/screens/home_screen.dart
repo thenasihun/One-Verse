@@ -11,6 +11,7 @@ import '../../state/reminders.dart';
 import '../../state/settings.dart';
 import '../sheets.dart';
 import '../shell.dart';
+import '../study.dart';
 import '../widgets/common.dart';
 import '../widgets/quran_text.dart';
 import 'about_screen.dart';
@@ -120,6 +121,19 @@ class HomeScreen extends StatelessWidget {
             itemCount: settings.favSurahs.length,
             separatorBuilder: (_, _) => const SizedBox(width: 10),
             itemBuilder: (_, i) => SizedBox(width: 168, child: _SurahTile(repo.surah(settings.favSurahs[settings.favSurahs.length - 1 - i]))),
+          ),
+        ),
+      ],
+      if (settings.bookmarks.isNotEmpty) ...[
+        SectionTitle('Bookmarks', action: 'See all ${settings.bookmarks.length}', onAction: () => BookmarksScreen.open(context)),
+        SizedBox(
+          height: 84,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: settings.bookmarks.length.clamp(0, 8),
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (_, i) => _BookmarkTile(settings.bookmarks[i]),
           ),
         ),
       ],
@@ -401,6 +415,42 @@ class _VerseOfDayState extends State<_VerseOfDay> {
           ),
         );
       },
+    );
+  }
+}
+
+class _BookmarkTile extends StatelessWidget {
+  final Bookmark b;
+  const _BookmarkTile(this.b);
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    final info = context.read<QuranRepository>().surah(b.surah);
+    return SizedBox(
+      width: 190,
+      child: Material(
+        color: c.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: c.line)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => Nav.surah(context, b.surah, ayah: b.ayah),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+              Row(children: [
+                Icon(Icons.bookmark_rounded, size: 16, color: c.gold),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('${info.nameEn} ${b.surah}:${b.ayah}',
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(13.5, w: FontWeight.w700, color: c.fg)),
+                ),
+              ]),
+              const SizedBox(height: 4),
+              Text(b.note.isNotEmpty ? b.note : info.meaning, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.ui(12, color: c.fg2)),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }

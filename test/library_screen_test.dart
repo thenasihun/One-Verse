@@ -66,7 +66,7 @@ void main() {
   });
 
   void phone(WidgetTester t) {
-    t.view.physicalSize = const Size(1179, 3300);
+    t.view.physicalSize = const Size(1179, 3900);
     t.view.devicePixelRatio = 3;
     addTearDown(t.view.reset);
   }

@@ -8,6 +8,7 @@ import 'package:oneverse/data/catalog.dart';
 import 'package:oneverse/data/downloads.dart';
 import 'package:oneverse/data/models.dart';
 import 'package:oneverse/data/repository.dart';
+import 'package:oneverse/data/tafsir.dart';
 
 /// Hits every real API the app uses. Run with: flutter test --tags live
 void main() {
@@ -121,5 +122,14 @@ void main() {
     expect(withPhoto, greaterThanOrEqualTo(22));
     expect(repo.profileOf(reciters.first)!.country, 'Kuwait');
     expect(repo.profileOf(reciters.first)!.bio, isNotEmpty);
+  });
+
+  test('tafsir: every book answers for Ayat al-Kursi', () async {
+    for (final b in tafsirBooks) {
+      final e = await repo.tafsir(b.id, 2, 255);
+      expect(e.blocks, isNotEmpty, reason: b.name);
+      expect(e.verses, contains('2:255'), reason: b.name);
+      if (b.urdu) expect(e.blocks.first.text, matches(RegExp('[\u0600-\u06FF]')), reason: b.name);
+    }
   });
 }
