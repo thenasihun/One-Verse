@@ -9,6 +9,7 @@ import '../../data/repository.dart';
 import '../../state/playback.dart';
 import '../../state/settings.dart';
 import '../sheets.dart';
+import '../study.dart';
 import '../widgets/common.dart';
 import '../widgets/quran_text.dart';
 
@@ -105,6 +106,8 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                   ),
                 ),
                 if (pb.wordExact) Tooltip(message: 'Word-exact timing', child: Icon(Icons.graphic_eq_rounded, size: 18, color: c.emerald)),
+                RoundIcon(Icons.menu_book_rounded, tooltip: 'Tafseer', size: 40, onTap: () => showTafsirSheet(context, pb.surah, pb.ayah)),
+                BookmarkButton(pb.surah, pb.ayah, size: 40),
                 RoundIcon(Icons.text_fields_rounded, tooltip: 'Script and size', size: 40, onTap: () => showDisplaySheet(context)),
                 const SizedBox(width: 2),
               ]),

@@ -95,6 +95,17 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   /// One-off messages for the user (shown as a toast by the shell).
   final ValueNotifier<String?> notice = ValueNotifier(null);
 
+  // Memorisation loop: plays ayahs [loopFrom]..[loopTo] of this surah
+  // [loopTimes] times (0 = until stopped), with [loopGap] of quiet between
+  // rounds.
+  int? loopFrom, loopTo;
+  int loopTimes = 0;
+  int loopRound = 1;
+  Duration loopGap = Duration.zero;
+  bool _loopBusy = false;
+  Timer? _gapTimer;
+  bool get looping => loopFrom != null;
+
   int _reps = 0;
   int _recoveries = 0;
   bool _resumeWhenOnline = false;
@@ -150,6 +161,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   /// Loads [n] and starts at [startAyah]. Keeps the current position when
   /// only a setting changed.
   Future<void> play(int n, {int startAyah = 1, bool autoplay = true, int offsetMs = 0}) async {
+    if (n != surah) clearLoop(notify: false);
     _useDownloadedReciter(n);
     surah = n;
     ayah = startAyah;
@@ -339,6 +351,11 @@ class Playback extends ChangeNotifier implements PlayerCommands {
         return;
       }
       log.addAyah();
+      if (_loopEnds(items[prev].ayah, item.ayah)) {
+        _lastIndex = items.indexWhere((p) => p.ayah == loopFrom);
+        unawaited(_restartLoop());
+        return;
+      }
     }
     _userNav = false;
     _setAyah(item.ayah, item.phase);
@@ -374,9 +391,20 @@ class Playback extends ChangeNotifier implements PlayerCommands {
       var ai = timing!.ayahAt(ms);
       if (ai < 0) ai = 0;
       final current = ayah - 1;
+      if (_loopBusy) return;
       if (_repeatSeek) {
         if (ai != current) return; // waiting for the repeat seek to land
         _repeatSeek = false;
+      }
+      if (ai > current && ai - current <= 3 && !_userNav && player.playing && _loopEnds(ayah, ai + 1)) {
+        if (_shouldRepeat()) {
+          _repeatSeek = true;
+          player.seek(Duration(milliseconds: timing!.ayahs[current].from));
+          return;
+        }
+        log.addAyah();
+        unawaited(_restartLoop());
+        return;
       }
       // Natural move to the next ayah: repeat or count it.
       if (ai == current + 1 && !_userNav && player.playing) {
@@ -440,6 +468,10 @@ class Playback extends ChangeNotifier implements PlayerCommands {
         return;
       }
       log.addAyah();
+      if (_loopEnds(ayah, info.ayahs + 1)) {
+        unawaited(_restartLoop());
+        return;
+      }
       if (sleepEndOfSurah) {
         sleepEndOfSurah = false;
       } else if (settings.autoNext && surah < 114) {
@@ -593,6 +625,69 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     handler.refresh();
   }
 
+  // ---------------------------------------------------------------- memorise
+
+  /// Starts looping ayahs [from]..[to] of the current surah.
+  Future<void> setLoop(int from, int to, {int times = 0, Duration gap = Duration.zero}) async {
+    if (from > to) (from, to) = (to, from);
+    loopFrom = from.clamp(1, info.ayahs);
+    loopTo = to.clamp(1, info.ayahs);
+    loopTimes = times;
+    loopGap = gap;
+    loopRound = 1;
+    notifyListeners();
+    await seekToAyah(loopFrom!, autoplay: true);
+  }
+
+  void clearLoop({bool notify = true}) {
+    _gapTimer?.cancel();
+    loopFrom = loopTo = null;
+    loopRound = 1;
+    if (notify) notifyListeners();
+  }
+
+  /// Whether moving from ayah [from] to [to] leaves the end of the loop.
+  bool _loopEnds(int from, int to) => looping && from <= loopTo! && to > loopTo! && from >= loopFrom!;
+
+  Future<void> _restartLoop() async {
+    if (loopTimes > 0 && loopRound >= loopTimes) {
+      final rounds = loopTimes;
+      clearLoop(notify: false);
+      await player.pause();
+      notice.value = 'Memorisation loop done · $rounds rounds';
+      notifyListeners();
+      return;
+    }
+    loopRound++;
+    _loopBusy = true;
+    try {
+      final gap = loopGap;
+      if (gap > Duration.zero) await player.pause();
+      _userNav = true;
+      _reps = 0;
+      if (singleFile) {
+        await player.seek(Duration(milliseconds: timing!.ayahs[loopFrom! - 1].from));
+      } else {
+        final idx = items.indexWhere((p) => p.ayah == loopFrom);
+        await player.seek(Duration.zero, index: idx < 0 ? 0 : idx);
+      }
+      _setAyah(loopFrom!, Phase.arabic);
+      _userNav = false;
+      word.value = -1;
+      notifyListeners();
+      if (gap > Duration.zero) {
+        _gapTimer?.cancel();
+        _gapTimer = Timer(gap, () {
+          if (looping) player.play();
+        });
+      } else {
+        unawaited(player.play()); // completes only when paused, so not awaited
+      }
+    } finally {
+      _loopBusy = false;
+    }
+  }
+
   void setSpeed(double s) {
     settings.update((x) => x.speed = s);
     player.setSpeed(s);
@@ -613,11 +708,24 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     _sleepTimer?.cancel();
     sleepEndOfSurah = endOfSurah;
     sleepAt = after == null ? null : DateTime.now().add(after);
+    unawaited(player.setVolume(1));
     if (after != null) {
-      _sleepTimer = Timer(after, () {
-        player.pause();
-        sleepAt = null;
-        notifyListeners();
+      // The last 12 seconds fade out, so sleep is not broken by a sudden stop.
+      const fade = Duration(seconds: 12);
+      final quiet = after > fade ? after - fade : Duration.zero;
+      _sleepTimer = Timer(quiet, () {
+        const steps = 24;
+        var i = 0;
+        _sleepTimer = Timer.periodic(fade ~/ steps, (t) async {
+          i++;
+          await player.setVolume((1 - i / steps).clamp(0.0, 1.0));
+          if (i < steps) return;
+          t.cancel();
+          await player.pause();
+          await player.setVolume(1);
+          sleepAt = null;
+          notifyListeners();
+        });
       });
     }
     notifyListeners();
@@ -664,6 +772,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     }
     _ticker.cancel();
     _sleepTimer?.cancel();
+    _gapTimer?.cancel();
     NetworkStatus.instance.removeListener(_onNetwork);
     player.dispose();
     super.dispose();

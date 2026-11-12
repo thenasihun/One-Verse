@@ -5,6 +5,7 @@ import 'package:oneverse/data/catalog.dart';
 import 'package:oneverse/data/models.dart';
 import 'package:oneverse/data/network.dart';
 import 'package:oneverse/data/repository.dart';
+import 'package:oneverse/data/tafsir.dart';
 import 'package:oneverse/state/listening_log.dart';
 import 'package:oneverse/state/reminders.dart';
 import 'package:oneverse/state/settings.dart';
@@ -237,6 +238,47 @@ void main() {
       expect(reciterById('ov.badrturki').syncLabel, 'Full surah');
       expect(reciterById('ar.husarymujawwad').hasAyahSync, isTrue);
       expect(reciters.where((r) => r.timing?.kind == TimingKind.mp3quran).length, 26);
+    });
+  });
+
+  group('bookmarks', () {
+    test('save, add a note, keep order, remove, persist', () async {
+      SharedPreferences.setMockInitialValues({});
+      final s = Settings();
+      await s.load();
+      s.saveBookmark(2, 255);
+      s.saveBookmark(18, 10);
+      expect([for (final b in s.bookmarks) '${b.surah}:${b.ayah}'], ['18:10', '2:255']);
+      s.saveBookmark(2, 255, note: 'Ayat al-Kursi before sleep');
+      expect(s.bookmarks.last.note, 'Ayat al-Kursi before sleep', reason: 'a note keeps the bookmark in place');
+      final again = Settings();
+      await again.load();
+      expect(again.bookmarkOf(2, 255)!.note, 'Ayat al-Kursi before sleep');
+      again.removeBookmark(18, 10);
+      expect(again.bookmarks, hasLength(1));
+      expect(again.bookmarkOf(18, 10), isNull);
+    });
+  });
+
+  group('tafsir', () {
+    test('HTML becomes paragraphs and headings', () {
+      final blocks = parseTafsirHtml('<h2>The Meaning</h2><p>First &amp; <b>second</b>.</p><p> </p><div lang="ur"><p>یہ آیت</p></div>');
+      expect([for (final b in blocks) b.text], ['The Meaning', 'First & second.', 'یہ آیت']);
+      expect(blocks.first.heading, isTrue);
+      expect(blocks[1].heading, isFalse);
+    });
+
+    test('the first book follows the translation language, a choice sticks', () async {
+      expect(defaultTafsirFor('ur.jalandhry'), 160);
+      expect(defaultTafsirFor('en.sahih'), 169);
+      expect(defaultTafsirFor('ar.muyassar'), 16);
+      SharedPreferences.setMockInitialValues({});
+      final s = Settings();
+      await s.load();
+      s.setTranslation('ur.jalandhry');
+      expect(s.tafsir.language, 'ur');
+      s.update((x) => x.tafsirId = 168);
+      expect(s.tafsir.name, "Ma'arif al-Qur'an");
     });
   });
 

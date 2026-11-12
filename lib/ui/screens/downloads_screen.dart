@@ -11,6 +11,7 @@ import '../../state/playback.dart';
 import '../../state/settings.dart';
 import '../sheets.dart';
 import '../shell.dart';
+import '../study.dart';
 import '../widgets/common.dart';
 
 class DownloadsScreen extends StatefulWidget {
@@ -42,6 +43,26 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       },
       child: ListView(padding: EdgeInsets.fromLTRB(0, MediaQuery.paddingOf(context).top + 10, 0, 28), children: [
         Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text('Library', style: T.display(26, color: c.fg))),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          child: Material(
+            color: c.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22), side: BorderSide(color: c.line)),
+            child: ListTile(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+              leading: Icon(Icons.bookmarks_rounded, color: c.gold),
+              title: Text('Bookmarks and notes', style: T.ui(16, w: FontWeight.w700, color: c.fg)),
+              subtitle: Text(
+                  context.watch<Settings>().bookmarks.isEmpty
+                      ? 'Save ayahs from the reader'
+                      : '${context.watch<Settings>().bookmarks.length} saved ayahs',
+                  style: T.ui(12.5, color: c.fg3)),
+              trailing: Icon(Icons.chevron_right_rounded, color: c.fg3),
+              onTap: () => BookmarksScreen.open(context),
+            ),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
           // A Material, not a coloured box, so the switch row's ripple shows.

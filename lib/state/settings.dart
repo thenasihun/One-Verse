@@ -5,6 +5,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/catalog.dart';
 import '../data/models.dart';
+import '../data/tafsir.dart';
+
+/// A saved ayah, with an optional note.
+class Bookmark {
+  final int surah, ayah;
+  final String note;
+  final DateTime at;
+  const Bookmark(this.surah, this.ayah, {this.note = '', required this.at});
+
+  Bookmark withNote(String n) => Bookmark(surah, ayah, note: n, at: at);
+
+  Map<String, dynamic> toJson() => {'s': surah, 'a': ayah, 'n': note, 't': at.millisecondsSinceEpoch};
+  factory Bookmark.fromJson(Map<String, dynamic> j) =>
+      Bookmark(j['s'] as int, j['a'] as int, note: (j['n'] as String?) ?? '', at: DateTime.fromMillisecondsSinceEpoch(j['t'] as int));
+}
 
 /// Everything the user chooses, persisted immediately so a closed app comes
 /// back exactly as it was left.
@@ -27,11 +42,14 @@ class Settings extends ChangeNotifier {
   bool autoNext = true; // play the next surah when one ends
   List<int> favSurahs = [];
   List<String> favReciters = [];
+  List<Bookmark> bookmarks = []; // newest first
+  int tafsirId = 0; // 0 = follow the translation's language
   Map<String, bool> reminders = {'daily': true, 'streak': true, 'kahf': true, 'mulk': true, 'special': true};
   TimeOfDay dailyTime = const TimeOfDay(hour: 21, minute: 30);
 
   Reciter get reciter => reciterById(reciterId);
   Reciter get translationVoice => reciterById(translationVoiceId);
+  TafsirBook get tafsir => tafsirById(tafsirId != 0 ? tafsirId : defaultTafsirFor(translationId));
 
   Future<void> load() async {
     _p = await SharedPreferences.getInstance();
@@ -53,6 +71,10 @@ class Settings extends ChangeNotifier {
     autoNext = _p.getBool('autoNext') ?? autoNext;
     favSurahs = [for (final x in _p.getStringList('favSurahs') ?? const <String>[]) ?int.tryParse(x)];
     favReciters = _p.getStringList('favReciters') ?? [];
+    try {
+      bookmarks = [for (final b in jsonDecode(_p.getString('bookmarks') ?? '[]') as List) Bookmark.fromJson(Map<String, dynamic>.from(b as Map))];
+    } catch (_) {}
+    tafsirId = _p.getInt('tafsir') ?? tafsirId;
     final rem = _p.getString('reminders');
     if (rem != null) reminders = Map<String, bool>.from(jsonDecode(rem) as Map);
     final dt = _p.getInt('dailyTime');
@@ -78,6 +100,8 @@ class Settings extends ChangeNotifier {
     _p.setBool('autoNext', autoNext);
     _p.setStringList('favSurahs', [for (final n in favSurahs) '$n']);
     _p.setStringList('favReciters', favReciters);
+    _p.setString('bookmarks', jsonEncode([for (final b in bookmarks) b.toJson()]));
+    _p.setInt('tafsir', tafsirId);
     _p.setString('reminders', jsonEncode(reminders));
     _p.setInt('dailyTime', dailyTime.hour * 60 + dailyTime.minute);
   }
@@ -115,6 +139,25 @@ class Settings extends ChangeNotifier {
     update((s) => on ? s.favReciters.add(id) : s.favReciters.remove(id));
     return on;
   }
+
+  Bookmark? bookmarkOf(int surah, int ayah) {
+    for (final b in bookmarks) {
+      if (b.surah == surah && b.ayah == ayah) return b;
+    }
+    return null;
+  }
+
+  /// Saves the ayah, or updates its note when it is saved already.
+  void saveBookmark(int surah, int ayah, {String? note}) => update((s) {
+        final old = s.bookmarkOf(surah, ayah);
+        if (old != null) {
+          s.bookmarks[s.bookmarks.indexOf(old)] = old.withNote(note ?? old.note);
+        } else {
+          s.bookmarks.insert(0, Bookmark(surah, ayah, note: note ?? '', at: DateTime.now()));
+        }
+      });
+
+  void removeBookmark(int surah, int ayah) => update((s) => s.bookmarks.removeWhere((b) => b.surah == surah && b.ayah == ayah));
 
   SharedPreferences get prefs => _p;
 }

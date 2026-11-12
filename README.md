@@ -49,11 +49,19 @@ Android. See [docs/quran-scripts-and-fonts.md](docs/quran-scripts-and-fonts.md).
 - **Now Playing:**
   - repeat an ayah 1×, 3× or forever
   - speed from 0.75× to 1.5×
-  - sleep timer
+  - sleep timer that fades out gently
   - an ayah strip and an "up next" list
 - **Background playback**, with controls in the notification and on the lock screen (`audio_service`).
 - **Three listening modes:** Arabic, Arabic + translation audio, or translation audio only.
 - **Focus view:** one ayah, full screen, with its meaning below. The screen stays on.
+
+### 📚 Tafseer, bookmarks and memorising
+- **Tafseer** for every ayah, from Quran.com:
+  - Urdu: Ibn Kathir, Bayan ul Quran (Dr. Israr Ahmad), Tazkir ul Quran, Fi Zilal al-Quran
+  - English: Ibn Kathir (Abridged), Ma'arif al-Qur'an, Tazkirul Quran
+  - Arabic: Muyassar, Al-Sa'di
+- **Bookmarks with notes:** save an ayah and write your own reflection.
+- **Memorise mode:** loop ayahs A–B 3, 5, 10, 20 times or until you stop, with a pause between rounds.
 
 ### 🌍 Translations
 - 100+ translations in 40+ languages from AlQuran Cloud. Urdu shows in Nastaliq.
@@ -97,7 +105,7 @@ Android. See [docs/quran-scripts-and-fonts.md](docs/quran-scripts-and-fonts.md).
 ### Data sources
 | Source | Used for |
 |---|---|
-| [Quran.com / Quran Foundation](https://quran.com) | Word-by-word text in all scripts, word timings (QDC), chapter audio |
+| [Quran.com / Quran Foundation](https://quran.com) | Word-by-word text in all scripts, word timings (QDC), chapter audio, tafseer |
 | [AlQuran Cloud](https://alquran.cloud) | Translations, ayah-by-ayah recitations, translation audio |
 | [QuranHub (Misraj AI)](https://qurani.ai) | Reciter photos, countries and biographies |
 | [Quranic Audio](https://quranicaudio.com), [mp3quran](https://mp3quran.net) | Full-surah recitations |
@@ -117,6 +125,7 @@ lib/
 │   ├── api.dart              # Endpoints and HTTP client with retries
 │   ├── cache_store*.dart     # Offline JSON store (files on device, memory on web)
 │   ├── catalog.dart          # Reciters, translation voices, quick translations
+│   ├── tafsir.dart           # Tafseer books and HTML-to-text
 │   ├── models.dart           # Scripts, verses, timings, reciters, translations
 │   ├── network.dart          # Offline / mobile data / Wi-Fi
 │   ├── repository.dart       # Offline-first data and the 30-day sync policy
@@ -131,6 +140,7 @@ lib/
 └── ui/
     ├── shell.dart            # Bottom navigation, mini player, resume sheet
     ├── sheets.dart           # Reciter, translation, script, sleep, jump, download sheets
+    ├── study.dart            # Tafseer, bookmarks and notes, memorise loop
     ├── screens/              # Home, Surahs, Reader, Focus, Now Playing, Progress, Library, About
     └── widgets/              # Quran text renderer, shared widgets
 ```
