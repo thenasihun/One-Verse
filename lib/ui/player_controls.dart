@@ -78,10 +78,11 @@ class PlayerDeck extends StatelessWidget {
           child: DeckTile(
             icon: pb.looping ? Icons.all_inclusive_rounded : s.repeat == 0 ? Icons.repeat_rounded : Icons.repeat_one_rounded,
             kicker: pb.looping ? 'Memorising' : 'Repeat',
-            title: repeat,
-            lit: s.repeat != 0 || pb.looping,
+            title: pb.ayahWise ? repeat : 'Not with this reciter',
+            subtitle: pb.ayahWise ? null : 'No ayah timings',
+            lit: pb.ayahWise && (s.repeat != 0 || pb.looping),
             vertical: true,
-            onTap: () => showRepeatSheet(context),
+            onTap: () => pb.ayahWise ? showRepeatSheet(context) : toast(context, Playback.noAyahReason(s.reciter)),
           ),
         ),
         const SizedBox(width: 10),
@@ -326,9 +327,11 @@ void showListenSheet(BuildContext context) {
       OptionRow(
         icon: Icons.translate_rounded,
         title: 'Arabic + translation',
-        subtitle: 'After each ayah, hear its meaning in ${voice.language ?? 'your language'} (${voice.name})',
+        subtitle: s.reciter.hasAyahSync
+            ? 'After each ayah, hear its meaning in ${voice.language ?? 'your language'} (${voice.name})'
+            : 'Not with ${s.reciter.name}: it needs ayah timings. Choose a reciter marked Ayah sync or Word sync.',
         selected: s.listenMode == ListenMode.arabicTranslation,
-        onTap: () => pick(ListenMode.arabicTranslation),
+        onTap: () => s.reciter.hasAyahSync ? pick(ListenMode.arabicTranslation) : toast(ctx, Playback.noAyahReason(s.reciter)),
       ),
       OptionRow(
         icon: Icons.headphones_rounded,

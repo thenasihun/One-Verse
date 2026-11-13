@@ -106,7 +106,7 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
       target = o.$1 - 40;
       smooth = false;
       _jumpTo = null;
-    } else if (follow && pb.playing && pb.surah == widget.surah) {
+    } else if (follow && pb.playing && pb.surah == widget.surah && pb.ayahWise) {
       final o = _offsetOf(pb.ayah);
       if (o == null) {
         controller.jumpTo(_estimate(pb.ayah).clamp(0, pos.maxScrollExtent));
@@ -153,7 +153,7 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
       _futureKey = key;
       _future = _load(repo, settings);
     }
-    if (pb.surah == widget.surah && pb.playing && !follow && !showPill) showPill = true;
+    if (pb.surah == widget.surah && pb.playing && pb.ayahWise && !follow && !showPill) showPill = true;
     // The next surah started by itself: follow it, like a book turning the page.
     if (pb.surah == widget.surah) _heardHere = true;
     if (_heardHere && follow && pb.surah == widget.surah + 1 && !_turning && ModalRoute.of(context)?.isCurrent == true) {
@@ -277,7 +277,7 @@ class _ReaderScreenState extends State<ReaderScreen> with SingleTickerProviderSt
       follow = true;
       showPill = false;
     });
-    if (pb.surah == widget.surah && pb.hasSession) pb.seekToAyah(a, autoplay: pb.playing);
+    if (pb.surah == widget.surah && pb.hasSession && pb.ayahWise) pb.seekToAyah(a, autoplay: pb.playing);
   }
 }
 
@@ -368,8 +368,25 @@ class _Hero extends StatelessWidget {
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        child: Align(alignment: Alignment.centerLeft, child: SyncBadge(r, suffix: ' · ${r.name}')),
+        child: Row(children: [
+          Flexible(child: SyncBadge(r, suffix: ' · ${r.name}')),
+          if (r.hasAyahSync || settings.listenMode == ListenMode.translation) ...[
+            const SizedBox(width: 8),
+            PickerChip(
+              label: 'Play from ayah',
+              icon: Icons.format_list_numbered_rounded,
+              onTap: () => showJumpSheet(context, info.number, (a) => pb.playAyah(info.number, a)),
+            ),
+          ],
+        ]),
       ),
+      if (!r.hasAyahSync && settings.listenMode != ListenMode.translation)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Text('${r.name} plays the whole surah only: there are no ayah timings, so an ayah cannot be chosen or followed. '
+              'For that, pick a reciter marked Ayah sync or Word sync.',
+              style: T.ui(12.5, color: c.fg2, height: 1.4)),
+        ),
       if (pb.error != null && current)
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
@@ -430,7 +447,7 @@ class _VerseCard extends StatelessWidget {
     final c = context.ov;
     final s = context.watch<Settings>();
     final pb = context.watch<Playback>();
-    final active = pb.hasSession && pb.surah == surah && pb.ayah == verse.ayah;
+    final active = pb.hasSession && pb.surah == surah && pb.ayah == verse.ayah && pb.ayahWise;
     final words = verse.of(s.script);
     Widget arabic(int h) => QuranText(words: words, script: s.script, fontSize: s.arabicSize, ayahNumber: verse.ayah, highlight: h, active: active);
     return Padding(
@@ -441,6 +458,7 @@ class _VerseCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () => active ? pb.toggle() : pb.playAyah(surah, verse.ayah),
+          onLongPress: pb.ayahWise ? null : () => toast(context, Playback.noAyahReason(s.reciter)),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 8, 16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -453,10 +471,11 @@ class _VerseCard extends StatelessWidget {
                   child: Text('$surah:${verse.ayah}', style: T.ui(12, w: FontWeight.w700, color: active ? c.gold : c.fg3)),
                 ),
                 const Spacer(),
-                RoundIcon(Icons.open_in_full_rounded, tooltip: 'Open in focus view', size: 36, color: c.fg2, onTap: () {
-                  if (!active) pb.playAyah(surah, verse.ayah);
-                  Nav.focus(context);
-                }),
+                if (pb.ayahWise || !pb.hasSession)
+                  RoundIcon(Icons.open_in_full_rounded, tooltip: 'Open in focus view', size: 36, color: c.fg2, onTap: () {
+                    if (!active) pb.playAyah(surah, verse.ayah);
+                    Nav.focus(context);
+                  }),
                 RoundIcon(Icons.menu_book_rounded, tooltip: 'Tafseer', size: 36, color: c.fg2, onTap: () => showTafsirSheet(context, surah, verse.ayah)),
                 BookmarkButton(surah, verse.ayah, color: c.fg2),
                 RoundIcon(Icons.ios_share_rounded, tooltip: 'Share ayah', size: 36, color: c.fg2, onTap: () => shareAyah(context, surah, verse.ayah)),

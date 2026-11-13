@@ -84,14 +84,14 @@ class NowPlayingScreen extends StatelessWidget {
                                 style: T.ui(12, color: Colors.white70)),
                           ]),
                         ),
-                        Text('${pb.ayah}', style: T.display(74, color: Colors.white).copyWith(height: 0.9)),
+                        if (pb.ayahWise) Text('${pb.ayah}', style: T.display(74, color: Colors.white).copyWith(height: 0.9)),
                       ]),
                     ]),
                   ),
                 ),
                 const SizedBox(height: 20),
                 Row(children: [
-                  Expanded(child: Text('${info.nameEn}, Ayah ${pb.ayah}', style: T.display(24, w: FontWeight.w700, color: c.fg))),
+                  Expanded(child: Text(pb.ayahWise ? '${info.nameEn}, Ayah ${pb.ayah}' : '${info.nameEn} · full surah', style: T.display(24, w: FontWeight.w700, color: c.fg))),
                   FavButton.surah(pb.surah, size: 40),
                 ]),
                 InkWell(
@@ -114,11 +114,19 @@ class NowPlayingScreen extends StatelessWidget {
                 Align(alignment: Alignment.centerLeft, child: SyncBadge(pb.leadVoice)),
                 const SizedBox(height: 14),
                 const _Seek(),
-                if (info.ayahs <= 80) ...[const SizedBox(height: 10), const _AyahStrip()],
+                if (info.ayahs <= 80 && pb.ayahWise) ...[const SizedBox(height: 10), const _AyahStrip()],
+                if (!pb.ayahWise)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text('${s.reciter.name} has no ayah timings, so this plays as one recording. The buttons beside play move 15 seconds.',
+                        style: T.ui(12.5, color: c.fg2, height: 1.4)),
+                  ),
                 const SizedBox(height: 12),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  _RepeatButton(repeat: s.repeat, onTap: () => showRepeatSheet(context)),
-                  RoundIcon(Icons.skip_previous_rounded, tooltip: 'Previous ayah', size: 54, onTap: pb.previous),
+                  _RepeatButton(repeat: pb.ayahWise ? s.repeat : 0,
+                      onTap: () => pb.ayahWise ? showRepeatSheet(context) : toast(context, Playback.noAyahReason(s.reciter))),
+                  RoundIcon(pb.ayahWise ? Icons.skip_previous_rounded : Icons.replay_rounded,
+                      tooltip: pb.ayahWise ? 'Previous ayah' : 'Back 15 seconds', size: 54, onTap: pb.previous),
                   Material(
                     color: c.fg,
                     shape: const CircleBorder(),
@@ -134,7 +142,8 @@ class NowPlayingScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  RoundIcon(Icons.skip_next_rounded, tooltip: 'Next ayah', size: 54, onTap: pb.next),
+                  RoundIcon(pb.ayahWise ? Icons.skip_next_rounded : Icons.forward_rounded,
+                      tooltip: pb.ayahWise ? 'Next ayah' : 'Forward 15 seconds', size: 54, onTap: pb.next),
                   Tooltip(
                     message: 'Speed',
                     child: InkResponse(
@@ -175,7 +184,7 @@ class NowPlayingScreen extends StatelessWidget {
                 const SizedBox(height: 22),
                 const PlayerDeck(),
                 const SizedBox(height: 22),
-                const _Lyric(),
+                if (pb.ayahWise) const _Lyric(),
                 const Label('More'),
                 GridView.count(
                   crossAxisCount: 4,
@@ -186,7 +195,8 @@ class NowPlayingScreen extends StatelessWidget {
                   childAspectRatio: 1.05,
                   children: [
                   for (final (icon, label, lit, onTap) in [
-                    (Icons.all_inclusive_rounded, pb.looping ? 'Memorising' : 'Memorise', pb.looping, () => showLoopSheet(context)),
+                    (Icons.all_inclusive_rounded, pb.looping ? 'Memorising' : 'Memorise', pb.looping,
+                        () => pb.ayahWise ? showLoopSheet(context) : toast(context, Playback.noAyahReason(s.reciter))),
                     (Icons.menu_book_rounded, 'Tafseer', false, () => showTafsirSheet(context, pb.surah, pb.ayah)),
                     (s.bookmarkOf(pb.surah, pb.ayah) != null ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, 'Bookmark',
                         s.bookmarkOf(pb.surah, pb.ayah) != null, () => onBookmarkTap(context, pb.surah, pb.ayah)),
@@ -195,8 +205,9 @@ class NowPlayingScreen extends StatelessWidget {
                     (downloaded ? Icons.download_done_rounded : Icons.download_rounded, downloaded ? 'Offline' : 'Download', downloaded,
                         () => showDownloadSheet(context, pb.surah)),
                     (Icons.ios_share_rounded, 'Share', false, () => shareAyah(context, pb.surah, pb.ayah)),
-                    (Icons.open_in_full_rounded, 'Focus', false, () => Nav.focus(context)),
-                    (Icons.tag_rounded, 'Go to ayah', false, () => showJumpSheet(context, pb.surah, (a) => pb.seekToAyah(a, autoplay: true))),
+                    (Icons.open_in_full_rounded, 'Focus', false, () => pb.ayahWise ? Nav.focus(context) : toast(context, Playback.noAyahReason(s.reciter))),
+                    (Icons.tag_rounded, 'Go to ayah', false,
+                        () => pb.ayahWise ? showJumpSheet(context, pb.surah, (a) => pb.seekToAyah(a, autoplay: true)) : toast(context, Playback.noAyahReason(s.reciter))),
                   ])
                       Material(
                         color: c.surface,
@@ -226,7 +237,7 @@ class NowPlayingScreen extends StatelessWidget {
                       pb.surah < 114 ? 'When ${pb.info.nameEn} ends, ${repo.surah(pb.surah + 1).nameEn} starts by itself' : 'An-Nas is the last surah',
                       style: T.ui(12, color: c.fg3)),
                 ),
-                const _UpNext(),
+                if (pb.ayahWise) const _UpNext(),
               ]),
             ),
           ]),

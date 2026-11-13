@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../core/theme.dart';
 import '../data/catalog.dart';
+import '../data/downloads.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../state/playback.dart';
@@ -193,9 +194,41 @@ class _PlaylistEditorState extends State<PlaylistEditor> {
     _save((x) => x.items.add(PlaylistItem(n, 1, s.ayahs)));
   }
 
+  Reciter get _reciter {
+    final id = p?.reciterId;
+    return id == null ? context.read<Settings>().reciter : reciterById(id);
+  }
+
+  bool _downloading = false;
+
+  /// Saves every surah of the list with its reciter (and the translation
+  /// voice when it is heard), one after another.
+  Future<void> _download() async {
+    final list = p;
+    if (list == null) return;
+    final s = context.read<Settings>();
+    final dl = context.read<Downloads>();
+    final r = _reciter;
+    final voice = s.listenMode == ListenMode.arabic ? null : s.translationVoice;
+    setState(() => _downloading = true);
+    try {
+      for (final n in {for (final it in list.items) it.surah}) {
+        if (!mounted || !_downloading) break;
+        if (dl.recordFor(n, r.id) != null) continue;
+        await dl.download(surah: n, reciter: r, translations: [s.translationId], voice: voice);
+      }
+      if (mounted && _downloading) toast(context, '${list.name} is saved on this phone');
+    } catch (e) {
+      if (mounted) toast(context, 'Download stopped: ${e.toString().split('\n').first}');
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
+  }
+
   Future<void> _editItem(int i) async {
     final list = p!;
     final it = list.items[i];
+    if (!_reciter.hasAyahSync) return toast(context, Playback.noAyahReason(_reciter));
     final s = context.read<QuranRepository>().surah(it.surah);
     final r = await showRangeSheet(context, s, it.from, it.to);
     if (r != null) _save((x) => x.items[i] = PlaylistItem(it.surah, r.$1, r.$2));
@@ -208,6 +241,7 @@ class _PlaylistEditorState extends State<PlaylistEditor> {
     final list = p;
     if (list == null) return const Scaffold();
     final repo = context.read<QuranRepository>();
+    final dlw = context.watch<Downloads>();
     final reciter = list.reciterId == null ? null : reciterById(list.reciterId!);
     return Scaffold(
       appBar: AppBar(
@@ -299,9 +333,12 @@ class _PlaylistEditorState extends State<PlaylistEditor> {
                       Expanded(
                         child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(s.nameEn, style: T.ui(15, w: FontWeight.w700, color: c.fg)),
-                          Text(itemLabel(s, it), style: T.ui(12.5, color: c.fg2)),
+                          Text(_reciter.hasAyahSync || (it.from == 1 && it.to == s.ayahs) ? itemLabel(s, it) : '${itemLabel(s, it)} · plays the whole surah with this reciter',
+                              maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(12.5, color: c.fg2)),
                         ]),
                       ),
+                      if (dlw.recordFor(it.surah, _reciter.id) != null)
+                        Padding(padding: const EdgeInsets.only(right: 2), child: Icon(Icons.download_done_rounded, size: 18, color: c.emerald)),
                       RoundIcon(Icons.close_rounded, tooltip: 'Remove ${s.nameEn}', size: 40, color: c.fg3, onTap: () => _save((x) => x.items.removeAt(i))),
                       const SizedBox(width: 6),
                     ]),
@@ -312,6 +349,58 @@ class _PlaylistEditorState extends State<PlaylistEditor> {
           },
         ),
         GhostButton('Add a surah', icon: Icons.add_rounded, expand: true, onTap: _addSurah),
+        if (!_reciter.hasAyahSync)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text('${_reciter.name} has no ayah timings, so every item plays as a whole surah. To play chosen ayahs, pick a reciter marked Ayah sync or Word sync.',
+                style: T.ui(12.5, color: c.fg2, height: 1.4)),
+          ),
+        if (dlw.supported && list.items.isNotEmpty) ...[
+          const Label('Offline'),
+          Builder(builder: (context) {
+            final dl = dlw;
+            final surahs = {for (final it in list.items) it.surah};
+            final saved = surahs.where((n) => dl.recordFor(n, _reciter.id) != null).length;
+            final job = dl.jobs.entries.where((e) => surahs.contains(e.key)).firstOrNull;
+            return Material(
+              color: saved == surahs.length ? c.emeraldWash : c.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: c.line)),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Row(children: [
+                    Icon(saved == surahs.length ? Icons.offline_pin_rounded : Icons.download_rounded, color: saved == surahs.length ? c.emerald : c.gold),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(saved == surahs.length ? 'Saved: plays at once, even offline' : '$saved of ${surahs.length} surahs saved with ${_reciter.name}',
+                          style: T.ui(14, w: FontWeight.w700, color: c.fg)),
+                    ),
+                  ]),
+                  if (job != null) ...[
+                    const SizedBox(height: 10),
+                    Text('${repo.surah(job.key).nameEn}…', style: T.ui(12, color: c.fg3)),
+                    const SizedBox(height: 6),
+                    ValueListenableBuilder<double>(
+                      valueListenable: job.value.progress,
+                      builder: (_, v, _) => LinearProgressIndicator(value: v, color: c.gold, backgroundColor: c.line),
+                    ),
+                  ],
+                  if (saved < surahs.length) ...[
+                    const SizedBox(height: 10),
+                    _downloading
+                        ? GhostButton('Stop', icon: Icons.stop_rounded, expand: true, onTap: () {
+                            setState(() => _downloading = false);
+                            if (job != null) dl.cancel(job.key);
+                          })
+                        : GoldButton('Download playlist', icon: Icons.download_rounded, expand: true, onTap: _download),
+                    const SizedBox(height: 6),
+                    Text('Then the next surah and the next reciter start at once, with no waiting.', style: T.ui(12, color: c.fg3)),
+                  ],
+                ]),
+              ),
+            );
+          }),
+        ],
         const Label('Reminder'),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,

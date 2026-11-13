@@ -382,7 +382,7 @@ class SyncBadge extends StatelessWidget {
         ? 'Word-exact timing'
         : reciter.hasAyahSync
             ? 'Ayah-exact timing'
-            : 'Full surah · ayahs estimated';
+            : 'Full surah only · no ayah timings';
     return Container(
       height: 24,
       padding: const EdgeInsets.symmetric(horizontal: 10),
