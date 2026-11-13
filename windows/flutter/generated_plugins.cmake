@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
+  ffmpeg_kit_flutter_new_min
   flutter_timezone
   share_plus
   url_launcher_windows

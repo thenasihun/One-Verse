@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../core/theme.dart';
 import '../data/catalog.dart';
@@ -10,6 +9,7 @@ import '../data/network.dart';
 import '../data/repository.dart';
 import '../state/playback.dart';
 import '../state/settings.dart';
+import 'share_studio.dart';
 import 'shell.dart';
 import 'widgets/common.dart';
 import 'widgets/quran_text.dart';
@@ -889,20 +889,9 @@ class _QuranDownloadSheetState extends State<_QuranDownloadSheet> {
 
 // ------------------------------------------------------------------ share
 
-Future<void> shareAyah(BuildContext context, int surah, int ayah) async {
-  final repo = context.read<QuranRepository>();
-  final s = context.read<Settings>();
-  try {
-    final v = (await repo.words(surah))[ayah - 1];
-    final tr = (await repo.translation(s.translationId, surah))[ayah - 1];
-    final info = repo.surah(surah);
-    await SharePlus.instance.share(ShareParams(
-      text: '${v.plain(QuranScript.uthmani)}\n\n$tr\n\n— ${info.nameEn} $surah:$ayah · One Verse',
-    ));
-  } catch (_) {
-    if (context.mounted) toast(context, 'Could not share this ayah offline yet');
-  }
-}
+/// Opens the share studio: image, video, audio or text, for one ayah or
+/// a passage.
+Future<void> shareAyah(BuildContext context, int surah, int ayah) async => ShareStudio.open(context, surah, ayah);
 
 /// English name of a language code, e.g. 'ur' → 'Urdu'.
 String languageName(String code) => _langName(code);

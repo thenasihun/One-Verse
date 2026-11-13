@@ -37,6 +37,8 @@ dependencies:
   package_info_plus: ^10.2.2
   wakelock_plus: ^1.8.2
   background_downloader: ^9.6.4
+  ffmpeg_kit_flutter_new_min: ^3.6.8
+  flutter_file_dialog: ^3.3.6
 
 dev_dependencies:
   flutter_test:
