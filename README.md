@@ -157,7 +157,7 @@ lib/
 
 ## 🚀 Getting started
 
-Requirements: Flutter 3.38 or newer (Dart 3.10+), and Android Studio with Android SDK Platform 36.
+Requirements: Flutter 3.47 or newer (Dart 3.13+; `background_downloader` needs it), and Android Studio with Android SDK Platform 36.
 
 ```bash
 git clone https://github.com/thenasihun/one-verse.git

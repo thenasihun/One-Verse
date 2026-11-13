@@ -309,13 +309,16 @@ describes the storage permission of 1.x.
 
 ## 10. How to build (on the Mac)
 
+Flutter 3.47 or newer is needed (`flutter --version`; run `flutter upgrade` if it is older). The first build
+also downloads ffmpeg-kit from Maven Central, so it takes a few minutes longer.
+
 ```bash
 cd /Users/Data/Development/flutter/One-Verse
 git checkout main && git pull origin main
 flutter clean && flutter pub get
 flutter test test/unit_test.dart        # must print "All tests passed!"
 flutter build appbundle --release       # log must show "✔ Using release keystore"
-flutter build apk --release             # optional: signed APK for testing on a phone
+flutter build apk --release --split-per-abi   # optional: signed APKs for testing (arm64 for most phones)
 ```
 
 Signing setup:

@@ -228,7 +228,6 @@ class _ShareStudioState extends State<ShareStudio> {
   String get _title => Exporter.fileTitle(info, ExportRequest(surah: widget.surah, from: from, to: to, reciter: context.read<Settings>().reciter));
 
   Future<String?> _make() async {
-    final s = context.read<Settings>();
     switch (format) {
       case ShareFormat.image:
         setState(() => _busy = 'Drawing the image…');
@@ -251,7 +250,8 @@ class _ShareStudioState extends State<ShareStudio> {
           if (showTr && tr != null) text.writeln(tr![a - 1]);
           text.writeln();
         }
-        text.write('— ${info.nameEn} ${from == to ? '${widget.surah}:$from' : '${widget.surah}:$from-$to'} · ${s.reciter.name}\nOne Verse: $_storeLink');
+        text.write('— ${info.nameEn} ${from == to ? '${widget.surah}:$from' : '${widget.surah}:$from-$to'}\n'
+            'Quran data provided by Quran Foundation\nOne Verse: $_storeLink');
         await SharePlus.instance.share(ShareParams(text: text.toString()));
         return null;
     }
@@ -269,7 +269,8 @@ class _ShareStudioState extends State<ShareStudio> {
       } else {
         await SharePlus.instance.share(ShareParams(
           files: [XFile(path)],
-          text: '${info.nameEn} ${from == to ? '${widget.surah}:$from' : '${widget.surah}:$from-$to'} · shared from One Verse\n$_storeLink',
+          text: '${info.nameEn} ${from == to ? '${widget.surah}:$from' : '${widget.surah}:$from-$to'} · shared from One Verse\n'
+              'Quran data provided by Quran Foundation\n$_storeLink',
         ));
       }
     } on ExportException catch (e) {

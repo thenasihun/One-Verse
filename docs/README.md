@@ -8,6 +8,8 @@ Notes collected while designing the next version of One Verse. Read these before
 | [quran-scripts-and-fonts.md](quran-scripts-and-fonts.md) | Why Arabic text renders badly on Android today, and which text goes with which font |
 | [quran-foundation-api.md](quran-foundation-api.md) | Quran Foundation (Quran.com) Developer Terms, Content APIs, Content Sync, User APIs, Connected Apps |
 | [audio-timing-and-reciters.md](audio-timing-and-reciters.md) | Word timings, reciter photos (QuranHub), audio sources (mp3quran, Quran Foundation), UmmahAPI |
+| [TODO.md](TODO.md) | Every suggestion not built yet, the checks still owed and licence issues, numbered |
+| [datasets.md](datasets.md) | Every data source the app uses, and the datasets checked for the mood and topic feature |
 | [reciters-candidates.md](reciters-candidates.md) | 26 more well-known reciters with all 114 surahs (plus one in the Duri reading), checked, not added yet |
 
 The interactive prototype of the redesign is a private Claude artifact shared with the project owner.
