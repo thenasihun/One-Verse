@@ -16,7 +16,7 @@ import 'package:oneverse/data/repository.dart';
 import 'package:oneverse/ui/share_studio.dart';
 
 /// Draws share cards with the real fonts and text into PNG files, to look at.
-/// OUT=<dir> flutter test --tags live test/share_card_render_test.dart
+/// `OUT=dir flutter test --tags live test/share_card_render_test.dart`
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   HttpOverrides.global = null;

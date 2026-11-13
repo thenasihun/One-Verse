@@ -151,6 +151,27 @@ class NowPlayingScreen extends StatelessWidget {
                 if (pb.error != null)
                   Padding(padding: const EdgeInsets.only(top: 12), child: Text(pb.error!, textAlign: TextAlign.center, style: T.ui(13, color: c.gold))),
                 if (pb.looping) const Padding(padding: EdgeInsets.only(top: 12), child: LoopBanner()),
+                if (pb.runItem != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Material(
+                      color: c.goldWash,
+                      borderRadius: BorderRadius.circular(14),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+                        child: Row(children: [
+                          Icon(Icons.queue_music_rounded, color: c.gold, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text('${pb.run!.name} · ${pb.runIndex + 1} of ${pb.run!.items.length}'
+                                '${pb.runIndex + 1 < pb.run!.items.length ? ' · next: ${repo.surah(pb.run!.items[pb.runIndex + 1].surah).nameEn}' : ''}',
+                                maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(13, w: FontWeight.w700, color: c.fg)),
+                          ),
+                          RoundIcon(Icons.close_rounded, tooltip: 'Leave playlist', size: 34, onTap: pb.stopPlaylist),
+                        ]),
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 22),
                 const PlayerDeck(),
                 const SizedBox(height: 22),

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/catalog.dart';
 import '../data/models.dart';
 import '../data/tafsir.dart';
+import 'playlists.dart';
 
 /// A saved ayah, with an optional note.
 class Bookmark {
@@ -44,6 +45,7 @@ class Settings extends ChangeNotifier {
   List<String> favReciters = [];
   List<Bookmark> bookmarks = []; // newest first
   int tafsirId = 0; // 0 = follow the translation's language
+  List<Playlist> playlists = [];
   Map<String, bool> reminders = {'daily': true, 'streak': true, 'kahf': true, 'mulk': true, 'special': true};
   TimeOfDay dailyTime = const TimeOfDay(hour: 21, minute: 30);
 
@@ -75,6 +77,9 @@ class Settings extends ChangeNotifier {
       bookmarks = [for (final b in jsonDecode(_p.getString('bookmarks') ?? '[]') as List) Bookmark.fromJson(Map<String, dynamic>.from(b as Map))];
     } catch (_) {}
     tafsirId = _p.getInt('tafsir') ?? tafsirId;
+    try {
+      playlists = [for (final j in jsonDecode(_p.getString('playlists') ?? '[]') as List) Playlist.fromJson(Map<String, dynamic>.from(j as Map))];
+    } catch (_) {}
     final rem = _p.getString('reminders');
     if (rem != null) reminders = Map<String, bool>.from(jsonDecode(rem) as Map);
     final dt = _p.getInt('dailyTime');
@@ -102,6 +107,7 @@ class Settings extends ChangeNotifier {
     _p.setStringList('favReciters', favReciters);
     _p.setString('bookmarks', jsonEncode([for (final b in bookmarks) b.toJson()]));
     _p.setInt('tafsir', tafsirId);
+    _p.setString('playlists', jsonEncode([for (final p in playlists) p.toJson()]));
     _p.setString('reminders', jsonEncode(reminders));
     _p.setInt('dailyTime', dailyTime.hour * 60 + dailyTime.minute);
   }
@@ -158,6 +164,25 @@ class Settings extends ChangeNotifier {
       });
 
   void removeBookmark(int surah, int ayah) => update((s) => s.bookmarks.removeWhere((b) => b.surah == surah && b.ayah == ayah));
+
+  Playlist? playlistById(String id) {
+    for (final p in playlists) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
+  /// Adds the playlist, or stores its changes.
+  void savePlaylist(Playlist p) => update((s) {
+        final i = s.playlists.indexWhere((x) => x.id == p.id);
+        if (i < 0) {
+          s.playlists.add(p);
+        } else {
+          s.playlists[i] = p;
+        }
+      });
+
+  void removePlaylist(String id) => update((s) => s.playlists.removeWhere((p) => p.id == id));
 
   SharedPreferences get prefs => _p;
 }

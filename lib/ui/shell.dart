@@ -74,6 +74,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   Future<void> _afterLaunch() async {
     final pb = context.read<Playback>();
     Reminders.instance.onOpen = _openPayload;
+    Reminders.instance.requestReschedule = _reschedule;
     final launch = await Reminders.instance.launchPayload();
     if (!mounted) return;
     if (launch != null) {
@@ -85,6 +86,14 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   }
 
   void _openPayload(String p) {
+    if (p.startsWith('playlist:')) {
+      final list = context.read<Settings>().playlistById(p.substring(9));
+      if (list != null && mounted) {
+        unawaited(context.read<Playback>().playPlaylist(list));
+        Nav.nowPlaying(context);
+      }
+      return;
+    }
     final parts = p.split(':');
     final n = int.tryParse(parts.first);
     if (n == null || !mounted) return;

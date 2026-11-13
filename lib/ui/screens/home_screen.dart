@@ -7,8 +7,10 @@ import '../../data/models.dart';
 import '../../data/repository.dart';
 import '../../state/listening_log.dart';
 import '../../state/playback.dart';
+import '../../state/playlists.dart';
 import '../../state/reminders.dart';
 import '../../state/settings.dart';
+import '../playlists_screen.dart';
 import '../sheets.dart';
 import '../shell.dart';
 import '../study.dart';
@@ -124,6 +126,22 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ],
+      SectionTitle('Your playlists', action: settings.playlists.isEmpty ? 'Create' : 'See all', onAction: () => PlaylistsScreen.open(context)),
+      SizedBox(
+        height: 84,
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          scrollDirection: Axis.horizontal,
+          children: [
+            for (final p in settings.playlists) ...[_PlaylistTile(p), const SizedBox(width: 10)],
+            if (settings.playlists.isEmpty)
+              for (final (name, items, _) in playlistTemplates.take(3)) ...[
+                _PlaylistTile(null, name: name, subtitle: items.map((it) => repo.surah(it.surah).nameEn).join(' · ')),
+                const SizedBox(width: 10),
+              ],
+          ],
+        ),
+      ),
       if (settings.bookmarks.isNotEmpty) ...[
         SectionTitle('Bookmarks', action: 'See all ${settings.bookmarks.length}', onAction: () => BookmarksScreen.open(context)),
         SizedBox(
@@ -447,6 +465,47 @@ class _BookmarkTile extends StatelessWidget {
               ]),
               const SizedBox(height: 4),
               Text(b.note.isNotEmpty ? b.note : info.meaning, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.ui(12, color: c.fg2)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaylistTile extends StatelessWidget {
+  final Playlist? p;
+  final String? name, subtitle;
+  const _PlaylistTile(this.p, {this.name, this.subtitle});
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    final repo = context.read<QuranRepository>();
+    final list = p;
+    return SizedBox(
+      width: 200,
+      child: Material(
+        color: list == null ? c.surface : c.goldWash,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: list == null ? c.line : c.gold.withValues(alpha: 0.4))),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () {
+            if (list == null) return PlaylistsScreen.open(context);
+            context.read<Playback>().playPlaylist(list);
+            Nav.nowPlaying(context);
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+            child: Row(children: [
+              Icon(list == null ? Icons.playlist_add_rounded : Icons.play_circle_fill_rounded, color: c.gold, size: 30),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(list?.name ?? name!, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(14, w: FontWeight.w700, color: c.fg)),
+                  Text(list == null ? subtitle! : list.items.map((it) => repo.surah(it.surah).nameEn).join(' · '),
+                      maxLines: 2, overflow: TextOverflow.ellipsis, style: T.ui(11.5, color: c.fg2)),
+                ]),
+              ),
             ]),
           ),
         ),
