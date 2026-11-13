@@ -55,6 +55,13 @@ Android. See [docs/quran-scripts-and-fonts.md](docs/quran-scripts-and-fonts.md).
 - **Three listening modes:** Arabic, Arabic + translation audio, or translation audio only.
 - **Focus view:** one ayah, full screen, with its meaning below. The screen stays on.
 
+### 📤 Share and playlists
+- **Share studio:** any ayah, passage or surah as an image (story or square, four styles, One Verse in the
+  corner), a video with the recitation, an audio file (with or without the translation audio) or text. Share
+  to any app or save to the phone. Audio and video are made on the phone with ffmpeg-kit.
+- **Playlists:** your surahs or passages in your order, with your reciter, and a reminder on the days you
+  choose.
+
 ### 📚 Tafseer, bookmarks and memorising
 - **Tafseer** for every ayah, from Quran.com:
   - Urdu: Ibn Kathir, Bayan ul Quran (Dr. Israr Ahmad), Tazkir ul Quran, Fi Zilal al-Quran
@@ -100,6 +107,7 @@ Android. See [docs/quran-scripts-and-fonts.md](docs/quran-scripts-and-fonts.md).
 | Audio | [just_audio](https://pub.dev/packages/just_audio), [audio_service](https://pub.dev/packages/audio_service), [audio_session](https://pub.dev/packages/audio_session) |
 | Reminders | [flutter_local_notifications](https://pub.dev/packages/flutter_local_notifications), [timezone](https://pub.dev/packages/timezone), [flutter_timezone](https://pub.dev/packages/flutter_timezone), [hijri](https://pub.dev/packages/hijri) |
 | Storage | [path_provider](https://pub.dev/packages/path_provider) (JSON cache files), [shared_preferences](https://pub.dev/packages/shared_preferences) |
+| Media | [ffmpeg_kit_flutter_new_min](https://pub.dev/packages/ffmpeg_kit_flutter_new_min), [flutter_file_dialog](https://pub.dev/packages/flutter_file_dialog) |
 | Other | [share_plus](https://pub.dev/packages/share_plus), [url_launcher](https://pub.dev/packages/url_launcher), [wakelock_plus](https://pub.dev/packages/wakelock_plus), [package_info_plus](https://pub.dev/packages/package_info_plus) |
 
 ### Data sources
