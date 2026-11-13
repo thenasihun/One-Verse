@@ -9,6 +9,7 @@ import '../../state/playback.dart';
 import '../../state/settings.dart';
 import '../sheets.dart';
 import '../shell.dart';
+import '../player_controls.dart';
 import '../study.dart';
 import '../widgets/common.dart';
 import '../widgets/quran_text.dart';
@@ -83,14 +84,14 @@ class NowPlayingScreen extends StatelessWidget {
                                 style: T.ui(12, color: Colors.white70)),
                           ]),
                         ),
-                        Text('${pb.ayah}', style: T.display(74, color: Colors.white).copyWith(height: 0.9)),
+                        if (pb.ayahWise) Text('${pb.ayah}', style: T.display(74, color: Colors.white).copyWith(height: 0.9)),
                       ]),
                     ]),
                   ),
                 ),
                 const SizedBox(height: 20),
                 Row(children: [
-                  Expanded(child: Text('${info.nameEn}, Ayah ${pb.ayah}', style: T.display(24, w: FontWeight.w700, color: c.fg))),
+                  Expanded(child: Text(pb.ayahWise ? '${info.nameEn}, Ayah ${pb.ayah}' : '${info.nameEn} · full surah', style: T.display(24, w: FontWeight.w700, color: c.fg))),
                   FavButton.surah(pb.surah, size: 40),
                 ]),
                 InkWell(
@@ -113,11 +114,19 @@ class NowPlayingScreen extends StatelessWidget {
                 Align(alignment: Alignment.centerLeft, child: SyncBadge(pb.leadVoice)),
                 const SizedBox(height: 14),
                 const _Seek(),
-                if (info.ayahs <= 80) ...[const SizedBox(height: 10), const _AyahStrip()],
+                if (info.ayahs <= 80 && pb.ayahWise) ...[const SizedBox(height: 10), const _AyahStrip()],
+                if (!pb.ayahWise)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text('${s.reciter.name} has no ayah timings, so this plays as one recording. The buttons beside play move 15 seconds.',
+                        style: T.ui(12.5, color: c.fg2, height: 1.4)),
+                  ),
                 const SizedBox(height: 12),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  _RepeatButton(repeat: s.repeat, onTap: pb.cycleRepeat),
-                  RoundIcon(Icons.skip_previous_rounded, tooltip: 'Previous ayah', size: 54, onTap: pb.previous),
+                  _RepeatButton(repeat: pb.ayahWise ? s.repeat : 0,
+                      onTap: () => pb.ayahWise ? showRepeatSheet(context) : toast(context, Playback.noAyahReason(s.reciter))),
+                  RoundIcon(pb.ayahWise ? Icons.skip_previous_rounded : Icons.replay_rounded,
+                      tooltip: pb.ayahWise ? 'Previous ayah' : 'Back 15 seconds', size: 54, onTap: pb.previous),
                   Material(
                     color: c.fg,
                     shape: const CircleBorder(),
@@ -133,64 +142,49 @@ class NowPlayingScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  RoundIcon(Icons.skip_next_rounded, tooltip: 'Next ayah', size: 54, onTap: pb.next),
-                  TextButton(
-                    onPressed: () {
-                      const steps = [1.0, 1.25, 1.5, 0.75];
-                      pb.setSpeed(steps[(steps.indexOf(s.speed) + 1) % steps.length]);
-                    },
-                    child: Text('${s.speed}×', style: T.ui(15, w: FontWeight.w800, color: s.speed == 1 ? c.fg : c.gold)),
+                  RoundIcon(pb.ayahWise ? Icons.skip_next_rounded : Icons.forward_rounded,
+                      tooltip: pb.ayahWise ? 'Next ayah' : 'Forward 15 seconds', size: 54, onTap: pb.next),
+                  Tooltip(
+                    message: 'Speed',
+                    child: InkResponse(
+                      onTap: () => showSpeedSheet(context),
+                      radius: 28,
+                      child: SizedBox(
+                        width: 52,
+                        height: 52,
+                        child: Center(child: Text('${s.speed}×', style: T.ui(15, w: FontWeight.w800, color: s.speed == 1 ? c.fg : c.gold))),
+                      ),
+                    ),
                   ),
                 ]),
                 if (pb.error != null)
                   Padding(padding: const EdgeInsets.only(top: 12), child: Text(pb.error!, textAlign: TextAlign.center, style: T.ui(13, color: c.gold))),
                 if (pb.looping) const Padding(padding: EdgeInsets.only(top: 12), child: LoopBanner()),
-                const Label('What you hear'),
-                Segmented<ListenMode>(
-                  options: const [
-                    (ListenMode.arabic, 'Arabic'),
-                    (ListenMode.arabicTranslation, 'Arabic +\nTranslation'),
-                    (ListenMode.translation, 'Translation'),
-                  ],
-                  value: s.listenMode,
-                  onChanged: (v) {
-                    s.update((x) => x.listenMode = v);
-                    pb.reload();
-                  },
-                ),
-                const Label('Voices'),
-                _RowCard(
-                  leading: ReciterAvatar(s.reciter, size: 46),
-                  kicker: 'Reciter',
-                  title: s.reciter.name + (s.reciter.style != 'Murattal' ? ' · ${s.reciter.style}' : ''),
-                  onTap: () => showReciterSheet(context),
-                  trailing: FavButton.reciter(s.reciterId, size: 34),
-                ),
-                if (repo.profileOf(s.reciter)?.bio != null)
+                if (pb.runItem != null)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
-                    child: Text(repo.profileOf(s.reciter)!.bio!, style: T.ui(12.5, color: c.fg2, height: 1.55)),
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Material(
+                      color: c.goldWash,
+                      borderRadius: BorderRadius.circular(14),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+                        child: Row(children: [
+                          Icon(Icons.queue_music_rounded, color: c.gold, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text('${pb.run!.name} · ${pb.runIndex + 1} of ${pb.run!.items.length}'
+                                '${pb.runIndex + 1 < pb.run!.items.length ? ' · next: ${repo.surah(pb.run!.items[pb.runIndex + 1].surah).nameEn}' : ''}',
+                                maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(13, w: FontWeight.w700, color: c.fg)),
+                          ),
+                          RoundIcon(Icons.close_rounded, tooltip: 'Leave playlist', size: 34, onTap: pb.stopPlaylist),
+                        ]),
+                      ),
+                    ),
                   ),
-                if (s.listenMode != ListenMode.arabic) ...[
-                  const SizedBox(height: 8),
-                  _RowCard(
-                    leading: ReciterAvatar(s.translationVoice, size: 46),
-                    kicker: 'Translation audio',
-                    title: '${s.translationVoice.name} · ${s.translationVoice.language}',
-                    onTap: () => showReciterSheet(context, voices: true),
-                  ),
-                ],
-                const Label('Script and translation'),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  ScriptChip(onTap: () => showDisplaySheet(context)),
-                  for (final id in s.quickTranslations)
-                    OvChip(repo.translationById(id).englishName,
-                        selected: s.show != ShowMode.arabic && s.translationId == id, onTap: () => s.setTranslation(id)),
-                  OvChip('Arabic only', selected: s.show == ShowMode.arabic, onTap: () => s.update((x) => x.show = ShowMode.arabic)),
-                  PickerChip(label: 'All translations', icon: Icons.translate_rounded, onTap: () => showTranslationSheet(context)),
-                ]),
                 const SizedBox(height: 22),
-                const _Lyric(),
+                const PlayerDeck(),
+                const SizedBox(height: 22),
+                if (pb.ayahWise) const _Lyric(),
                 const Label('More'),
                 GridView.count(
                   crossAxisCount: 4,
@@ -201,7 +195,8 @@ class NowPlayingScreen extends StatelessWidget {
                   childAspectRatio: 1.05,
                   children: [
                   for (final (icon, label, lit, onTap) in [
-                    (Icons.all_inclusive_rounded, pb.looping ? 'Memorising' : 'Memorise', pb.looping, () => showLoopSheet(context)),
+                    (Icons.all_inclusive_rounded, pb.looping ? 'Memorising' : 'Memorise', pb.looping,
+                        () => pb.ayahWise ? showLoopSheet(context) : toast(context, Playback.noAyahReason(s.reciter))),
                     (Icons.menu_book_rounded, 'Tafseer', false, () => showTafsirSheet(context, pb.surah, pb.ayah)),
                     (s.bookmarkOf(pb.surah, pb.ayah) != null ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, 'Bookmark',
                         s.bookmarkOf(pb.surah, pb.ayah) != null, () => onBookmarkTap(context, pb.surah, pb.ayah)),
@@ -210,8 +205,9 @@ class NowPlayingScreen extends StatelessWidget {
                     (downloaded ? Icons.download_done_rounded : Icons.download_rounded, downloaded ? 'Offline' : 'Download', downloaded,
                         () => showDownloadSheet(context, pb.surah)),
                     (Icons.ios_share_rounded, 'Share', false, () => shareAyah(context, pb.surah, pb.ayah)),
-                    (Icons.open_in_full_rounded, 'Focus', false, () => Nav.focus(context)),
-                    (Icons.tag_rounded, 'Go to ayah', false, () => showJumpSheet(context, pb.surah, (a) => pb.seekToAyah(a, autoplay: true))),
+                    (Icons.open_in_full_rounded, 'Focus', false, () => pb.ayahWise ? Nav.focus(context) : toast(context, Playback.noAyahReason(s.reciter))),
+                    (Icons.tag_rounded, 'Go to ayah', false,
+                        () => pb.ayahWise ? showJumpSheet(context, pb.surah, (a) => pb.seekToAyah(a, autoplay: true)) : toast(context, Playback.noAyahReason(s.reciter))),
                   ])
                       Material(
                         color: c.surface,
@@ -241,7 +237,7 @@ class NowPlayingScreen extends StatelessWidget {
                       pb.surah < 114 ? 'When ${pb.info.nameEn} ends, ${repo.surah(pb.surah + 1).nameEn} starts by itself' : 'An-Nas is the last surah',
                       style: T.ui(12, color: c.fg3)),
                 ),
-                const _UpNext(),
+                if (pb.ayahWise) const _UpNext(),
               ]),
             ),
           ]),
@@ -365,41 +361,6 @@ class _RepeatButton extends StatelessWidget {
                 bottom: 4,
                 child: Text(repeat < 0 ? '∞' : '$repeat×', style: T.ui(10.5, w: FontWeight.w800, color: c.gold)),
               ),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-class _RowCard extends StatelessWidget {
-  final Widget leading;
-  final String kicker, title;
-  final VoidCallback onTap;
-  final Widget? trailing;
-  const _RowCard({required this.leading, required this.kicker, required this.title, required this.onTap, this.trailing});
-  @override
-  Widget build(BuildContext context) {
-    final c = context.ov;
-    return Material(
-      color: c.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: c.line)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(children: [
-            leading,
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(kicker.toUpperCase(), style: T.label(c.fg3).copyWith(fontSize: 10.5)),
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(14.5, w: FontWeight.w600, color: c.fg)),
-              ]),
-            ),
-            if (trailing != null) ...[trailing!, const SizedBox(width: 10)],
-            Text('Change', style: T.ui(12.5, w: FontWeight.w700, color: c.gold)),
           ]),
         ),
       ),

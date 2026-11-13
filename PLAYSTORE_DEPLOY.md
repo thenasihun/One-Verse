@@ -1,4 +1,4 @@
-# One Verse v2.1.0 (build 6): Play Store deployment guide
+# One Verse v2.2.0 (build 7): Play Store deployment guide
 
 This file is a set of instructions for an AI agent (or a person) publishing this update to Google Play.
 Follow the steps in order. Do not change the build files or upload a different file.
@@ -15,8 +15,8 @@ is needed (foreground service, section 7).
 |---|---|
 | App name (on device) | One Verse |
 | Package name | `com.nasihun.oneverse` |
-| Version name | `2.1.0` |
-| Version code | `6` (previous release: `4`, version 1.1.0; or `5` if 2.0.0 was uploaded) |
+| Version name | `2.2.0` |
+| Version code | `7` (higher than any earlier upload: 4, 5 or 6) |
 | Target SDK / Compile SDK | 36 (Android 16) |
 | Min SDK | 24 (Android 7.0), unchanged |
 | Signing key alias | `oneverse` |
@@ -51,8 +51,8 @@ How to build these files is in section 10.
 4. Go to **Test and release → Production** (or **Closed testing** to test first).
 5. Click **Create new release**.
 6. Under **App bundles**, click **Upload** and choose `build/app/outputs/bundle/release/app-release.aab`.
-   - Wait until it shows **Version 6 (2.1.0)** with no errors.
-7. **Release name:** `2.1.0 (6) – Tafseer, bookmarks, memorise mode, 50+ reciters`
+   - Wait until it shows **Version 7 (2.2.0)** with no errors.
+7. **Release name:** `2.2.0 (7) – Share studio, playlists, easier player`
 8. **Release notes:** paste the text from section 4. Add both `en-US` and `ur` if the Urdu listing exists.
 9. Click **Next**. Read the warnings screen (section 8), then click **Save**.
 10. Update the store listing (section 5) and the graphics (section 6).
@@ -65,28 +65,24 @@ Listing changes are reviewed together with the release.
 
 ## 4. Release notes ("What's new", maximum 500 characters each)
 
-### en-US (447 characters)
+### en-US (444 characters)
 ```
-One Verse 2.1
-• NEW Tafseer: Ibn Kathir, Bayan ul Quran (Dr. Israr Ahmad), Ma'arif al-Qur'an and more, in Urdu, English and Arabic
-• NEW Bookmarks with your own notes
-• NEW Memorise mode: loop ayahs 3×, 5×, 10× or more, with a pause between rounds
-• 50+ reciters, favourites, word-by-word highlight, 5 scripts
-• Download the complete Quran; it keeps going in the background
-• Sleep timer now fades out gently
-• Continues exactly where you left off
+One Verse 2.2
+• NEW Share studio: send any ayah, passage or surah as an image, a video or an audio file, with or without translation, to WhatsApp, status or anywhere
+• NEW Playlists: your surahs, your order, your reciter, with a reminder on the days you choose
+• Easier player: big buttons for reciter, translation, repeat and speed
+• Tafseer, bookmarks with notes, memorise mode
+• 50+ reciters, word-by-word highlight, 5 scripts, works offline
 ```
 
-### ur (Urdu, 409 characters)
+### ur (Urdu, 399 characters)
 ```
-ون ورس 2.1
-• نیا: تفسیر – ابنِ کثیر، بیان القرآن (ڈاکٹر اسرار احمد)، معارف القرآن اور مزید، اردو، انگریزی اور عربی میں
-• نیا: بک مارکس، اپنے نوٹس کے ساتھ
-• نیا: حفظ موڈ – آیات کو 3، 5، 10 یا زیادہ بار دہرائیں، ہر دور کے بیچ وقفہ
-• 50 سے زائد قاری، پسندیدہ، لفظ بہ لفظ ہائی لائٹ، 5 رسم الخط
-• مکمل قرآن ڈاؤن لوڈ، بیک گراؤنڈ میں بھی جاری
-• سلیپ ٹائمر اب آہستہ آہستہ آواز کم کرتا ہے
-• جہاں چھوڑا تھا وہیں سے جاری
+ون ورس 2.2
+• نیا: شیئر اسٹوڈیو – کوئی بھی آیت، چند آیات یا پوری سورت تصویر، ویڈیو یا آڈیو بنا کر واٹس ایپ، اسٹیٹس یا کہیں بھی بھیجیں، ترجمے کے ساتھ یا بغیر
+• نیا: پلے لسٹ – اپنی سورتیں، اپنی ترتیب، اپنا قاری، اور پسند کے دنوں میں یاددہانی
+• آسان پلیئر: قاری، ترجمہ، دہرانا اور رفتار کے بڑے بٹن
+• تفسیر، نوٹس کے ساتھ بک مارکس، حفظ موڈ
+• 50 سے زائد قاری، لفظ بہ لفظ ہائی لائٹ، 5 رسم الخط، بغیر انٹرنیٹ
 ```
 
 ---
@@ -107,7 +103,7 @@ Quran audio with word-by-word highlight, 5 scripts, Urdu & 40+ translations.
 ```
 
 ### Full description (maximum 4000 characters)
-3653 characters:
+3984 characters:
 ```
 One Verse – Hear the Quran. See every word.
 
@@ -141,6 +137,14 @@ One Verse is a calm, beautiful Quran app for listening, reading and understandin
 • Speed from 0.75× to 1.5× and a sleep timer that fades out gently
 • Keeps playing in the background, with controls in the notification and on the lock screen
 • Arabic only, Arabic + translation, or translation only
+
+📤 SHARE ANY AYAH
+• Send an ayah, a passage or a whole surah as a beautiful image, a video with the recitation, or an audio file
+• With or without the translation, to WhatsApp, status or any app, or save it to your phone
+
+🎶 YOUR PLAYLISTS
+• Your surahs in your order, with your reciter
+• A reminder on the days and time you choose
 
 📚 TAFSEER, BOOKMARKS AND NOTES
 • Read the tafseer of any ayah: Ibn Kathir, Bayan ul Quran (Dr. Israr Ahmad), Tazkir ul Quran and Fi Zilal al-Quran in Urdu; Ibn Kathir, Ma'arif al-Qur'an and Tazkirul Quran in English; Muyassar and Al-Sa'di in Arabic
@@ -297,7 +301,7 @@ describes the storage permission of 1.x.
 
 | Error | Fix |
 |---|---|
-| "Version code 6 has already been used" | In `pubspec.yaml`, change `version: 2.1.0+6` to `+7`. Rebuild with `flutter build appbundle --release` and upload again. |
+| "Version code 7 has already been used" | In `pubspec.yaml`, change `version: 2.2.0+7` to `+8`. Rebuild with `flutter build appbundle --release` and upload again. |
 | "Your Android App Bundle is signed with the wrong key" | The bundle must be signed with the `oneverse` key (SHA-256 in section 1). Make sure `android/key.properties` exists and points to `OneVerseKey.jks`. When it does, the build log shows `✔ Using release keystore`. |
 | "signed in debug mode" | `android/key.properties` is missing, so the build fell back to debug signing. Restore it and rebuild. |
 | "You must complete the foreground service declaration" | Do the first part of section 7. |
@@ -305,13 +309,16 @@ describes the storage permission of 1.x.
 
 ## 10. How to build (on the Mac)
 
+Flutter 3.47 or newer is needed (`flutter --version`; run `flutter upgrade` if it is older). The first build
+also downloads ffmpeg-kit from Maven Central, so it takes a few minutes longer.
+
 ```bash
 cd /Users/Data/Development/flutter/One-Verse
 git checkout main && git pull origin main
 flutter clean && flutter pub get
 flutter test test/unit_test.dart        # must print "All tests passed!"
 flutter build appbundle --release       # log must show "✔ Using release keystore"
-flutter build apk --release             # optional: signed APK for testing on a phone
+flutter build apk --release --split-per-abi   # optional: signed APKs for testing (arm64 for most phones)
 ```
 
 Signing setup:
@@ -331,6 +338,29 @@ It must match the upload certificate SHA-256 in section 1.
 ---
 
 ## 11. Changelog for this version (technical)
+
+### 2.2.0 (build 7)
+
+**Share studio** (the share button on any ayah)
+- Image: a 1080 px card, story (9:16) or square, in the reader's script, with the translation, the reference
+  and One Verse in a corner; four styles. Long passages scale down to fit.
+- Video: one card per ayah over the recitation, with fades; up to 20 ayahs.
+- Audio: one .m4a of an ayah, a passage or the whole surah, optionally with the translation audio after each
+  ayah. Works with ayah-by-ayah reciters and with full-surah recordings that have ayah timings.
+- Text, as before. Every format can be shared to any app; audio, video and images can be saved to the phone.
+- Made on the phone with ffmpeg-kit (minimal LGPL build, `ffmpeg_kit_flutter_new_min`). It adds about 16 MB
+  per ABI to the APK (Play delivers only the ABI a phone needs).
+
+**Playlists**
+- Whole surahs or passages in any order, a chosen reciter, and a reminder on chosen days and time.
+- Ready lists: Morning, Before sleep, Friday, Protection.
+
+**Player**
+- The cycle buttons and chip rows became a deck of large tiles: reciter, translation, what you hear, repeat
+  and speed. Each opens a sheet of large options.
+- Jumps far into a full-surah file no longer skip a playlist item.
+
+### 2.1.0 (build 6)
 
 ### 2.1.0 (build 6)
 

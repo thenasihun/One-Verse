@@ -7,6 +7,7 @@ import 'package:oneverse/data/network.dart';
 import 'package:oneverse/data/repository.dart';
 import 'package:oneverse/data/tafsir.dart';
 import 'package:oneverse/state/listening_log.dart';
+import 'package:oneverse/state/playlists.dart';
 import 'package:oneverse/state/reminders.dart';
 import 'package:oneverse/state/settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -238,6 +239,28 @@ void main() {
       expect(reciterById('ov.badrturki').syncLabel, 'Full surah');
       expect(reciterById('ar.husarymujawwad').hasAyahSync, isTrue);
       expect(reciters.where((r) => r.timing?.kind == TimingKind.mp3quran).length, 26);
+    });
+  });
+
+  group('playlists', () {
+    test('order, reciter and reminder days persist', () async {
+      SharedPreferences.setMockInitialValues({});
+      final s = Settings();
+      await s.load();
+      final p = Playlist(id: 'a', name: 'Night', reciterId: 'ov.saadghamdi', remind: true, remindAt: 22 * 60 + 15, days: {5, 7})
+        ..items.addAll(const [PlaylistItem(67, 1, 30), PlaylistItem(2, 285, 286)]);
+      s.savePlaylist(p);
+      final again = Settings();
+      await again.load();
+      final q = again.playlistById('a')!;
+      expect(q.name, 'Night');
+      expect(q.reciterId, 'ov.saadghamdi');
+      expect([for (final it in q.items) '${it.surah}:${it.from}-${it.to}'], ['67:1-30', '2:285-286']);
+      expect(q.days, {5, 7});
+      expect(q.daily, isFalse);
+      expect(q.remindAt, 22 * 60 + 15);
+      again.removePlaylist('a');
+      expect(again.playlists, isEmpty);
     });
   });
 

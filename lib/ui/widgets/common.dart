@@ -36,11 +36,12 @@ class Art extends StatelessWidget {
   final Widget? child;
   final BorderRadius radius;
   final EdgeInsetsGeometry padding;
-  const Art({super.key, required this.seed, this.child, this.radius = const BorderRadius.all(Radius.circular(22)), this.padding = EdgeInsets.zero});
+  final List<Color>? colors; // overrides the colours picked from [seed]
+  const Art({super.key, required this.seed, this.child, this.radius = const BorderRadius.all(Radius.circular(22)), this.padding = EdgeInsets.zero, this.colors});
 
   @override
   Widget build(BuildContext context) {
-    final c = artFor(seed);
+    final c = colors ?? artFor(seed);
     return ClipRRect(
       borderRadius: radius,
       child: DecoratedBox(
@@ -381,7 +382,7 @@ class SyncBadge extends StatelessWidget {
         ? 'Word-exact timing'
         : reciter.hasAyahSync
             ? 'Ayah-exact timing'
-            : 'Full surah · ayahs estimated';
+            : 'Full surah only · no ayah timings';
     return Container(
       height: 24,
       padding: const EdgeInsets.symmetric(horizontal: 10),

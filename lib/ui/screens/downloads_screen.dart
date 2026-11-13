@@ -9,6 +9,7 @@ import '../../data/offline_sync.dart';
 import '../../data/repository.dart';
 import '../../state/playback.dart';
 import '../../state/settings.dart';
+import '../playlists_screen.dart';
 import '../sheets.dart';
 import '../shell.dart';
 import '../study.dart';
@@ -60,6 +61,26 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   style: T.ui(12.5, color: c.fg3)),
               trailing: Icon(Icons.chevron_right_rounded, color: c.fg3),
               onTap: () => BookmarksScreen.open(context),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: Material(
+            color: c.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22), side: BorderSide(color: c.line)),
+            child: ListTile(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+              leading: Icon(Icons.queue_music_rounded, color: c.gold),
+              title: Text('Playlists', style: T.ui(16, w: FontWeight.w700, color: c.fg)),
+              subtitle: Text(
+                  context.watch<Settings>().playlists.isEmpty
+                      ? 'Your own order, reciter and reminder'
+                      : '${context.watch<Settings>().playlists.length} playlists',
+                  style: T.ui(12.5, color: c.fg3)),
+              trailing: Icon(Icons.chevron_right_rounded, color: c.fg3),
+              onTap: () => PlaylistsScreen.open(context),
             ),
           ),
         ),

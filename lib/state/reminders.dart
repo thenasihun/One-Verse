@@ -51,6 +51,9 @@ class Reminders {
   bool _ready = false;
   void Function(String payload)? onOpen;
 
+  /// Re-plans every reminder now (set by the shell, which has what it needs).
+  void Function()? requestReschedule;
+
   Future<void> init() async {
     if (kIsWeb) return;
     try {
@@ -179,6 +182,19 @@ class Reminders {
     }
     if (r['mulk'] == true) {
       await _at(4, _next(22, 30), 'Before you sleep', 'Surah Al-Mulk, recited every night.', '67:1', repeat: DateTimeComponents.time);
+    }
+    // Playlist reminders: one a day, or one for each chosen weekday.
+    for (final (i, p) in s.playlists.indexed) {
+      if (!p.remind || p.items.isEmpty) continue;
+      final h = p.remindAt ~/ 60, m = p.remindAt % 60;
+      final body = '${p.items.length == 1 ? '1 recitation' : '${p.items.length} recitations'} in your list. Tap to listen.';
+      if (p.daily) {
+        await _at(300 + i * 8, _next(h, m), p.name, body, 'playlist:${p.id}', repeat: DateTimeComponents.time);
+      } else {
+        for (final d in p.days) {
+          await _at(300 + i * 8 + d, _next(h, m, weekday: d), p.name, body, 'playlist:${p.id}', repeat: DateTimeComponents.dayOfWeekAndTime);
+        }
+      }
     }
     if (r['special'] == true) {
       var id = 100;

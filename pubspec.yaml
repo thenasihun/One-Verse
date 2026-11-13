@@ -2,7 +2,7 @@ name: oneverse
 description: "Listen & read the Holy Quran, one verse at a time."
 publish_to: 'none'
 
-version: 2.1.0+6
+version: 2.2.0+7
 
 environment:
   sdk: '>=3.10.0 <4.0.0'
@@ -37,6 +37,8 @@ dependencies:
   package_info_plus: ^10.2.2
   wakelock_plus: ^1.8.2
   background_downloader: ^9.6.4
+  ffmpeg_kit_flutter_new_min: ^3.6.8
+  flutter_file_dialog: ^3.3.6
 
 dev_dependencies:
   flutter_test:

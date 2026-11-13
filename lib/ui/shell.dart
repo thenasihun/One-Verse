@@ -74,6 +74,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   Future<void> _afterLaunch() async {
     final pb = context.read<Playback>();
     Reminders.instance.onOpen = _openPayload;
+    Reminders.instance.requestReschedule = _reschedule;
     final launch = await Reminders.instance.launchPayload();
     if (!mounted) return;
     if (launch != null) {
@@ -85,6 +86,14 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   }
 
   void _openPayload(String p) {
+    if (p.startsWith('playlist:')) {
+      final list = context.read<Settings>().playlistById(p.substring(9));
+      if (list != null && mounted) {
+        unawaited(context.read<Playback>().playPlaylist(list));
+        Nav.nowPlaying(context);
+      }
+      return;
+    }
     final parts = p.split(':');
     final n = int.tryParse(parts.first);
     if (n == null || !mounted) return;
@@ -187,7 +196,7 @@ class MiniPlayer extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${s.nameEn} · Ayah ${pb.ayah}', maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(13.5, w: FontWeight.w700, color: c.fg)),
+                    Text(pb.ayahWise ? '${s.nameEn} · Ayah ${pb.ayah}' : '${s.nameEn} · full surah', maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(13.5, w: FontWeight.w700, color: c.fg)),
                     Text(
                       pb.error ?? (r.name + (settings.listenMode.index == 1 ? ' + ${settings.translationVoice.name}' : '')),
                       maxLines: 1,
@@ -200,7 +209,8 @@ class MiniPlayer extends StatelessWidget {
                   const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
                 else
                   RoundIcon(pb.playing ? Icons.pause_rounded : Icons.play_arrow_rounded, tooltip: pb.playing ? 'Pause' : 'Play', size: 44, onTap: pb.toggle),
-                RoundIcon(Icons.skip_next_rounded, tooltip: 'Next ayah', size: 44, onTap: pb.next),
+                RoundIcon(pb.ayahWise ? Icons.skip_next_rounded : Icons.forward_rounded,
+                    tooltip: pb.ayahWise ? 'Next ayah' : 'Forward 15 seconds', size: 44, onTap: pb.next),
               ]),
             ),
             Positioned(

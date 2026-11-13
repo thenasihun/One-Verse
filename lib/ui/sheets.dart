@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../core/theme.dart';
 import '../data/catalog.dart';
@@ -10,19 +9,27 @@ import '../data/network.dart';
 import '../data/repository.dart';
 import '../state/playback.dart';
 import '../state/settings.dart';
+import 'share_studio.dart';
 import 'shell.dart';
 import 'widgets/common.dart';
 import 'widgets/quran_text.dart';
 
 // ------------------------------------------------------------------ reciters
 
-void showReciterSheet(BuildContext context, {bool voices = false}) {
-  showOvSheet(context, title: voices ? 'Translation voice' : 'Choose a reciter', scroll: false, builder: (_) => _ReciterPicker(voices: voices));
+/// Picks the reciter (or translation voice). With [onPick], the choice goes
+/// there instead of to the player, and [selected] is the one ticked.
+void showReciterSheet(BuildContext context, {bool voices = false, ValueChanged<Reciter>? onPick, String? selected}) {
+  showOvSheet(context,
+      title: voices ? 'Translation voice' : 'Choose a reciter',
+      scroll: false,
+      builder: (_) => _ReciterPicker(voices: voices, onPick: onPick, selected: selected));
 }
 
 class _ReciterPicker extends StatefulWidget {
   final bool voices;
-  const _ReciterPicker({required this.voices});
+  final ValueChanged<Reciter>? onPick;
+  final String? selected;
+  const _ReciterPicker({required this.voices, this.onPick, this.selected});
   @override
   State<_ReciterPicker> createState() => _ReciterPickerState();
 }
@@ -36,7 +43,7 @@ class _ReciterPickerState extends State<_ReciterPicker> {
     final c = context.ov;
     final settings = context.watch<Settings>();
     final repo = context.watch<QuranRepository>();
-    final current = widget.voices ? settings.translationVoiceId : settings.reciterId;
+    final current = widget.selected ?? (widget.voices ? settings.translationVoiceId : settings.reciterId);
     final list = (widget.voices ? translationVoices : reciters).where((r) {
       final p = repo.profileOf(r);
       final hay = '${r.name} ${r.language ?? ''} ${p?.country ?? ''}'.toLowerCase();
@@ -78,6 +85,11 @@ class _ReciterPickerState extends State<_ReciterPicker> {
             return InkWell(
               borderRadius: BorderRadius.circular(16),
               onTap: () {
+                if (widget.onPick != null) {
+                  widget.onPick!(r);
+                  Navigator.pop(context);
+                  return;
+                }
                 if (widget.voices) {
                   // The text follows the voice: it reads this translation.
                   settings.setTranslation(r.textEdition!);
@@ -889,17 +901,9 @@ class _QuranDownloadSheetState extends State<_QuranDownloadSheet> {
 
 // ------------------------------------------------------------------ share
 
-Future<void> shareAyah(BuildContext context, int surah, int ayah) async {
-  final repo = context.read<QuranRepository>();
-  final s = context.read<Settings>();
-  try {
-    final v = (await repo.words(surah))[ayah - 1];
-    final tr = (await repo.translation(s.translationId, surah))[ayah - 1];
-    final info = repo.surah(surah);
-    await SharePlus.instance.share(ShareParams(
-      text: '${v.plain(QuranScript.uthmani)}\n\n$tr\n\n— ${info.nameEn} $surah:$ayah · One Verse',
-    ));
-  } catch (_) {
-    if (context.mounted) toast(context, 'Could not share this ayah offline yet');
-  }
-}
+/// Opens the share studio: image, video, audio or text, for one ayah or
+/// a passage.
+Future<void> shareAyah(BuildContext context, int surah, int ayah) async => ShareStudio.open(context, surah, ayah);
+
+/// English name of a language code, e.g. 'ur' → 'Urdu'.
+String languageName(String code) => _langName(code);

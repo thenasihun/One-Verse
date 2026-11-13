@@ -12,6 +12,7 @@ import '../data/offline_sync.dart';
 import '../data/repository.dart';
 import 'audio_handler.dart';
 import 'listening_log.dart';
+import 'playlists.dart';
 import 'settings.dart';
 
 enum Phase { arabic, translation }
@@ -106,10 +107,34 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   Timer? _gapTimer;
   bool get looping => loopFrom != null;
 
+  // A playlist being played: the item now playing, and where it ends.
+  Playlist? run;
+  int runIndex = 0;
+  PlaylistItem? get runItem => run == null || runIndex >= run!.items.length ? null : run!.items[runIndex];
+
   int _reps = 0;
   int _recoveries = 0;
   bool _resumeWhenOnline = false;
   bool _repeatSeek = false;
+  // Where a newly loaded full-surah file should start; positions before it
+  // still come from the previous file and are ignored until it is reached.
+  int? _expectFromMs;
+  DateTime _expectSince = DateTime(0);
+
+  bool _stale(int ms) {
+    final expect = _expectFromMs;
+    if (expect == null) return false;
+    if (DateTime.now().difference(_expectSince) > const Duration(seconds: 8)) {
+      _expectFromMs = null;
+      return false;
+    }
+    return ms < expect - 1500;
+  }
+
+  void _expect(int ms) {
+    _expectFromMs = ms > 3000 ? ms : null;
+    _expectSince = DateTime.now();
+  }
   int _pendingPosMs = 0;
   bool _userNav = false;
   int? _lastIndex;
@@ -128,6 +153,14 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   SurahInfo get info => repo.surah(surah);
   VerseText? get verse => ayah - 1 < verses.length ? verses[ayah - 1] : null;
   Reciter get reciter => settings.reciter;
+  /// Whether a chosen ayah can be played and followed. False for reciters
+  /// whose surahs are single files without ayah timings, in Arabic mode.
+  bool get ayahWise => settings.listenMode == ListenMode.translation || reciter.hasAyahSync;
+  static String noAyahReason(Reciter r) =>
+      '${r.name} is recorded as one file per surah, without ayah timings, so a chosen ayah cannot be played. '
+      'Pick a reciter marked Ayah sync or Word sync for that.';
+  void _noAyah() => notice.value = noAyahReason(reciter);
+
   Reciter get leadVoice => settings.listenMode == ListenMode.translation ? settings.translationVoice : settings.reciter;
 
   // ---------------------------------------------------------------- session
@@ -162,6 +195,8 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   /// only a setting changed.
   Future<void> play(int n, {int startAyah = 1, bool autoplay = true, int offsetMs = 0}) async {
     if (n != surah) clearLoop(notify: false);
+    // Choosing another surah leaves the playlist.
+    if (runItem != null && n != runItem!.surah) run = null;
     _useDownloadedReciter(n);
     surah = n;
     ayah = startAyah;
@@ -173,6 +208,9 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     notifyListeners();
     try {
       verses = await repo.words(n);
+      if (settings.listenMode == ListenMode.arabicTranslation && !reciter.hasAyahSync) {
+        throw StateError('pairing');
+      }
       await _build(startAyah, offsetMs);
       _loadedKey = _key();
       loading = false;
@@ -180,7 +218,9 @@ class Playback extends ChangeNotifier implements PlayerCommands {
       if (autoplay) await player.play();
     } catch (e) {
       loading = false;
-      error = e.toString().contains('internet') || e.toString().contains('reach')
+      error = e.toString().contains('pairing')
+          ? 'Arabic + translation plays each ayah with its meaning, so it needs ayah timings. ${reciter.name} has none: choose Arabic or Translation only, or another reciter.'
+          : e.toString().contains('internet') || e.toString().contains('reach')
           ? 'You are offline and this surah is not downloaded yet.'
           : 'Could not load this recitation. ${reciter.name} may not have this surah; try another reciter.';
       notifyListeners();
@@ -219,6 +259,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
       singleFile = true;
       items = const [];
       final start = timing!.ayahs[startAyah - 1].from + offsetMs;
+      _expect(start);
       await player.setAudioSource(chapterSource(), initialPosition: Duration(milliseconds: start));
       surahLength.value = player.duration ?? Duration(milliseconds: timing!.ayahs.last.to);
       surahPosition.value = Duration(milliseconds: start);
@@ -356,6 +397,10 @@ class Playback extends ChangeNotifier implements PlayerCommands {
         unawaited(_restartLoop());
         return;
       }
+      if (!looping && _runEnds(items[prev].ayah, item.ayah)) {
+        unawaited(_nextInRun());
+        return;
+      }
     }
     _userNav = false;
     _setAyah(item.ayah, item.phase);
@@ -363,7 +408,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
 
   bool _shouldRepeat() {
     final rep = settings.repeat;
-    if (rep == 0) return false;
+    if (rep == 0 || !ayahWise) return false;
     if (rep < 0 || _reps < rep) {
       _reps++;
       return true;
@@ -388,6 +433,10 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     final ms = pos.inMilliseconds;
     final count = verse?.wordCount ?? 0;
     if (singleFile && timing != null) {
+      // For 8 s after a jump forward, a position before the target is the
+      // old file or a seek that has not landed (the player first reports the
+      // target, then the old place), so it must not move the ayah.
+      if (_stale(ms)) return;
       var ai = timing!.ayahAt(ms);
       if (ai < 0) ai = 0;
       final current = ayah - 1;
@@ -404,6 +453,12 @@ class Playback extends ChangeNotifier implements PlayerCommands {
         }
         log.addAyah();
         unawaited(_restartLoop());
+        return;
+      }
+      if (ai > current && ai - current <= 3 && !_userNav && player.playing && !looping && _runEnds(ayah, ai + 1)) {
+        _loopBusy = true; // stop reacting until the next item loads
+        log.addAyah();
+        unawaited(_nextInRun().whenComplete(() => _loopBusy = false));
         return;
       }
       // Natural move to the next ayah: repeat or count it.
@@ -456,7 +511,15 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   }
 
   void _onState(PlayerState s) {
-    if (s.processingState == ProcessingState.completed) {
+    // Ignore a late 'completed' from the previous file while the next loads.
+    final expect = _expectFromMs;
+    if (s.processingState == ProcessingState.completed && !loading && !_advancing && expect != null && singleFile && _stale(player.position.inMilliseconds)) {
+      // A late end of the previous file, or a jump that did not land: go to
+      // where this one should start.
+      unawaited(player.seek(Duration(milliseconds: expect)).then((_) => player.play()));
+      return;
+    }
+    if (s.processingState == ProcessingState.completed && !loading && !_advancing) {
       if (settings.repeat != 0 && _shouldRepeat()) {
         if (singleFile) {
           player.seek(Duration(milliseconds: timing!.ayahs[ayah - 1].from));
@@ -470,6 +533,10 @@ class Playback extends ChangeNotifier implements PlayerCommands {
       log.addAyah();
       if (_loopEnds(ayah, info.ayahs + 1)) {
         unawaited(_restartLoop());
+        return;
+      }
+      if (runItem != null && runItem!.surah == surah) {
+        unawaited(_nextInRun());
         return;
       }
       if (sleepEndOfSurah) {
@@ -519,12 +586,13 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     if (_loadedKey != _key() || player.processingState == ProcessingState.idle) {
       return play(surah, startAyah: ayah, offsetMs: _pendingPosMs);
     }
-    if (player.processingState == ProcessingState.completed) await seekToAyah(1);
+    if (player.processingState == ProcessingState.completed) ayahWise ? await seekToAyah(1) : await seekInSurah(Duration.zero);
     await player.play();
   }
 
   Future<void> seekToAyah(int a, {bool autoplay = false}) async {
     if (a < 1 || a > info.ayahs) return;
+    if (!ayahWise && _loadedKey == _key()) return _noAyah();
     _userNav = true;
     _reps = 0;
     _pendingPosMs = 0;
@@ -533,6 +601,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
       return;
     }
     if (singleFile) {
+      _expect(timing!.ayahs[a - 1].from);
       await player.seek(Duration(milliseconds: timing!.ayahs[a - 1].from));
       _setAyah(a, Phase.arabic);
       _userNav = false;
@@ -546,6 +615,12 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   }
 
   Future<void> playAyah(int n, int a) async {
+    if (!ayahWise) {
+      // Only the whole surah, from the start (or carry on if it is playing).
+      if (a > 1) _noAyah();
+      if (n == surah && _loadedKey == _key()) return player.playing ? null : player.play();
+      return play(n);
+    }
     if (n == surah && _loadedKey == _key()) {
       await seekToAyah(a, autoplay: true);
     } else {
@@ -553,9 +628,11 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     }
   }
 
-  Future<void> next() => seekToAyah(ayah + 1, autoplay: player.playing);
+  /// Next ayah; 15 seconds on for reciters without ayah timings.
+  Future<void> next() => ayahWise ? seekToAyah(ayah + 1, autoplay: player.playing) : seekInSurah(surahPosition.value + const Duration(seconds: 15));
 
   Future<void> previous() async {
+    if (!ayahWise) return seekInSurah(surahPosition.value - const Duration(seconds: 15));
     if (ayahPosition.value > const Duration(seconds: 3) && player.playing) {
       return seekToAyah(ayah, autoplay: true);
     }
@@ -578,6 +655,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     final ms = d.inMilliseconds.clamp(0, surahLength.value.inMilliseconds);
     _reps = 0;
     if (singleFile) {
+      _expect(ms);
       await player.seek(Duration(milliseconds: ms));
       final ai = timing!.ayahAt(ms);
       if (ai >= 0) _setAyah(ai + 1, Phase.arabic);
@@ -629,6 +707,7 @@ class Playback extends ChangeNotifier implements PlayerCommands {
 
   /// Starts looping ayahs [from]..[to] of the current surah.
   Future<void> setLoop(int from, int to, {int times = 0, Duration gap = Duration.zero}) async {
+    if (!ayahWise) return _noAyah();
     if (from > to) (from, to) = (to, from);
     loopFrom = from.clamp(1, info.ayahs);
     loopTo = to.clamp(1, info.ayahs);
@@ -637,6 +716,58 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     loopRound = 1;
     notifyListeners();
     await seekToAyah(loopFrom!, autoplay: true);
+  }
+
+  /// Plays [p] from item [index], with the playlist's reciter.
+  Future<void> playPlaylist(Playlist p, {int index = 0}) async {
+    if (p.items.isEmpty) return;
+    clearLoop(notify: false);
+    run = p;
+    runIndex = index.clamp(0, p.items.length - 1);
+    final rid = p.reciterId;
+    if (rid != null && rid != settings.reciterId) settings.update((x) => x.reciterId = rid);
+    final it = p.items[runIndex];
+    _loadedKey = null;
+    await play(it.surah, startAyah: ayahWise ? it.from : 1);
+  }
+
+  void stopPlaylist() {
+    run = null;
+    notifyListeners();
+  }
+
+  /// Whether moving from ayah [from] to [to] leaves the playlist item.
+  bool _runEnds(int from, int to) {
+    final it = runItem;
+    // Without ayah timings a passage plays as the whole surah.
+    return ayahWise && it != null && it.surah == surah && from <= it.to && to > it.to && from >= it.from;
+  }
+
+  bool _advancing = false;
+
+  Future<void> _nextInRun() async {
+    final p = run;
+    if (p == null || _advancing) return;
+    _advancing = true;
+    try {
+      await _advanceRun(p);
+    } finally {
+      _advancing = false;
+    }
+  }
+
+  Future<void> _advanceRun(Playlist p) async {
+    if (runIndex + 1 >= p.items.length) {
+      run = null;
+      await player.pause();
+      notice.value = '${p.name} finished';
+      notifyListeners();
+      return;
+    }
+    runIndex++;
+    final it = p.items[runIndex];
+    _loadedKey = null;
+    await play(it.surah, startAyah: ayahWise ? it.from : 1);
   }
 
   void clearLoop({bool notify = true}) {
@@ -691,6 +822,13 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   void setSpeed(double s) {
     settings.update((x) => x.speed = s);
     player.setSpeed(s);
+    handler.refresh();
+    notifyListeners();
+  }
+
+  void setRepeat(int times) {
+    settings.update((x) => x.repeat = times);
+    _reps = 0;
     handler.refresh();
     notifyListeners();
   }
