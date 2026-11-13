@@ -903,3 +903,6 @@ Future<void> shareAyah(BuildContext context, int surah, int ayah) async {
     if (context.mounted) toast(context, 'Could not share this ayah offline yet');
   }
 }
+
+/// English name of a language code, e.g. 'ur' → 'Urdu'.
+String languageName(String code) => _langName(code);

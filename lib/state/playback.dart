@@ -695,6 +695,13 @@ class Playback extends ChangeNotifier implements PlayerCommands {
     notifyListeners();
   }
 
+  void setRepeat(int times) {
+    settings.update((x) => x.repeat = times);
+    _reps = 0;
+    handler.refresh();
+    notifyListeners();
+  }
+
   void cycleRepeat() {
     const steps = [0, 1, 3, -1];
     final i = steps.indexOf(settings.repeat);

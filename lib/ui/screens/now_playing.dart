@@ -9,6 +9,7 @@ import '../../state/playback.dart';
 import '../../state/settings.dart';
 import '../sheets.dart';
 import '../shell.dart';
+import '../player_controls.dart';
 import '../study.dart';
 import '../widgets/common.dart';
 import '../widgets/quran_text.dart';
@@ -116,7 +117,7 @@ class NowPlayingScreen extends StatelessWidget {
                 if (info.ayahs <= 80) ...[const SizedBox(height: 10), const _AyahStrip()],
                 const SizedBox(height: 12),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  _RepeatButton(repeat: s.repeat, onTap: pb.cycleRepeat),
+                  _RepeatButton(repeat: s.repeat, onTap: () => showRepeatSheet(context)),
                   RoundIcon(Icons.skip_previous_rounded, tooltip: 'Previous ayah', size: 54, onTap: pb.previous),
                   Material(
                     color: c.fg,
@@ -134,61 +135,24 @@ class NowPlayingScreen extends StatelessWidget {
                     ),
                   ),
                   RoundIcon(Icons.skip_next_rounded, tooltip: 'Next ayah', size: 54, onTap: pb.next),
-                  TextButton(
-                    onPressed: () {
-                      const steps = [1.0, 1.25, 1.5, 0.75];
-                      pb.setSpeed(steps[(steps.indexOf(s.speed) + 1) % steps.length]);
-                    },
-                    child: Text('${s.speed}×', style: T.ui(15, w: FontWeight.w800, color: s.speed == 1 ? c.fg : c.gold)),
+                  Tooltip(
+                    message: 'Speed',
+                    child: InkResponse(
+                      onTap: () => showSpeedSheet(context),
+                      radius: 28,
+                      child: SizedBox(
+                        width: 52,
+                        height: 52,
+                        child: Center(child: Text('${s.speed}×', style: T.ui(15, w: FontWeight.w800, color: s.speed == 1 ? c.fg : c.gold))),
+                      ),
+                    ),
                   ),
                 ]),
                 if (pb.error != null)
                   Padding(padding: const EdgeInsets.only(top: 12), child: Text(pb.error!, textAlign: TextAlign.center, style: T.ui(13, color: c.gold))),
                 if (pb.looping) const Padding(padding: EdgeInsets.only(top: 12), child: LoopBanner()),
-                const Label('What you hear'),
-                Segmented<ListenMode>(
-                  options: const [
-                    (ListenMode.arabic, 'Arabic'),
-                    (ListenMode.arabicTranslation, 'Arabic +\nTranslation'),
-                    (ListenMode.translation, 'Translation'),
-                  ],
-                  value: s.listenMode,
-                  onChanged: (v) {
-                    s.update((x) => x.listenMode = v);
-                    pb.reload();
-                  },
-                ),
-                const Label('Voices'),
-                _RowCard(
-                  leading: ReciterAvatar(s.reciter, size: 46),
-                  kicker: 'Reciter',
-                  title: s.reciter.name + (s.reciter.style != 'Murattal' ? ' · ${s.reciter.style}' : ''),
-                  onTap: () => showReciterSheet(context),
-                  trailing: FavButton.reciter(s.reciterId, size: 34),
-                ),
-                if (repo.profileOf(s.reciter)?.bio != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
-                    child: Text(repo.profileOf(s.reciter)!.bio!, style: T.ui(12.5, color: c.fg2, height: 1.55)),
-                  ),
-                if (s.listenMode != ListenMode.arabic) ...[
-                  const SizedBox(height: 8),
-                  _RowCard(
-                    leading: ReciterAvatar(s.translationVoice, size: 46),
-                    kicker: 'Translation audio',
-                    title: '${s.translationVoice.name} · ${s.translationVoice.language}',
-                    onTap: () => showReciterSheet(context, voices: true),
-                  ),
-                ],
-                const Label('Script and translation'),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  ScriptChip(onTap: () => showDisplaySheet(context)),
-                  for (final id in s.quickTranslations)
-                    OvChip(repo.translationById(id).englishName,
-                        selected: s.show != ShowMode.arabic && s.translationId == id, onTap: () => s.setTranslation(id)),
-                  OvChip('Arabic only', selected: s.show == ShowMode.arabic, onTap: () => s.update((x) => x.show = ShowMode.arabic)),
-                  PickerChip(label: 'All translations', icon: Icons.translate_rounded, onTap: () => showTranslationSheet(context)),
-                ]),
+                const SizedBox(height: 22),
+                const PlayerDeck(),
                 const SizedBox(height: 22),
                 const _Lyric(),
                 const Label('More'),
@@ -365,41 +329,6 @@ class _RepeatButton extends StatelessWidget {
                 bottom: 4,
                 child: Text(repeat < 0 ? '∞' : '$repeat×', style: T.ui(10.5, w: FontWeight.w800, color: c.gold)),
               ),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-class _RowCard extends StatelessWidget {
-  final Widget leading;
-  final String kicker, title;
-  final VoidCallback onTap;
-  final Widget? trailing;
-  const _RowCard({required this.leading, required this.kicker, required this.title, required this.onTap, this.trailing});
-  @override
-  Widget build(BuildContext context) {
-    final c = context.ov;
-    return Material(
-      color: c.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: c.line)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(children: [
-            leading,
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(kicker.toUpperCase(), style: T.label(c.fg3).copyWith(fontSize: 10.5)),
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(14.5, w: FontWeight.w600, color: c.fg)),
-              ]),
-            ),
-            if (trailing != null) ...[trailing!, const SizedBox(width: 10)],
-            Text('Change', style: T.ui(12.5, w: FontWeight.w700, color: c.gold)),
           ]),
         ),
       ),

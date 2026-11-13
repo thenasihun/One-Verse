@@ -8,6 +8,7 @@ import '../../data/models.dart';
 import '../../data/repository.dart';
 import '../../state/playback.dart';
 import '../../state/settings.dart';
+import '../player_controls.dart';
 import '../sheets.dart';
 import '../study.dart';
 import '../widgets/common.dart';
@@ -181,7 +182,7 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                   ),
                   RoundIcon(Icons.skip_next_rounded, tooltip: 'Next ayah', size: 50, onTap: pb.next),
                   RoundIcon(s.repeat == 0 ? Icons.repeat_rounded : Icons.repeat_one_rounded,
-                      tooltip: 'Repeat ayah', color: s.repeat == 0 ? c.fg : c.gold, onTap: pb.cycleRepeat),
+                      tooltip: 'Repeat ayah', color: s.repeat == 0 ? c.fg : c.gold, onTap: () => showRepeatSheet(context)),
                 ]),
                 const SizedBox(height: 4),
                 Text('${s.script.short} · ${['Arabic + translation', 'Arabic only', 'Translation only'][s.show.index]} · swipe to change ayah',
