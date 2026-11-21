@@ -20,7 +20,8 @@ class ExportRequest {
   final int surah, from, to;
   final Reciter reciter;
   final Reciter? voice;
-  const ExportRequest({required this.surah, required this.from, required this.to, required this.reciter, this.voice});
+  final bool arabic; // false: only the translation is heard
+  const ExportRequest({required this.surah, required this.from, required this.to, required this.reciter, this.voice, this.arabic = true});
 
   int get count => to - from + 1;
 }
@@ -95,8 +96,11 @@ class Exporter {
   /// it when a voice is chosen.
   Future<List<List<AudioPiece>>> piecesByAyah(ExportRequest r) async {
     final out = <List<AudioPiece>>[for (var a = r.from; a <= r.to; a++) <AudioPiece>[]];
+    if (!r.arabic && r.voice == null) throw const ExportException('Choose a translation that has audio.');
     final ed = r.reciter.ayahEdition;
-    if (ed != null) {
+    if (!r.arabic) {
+      // Translation only: the reciter is not needed.
+    } else if (ed != null) {
       final urls = await repo.ayahAudio(ed, r.surah);
       for (var a = r.from; a <= r.to; a++) {
         final local = downloads.ayahFile(ed, r.surah, a);

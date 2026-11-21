@@ -1,3 +1,4 @@
+import 'ayah_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -522,32 +523,27 @@ Future<(int, int)?> showRangeSheet(BuildContext context, SurahInfo s, int from, 
   var a = from, b = to;
   return showOvSheet<(int, int)>(context, title: s.nameEn, builder: (ctx) {
     return StatefulBuilder(builder: (ctx, set) {
-      final c = ctx.ov;
-      Widget stepper(String label, int v, void Function(int) on) => Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(16)),
-              child: Column(children: [
-                Text(label, style: T.label(c.fg3).copyWith(fontSize: 10.5)),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  RoundIcon(Icons.remove_rounded, tooltip: '$label one less', size: 40, onTap: v > 1 ? () => set(() => on(v - 1)) : null),
-                  SizedBox(width: 48, child: Text('$v', textAlign: TextAlign.center, style: T.display(22, w: FontWeight.w700, color: c.fg))),
-                  RoundIcon(Icons.add_rounded, tooltip: '$label one more', size: 40, onTap: v < s.ayahs ? () => set(() => on(v + 1)) : null),
-                ]),
-              ]),
-            ),
-          );
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          stepper('FROM AYAH', a, (v) {
-            a = v;
-            if (b < a) b = a;
-          }),
+          AyahField(
+              label: 'From ayah',
+              surah: s,
+              value: a,
+              max: s.ayahs,
+              onChanged: (v) => set(() {
+                    a = v;
+                    if (b < a) b = a;
+                  })),
           const SizedBox(width: 10),
-          stepper('TO AYAH', b, (v) {
-            b = v;
-            if (a > b) a = b;
-          }),
+          AyahField(
+              label: 'To ayah',
+              surah: s,
+              value: b,
+              max: s.ayahs,
+              onChanged: (v) => set(() {
+                    b = v;
+                    if (a > b) a = b;
+                  })),
         ]),
         const SizedBox(height: 10),
         Wrap(spacing: 8, children: [

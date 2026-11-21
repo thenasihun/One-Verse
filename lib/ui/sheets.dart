@@ -9,6 +9,7 @@ import '../data/network.dart';
 import '../data/repository.dart';
 import '../state/playback.dart';
 import '../state/settings.dart';
+import 'ayah_picker.dart';
 import 'share_studio.dart';
 import 'shell.dart';
 import 'widgets/common.dart';
@@ -516,38 +517,14 @@ void showSleepSheet(BuildContext context) {
   });
 }
 
-void showJumpSheet(BuildContext context, int surah, void Function(int ayah) onPick) {
+/// Go to an ayah: type its number or pick it from the list (each ayah shows
+/// its first words; the one playing is marked).
+Future<void> showJumpSheet(BuildContext context, int surah, void Function(int ayah) onPick) async {
   final repo = context.read<QuranRepository>();
   final pb = context.read<Playback>();
-  final s = repo.surah(surah);
-  showOvSheet(context, title: 'Go to ayah · ${s.nameEn}', builder: (ctx) {
-    final c = ctx.ov;
-    return GridView.count(
-      crossAxisCount: 6,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 1.3,
-      children: [
-        for (var a = 1; a <= s.ayahs; a++)
-          Material(
-            color: pb.surah == surah && pb.ayah == a ? c.gold : c.raised,
-            borderRadius: BorderRadius.circular(12),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                Navigator.pop(ctx);
-                onPick(a);
-              },
-              child: Center(
-                child: Text('$a', style: T.ui(13.5, w: FontWeight.w700, color: pb.surah == surah && pb.ayah == a ? c.goldInk : c.fg)),
-              ),
-            ),
-          ),
-      ],
-    );
-  });
+  final playing = pb.hasSession && pb.surah == surah ? pb.ayah : null;
+  final a = await pickAyah(context, repo.surah(surah), current: playing ?? 1, playing: playing, title: 'Go to ayah · ${repo.surah(surah).nameEn}');
+  if (a != null) onPick(a);
 }
 
 void showResumeSheet(BuildContext context) {

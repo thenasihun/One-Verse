@@ -52,6 +52,15 @@ void main() {
     expect(await probe(f.path, 'format_tags=title'), 'Surah Al-Ikhlaas');
   });
 
+  test('translation only: just the meaning, no recitation', () async {
+    final r = ExportRequest(surah: 112, from: 1, to: 4, reciter: reciterById('ar.alafasy'), voice: reciterById('ur.khan'), arabic: false);
+    final both = ExportRequest(surah: 112, from: 1, to: 4, reciter: reciterById('ar.alafasy'), voice: reciterById('ur.khan'));
+    final only = await seconds((await ex.audio(r)).path);
+    final all = await seconds((await ex.audio(both)).path);
+    expect(only, greaterThan(5));
+    expect(only, lessThan(all - 5), reason: 'translation $only s, with Arabic $all s');
+  });
+
   test('a passage cut from a full-surah recording (mp3quran, ayah timings)', () async {
     final r = ExportRequest(surah: 67, from: 1, to: 3, reciter: reciterById('ov.saadghamdi'));
     final f = await ex.audio(r);
