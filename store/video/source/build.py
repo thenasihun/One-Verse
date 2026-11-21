@@ -4,9 +4,8 @@ d = json.load(open(f'{FR}/index.json')); idx = d['index']; marks = d['marks']
 XF = 0.4
 # name, offset into the recorded scene, source length (None = to the end), target length
 plan = [
- ('intro', 0, None, 7.0), ('home', 0, None, 6.5), ('reader', 0.3, 7.3, 7.3), ('scripts', 0, None, 7.8),
- ('deck', 0, None, 9.3), ('translation', 0, None, 8.3), ('reciters', 0, None, 5.4), ('memorise', 0, None, 7.8),
- ('tafseer', 0, None, 8.8), ('bookmark', 0, None, 4.4), ('progress', 0, 4.8, 7.6), ('outro', 0, None, 7.5),
+ ('hook', 0, None, 7.4), ('home', 0, None, 6.8), ('focus', 0, None, 6.6), ('deck', 0, None, 6.2),
+ ('share', 0, None, 8.0), ('playlists', 0, None, 7.9), ('tafseer', 0, None, 7.5), ('outro', 0, None, 7.0),
 ]
 def run(cmd):
     r = subprocess.run(cmd, capture_output=True, text=True)

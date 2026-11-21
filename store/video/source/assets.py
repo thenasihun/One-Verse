@@ -80,16 +80,13 @@ def text_layer(name, kicker, title, body, extra=None):
     im.save(f'{S}/t_{name}.png')
 
 scenes = [
- ('home', '01   HOME', 'The right surah\nfor every moment', 'Suggestions for Friday, mornings and nights.\nFavourites and bookmarks, one tap away.'),
- ('reader', '02   WORD BY WORD', 'Every word lights up\nas it is recited', 'The page follows the reciter by itself.'),
- ('scripts', '03   FIVE SCRIPTS', 'Madani, IndoPak,\nTajweed colours', 'Each script in the font it was made for.'),
- ('deck', '04   NEW PLAYER', 'Everything under\nyour thumb', 'Reciter  ·  Translation  ·  What you hear\nRepeat  ·  Speed'),
- ('translation', '05   TRANSLATIONS', '100+ translations,\n40+ languages', 'Urdu in Nastaliq. Hear the meaning\nafter every ayah.'),
- ('reciters', '06   RECITERS', '50+ reciters', 'Alafasy, Sudais, Maher Al-Muaiqly,\nSaad Al-Ghamdi and many more.'),
- ('memorise', '07   MEMORISE', 'Loop ayahs\nuntil they stay', '3, 5, 10 or 20 rounds, with a pause\nto recite from memory.'),
- ('tafseer', '08   TAFSEER', 'Understand\nevery ayah', 'Ibn Kathir  ·  Bayan ul Quran  ·  Ma’arif al-Qur’an\nin Urdu, English and Arabic.'),
- ('bookmark', '09   BOOKMARKS', 'Save ayahs\nwith your notes', 'Your reflections, kept with the ayah.'),
- ('progress', '10   HABITS & OFFLINE', 'Streaks, goals and\nthe Quran offline', 'Download the complete Quran\nand listen without internet.'),
+ ('hook', 'ONE VERSE', 'Lost your place\nwhile listening?', 'Every word lights up\nas it is recited.'),
+ ('home', '01   TODAY', 'A verse for today,\nthe right surah now', 'Picks for Friday, mornings and nights.\nYour streak, one glance away.'),
+ ('focus', '02   FOCUS VIEW', 'Just you\nand the ayah', 'Reciter, translation, tafseer and share\nin one row of chips.'),
+ ('deck', '03   NEW PLAYER', 'One tap\nchanges it all', 'Reciter  ·  Translation  ·  What you hear'),
+ ('share', '04   SHARE STUDIO', 'Share any ayah,\nbeautifully', 'Image, video or audio,\nin twelve card designs.'),
+ ('playlists', '05   PLAYLISTS', 'Your own\nplaylists', 'Morning, Before sleep, Friday.\nReminders, and offline in one tap.'),
+ ('tafseer', '06   TAFSEER', 'Understand\nevery ayah', 'Ibn Kathir  ·  Bayan ul Quran  ·  Ma’arif al-Qur’an\nin Urdu, English and Arabic.'),
 ]
 for s in scenes: text_layer(*s)
 
@@ -106,6 +103,5 @@ def brand(name, tagline, sub, badge=None):
         b = Image.open(badge).convert('RGBA'); b = b.resize((int(b.width * 0.62), int(b.height * 0.62)), Image.LANCZOS)
         im.alpha_composite(b, (x - 22, y))
     im.save(f'{S}/t_{name}.png')
-brand('intro', 'Hear the Quran. See every word.', 'Free  ·  No ads  ·  No account')
 brand('outro', 'Free  ·  No ads  ·  No account', 'nasihun.com', badge=sys.argv[4])
 print('ok')

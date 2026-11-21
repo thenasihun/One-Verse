@@ -44,11 +44,13 @@ Legend: **P1** do before the next wide promotion · **P2** next features · **P3
 ## C. Play Store (P1)
 
 14. Play Console: the "Data sync" foreground-service declaration (text in `PLAYSTORE_DEPLOY.md`, section 7).
-15. Upload 2.2.0 (7) with the release notes in `PLAYSTORE_DEPLOY.md`.
-16. New screenshots: the current ten show 2.0. Add the share studio, playlists and the new player.
-17. Upload `store/video/one-verse-promo.mp4` to YouTube and put the link in the listing (Play takes only
-    YouTube links).
-18. Make a 9:16 cut of the promo video for Reels, Shorts and WhatsApp status, and an Urdu voice-over version.
+15. Upload 2.3.0 (8) with the release notes, listing text and Urdu listing in `PLAYSTORE_DEPLOY.md`.
+16. ~~New screenshots~~ Done: ten in English and ten in Urdu (`store/playstore/screenshots/en/`, `ur/`), and an
+    Urdu feature graphic.
+17. Upload `store/video/one-verse-promo.mp4` (new, 2.3) to YouTube and put the link in the listing (Play takes
+    only YouTube links).
+18. ~~9:16 cut and Urdu voice-over~~ Done: `one-verse-teaser-en.mp4` and `one-verse-teaser-ur.mp4`. Still open: a
+    full-length Urdu voice-over of the promo, if wanted.
 
 ## D. Features (P2)
 

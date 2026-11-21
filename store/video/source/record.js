@@ -62,6 +62,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     logs.length = n0; logs.push('not reached: ' + label);
     return null;
   };
+  const hscroll = async (y, dx) => { await p.mouse.move(250, y); for (let i = 0; i < 16; i++) { await p.mouse.wheel(dx / 16, 0); await sleep(35); } };
   const hl = async (bb, ms = 1400) => { if (bb) await p.evaluate(([x, y, w, h, ms]) => window.__hl(x, y, w, h, ms), [bb.x, bb.y, bb.width, bb.height, ms]); };
   const hlLabel = async (label, ms, opts) => hl(await find(label, opts), ms);
   const scroll = async (dy, steps = 8, x = 206, y = 520) => { await p.mouse.move(x, y); for (let i = 0; i < steps; i++) { await p.mouse.wheel(0, dy / steps); await sleep(45); } };
@@ -86,104 +87,80 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await p.evaluate(() => { const d = document.createElement('div'); Object.assign(d.style, { position: 'fixed', left: '0', top: '0', width: '1px', height: '1px', zIndex: 1, opacity: 0.01, background: '#000' }); document.body.appendChild(d); let i = 0; setInterval(() => { d.style.background = (i++ % 2) ? '#000' : '#010101'; }, 33); });
   await sleep(800);
 
-  // intro + home
-  mark('intro', 'start'); await sleep(3500); mark('intro', 'end');
+
+  // ---- home: Today card and suggestions
   mark('home', 'start');
-  await sleep(500);
+  await sleep(1600);
+  await hlLabel('TODAY', 1500); await sleep(1200);
+  await scroll(300, 12); await sleep(500);
+  await hlLabel('For this moment', 1600); await sleep(1900);
   await scroll(330, 12); await sleep(500);
-  await hlLabel('Your favourites', 1500); await sleep(900);
-  await scroll(250, 10); await sleep(400);
-  await hlLabel('Bookmarks', 1600, { exact: true }); await sleep(1700);
+  await hlLabel('Your playlists', 1500); await sleep(1600);
   mark('home', 'end');
 
-  // open Ar-Rahman (setup, cut away)
+  // open Ar-Rahman and play (cut away)
+  await scroll(-3000, 6); await sleep(400);
   await tapXY(154, 862); await sleep(1500);
   await p.mouse.click(206, 86); await sleep(400); await p.keyboard.type('Rahman'); await sleep(1200);
   await p.mouse.click(206, 200); await sleep(5000);
-
-  mark('scripts', 'start');
-  await sleep(500);
-  await tap('Script', { maxY: 130 }); await sleep(1400);
-  await tap('IndoPak · Nastaleeq'); await sleep(700);
-  await tap('Close', { exact: true }); await sleep(2000);
-  await tap('Script', { maxY: 130 }); await sleep(1100);
-  await tap('Tajweed colours'); await sleep(600);
-  await tap('Close', { exact: true }); await sleep(2400);
-  mark('scripts', 'end');
-  await tap('Script', { maxY: 130 }); await sleep(1000);
-  await tap('Madani · KFGQPC Hafs'); await sleep(500);
-  await tap('Close', { exact: true }); await sleep(1000);
-
   { const pl = await find('Play', { exact: true, maxY: 450, first: true }); if (pl) await tapXY(pl.x + pl.width / 2, pl.y + pl.height / 2); }
   await sleep(4500);
-  mark('reader', 'start');
-  await sleep(1200);
-  const card = await find('55:', { minY: 250 });
-  if (card) await hl({ x: card.x - 6, y: card.y - 6, width: 400 - card.x, height: 40 }, 1);
-  await sleep(5600);
-  mark('reader', 'end');
+  mark('hook', 'start'); await sleep(7500); mark('hook', 'end');
 
-  // now playing
+  // share studio
+  await tap('Share ayah', { first: true, minY: 120 }); await sleep(4200);
+  mark('share', 'start');
+  await sleep(700);
+  await tap('Night'); await sleep(1200);
+  await hscroll(773, 500); await sleep(500);
+  for (const st of ['Gold sand', 'Rose sand']) { await tap(st); await sleep(1250); }
+  await hscroll(773, 900); await sleep(400);
+  await tap('Plum'); await sleep(1250);
+  await tap('Video', { exact: true }); await sleep(1700);
+  await tap('Audio', { exact: true }); await sleep(1700);
+  await tap('Image', { exact: true }); await sleep(900);
+  mark('share', 'end');
+  await p.mouse.click(22, 30); await sleep(1500);
+
+  // now playing deck
   await tapXY(150, 852); await sleep(1800);
-  await scroll(600, 10); await sleep(700);
   mark('deck', 'start');
-  await sleep(500);
-  for (const l of ['Reciter: ', 'Translation: ', 'You hear: ', 'Repeat: ', 'Speed: ']) { await hlLabel(l, 1150); await sleep(1100); }
-  await tap('Repeat: '); await sleep(1300);
-  await tap('3×', { exact: true }); await sleep(1400);
+  await sleep(600);
+  await scroll(420, 10); await sleep(700);
+  for (const l of ['Reciter', 'Translation', 'You hear']) { await hlLabel(l, 1150, { minY: 300 }); await sleep(1150); }
   mark('deck', 'end');
 
-  mark('translation', 'start');
-  await tap('Translation: '); await sleep(1300);
-  await hlLabel('Fateh Muhammad Jalandhry', 1000); await sleep(900);
-  await tap('Fateh Muhammad Jalandhry'); await sleep(900);
-  await scroll(330, 8); await sleep(3600);
-  mark('translation', 'end');
-
-  await scroll(-330, 6); await sleep(600);
-  mark('reciters', 'start');
-  await tap('Reciter: '); await sleep(1800);
-  await scroll(500, 12, 206, 600); await sleep(1600);
-  await tap('Close', { exact: true }); await sleep(800);
-  mark('reciters', 'end');
-
-  mark('memorise', 'start');
-  { const m = await reach('Memorise', { exact: true }); await sleep(400); if (m) await tapXY(m.x + m.width / 2, m.y + m.height / 2); }
-  await sleep(1500);
-  await tap('5 times'); await sleep(700);
-  await tap('Start', { exact: true }); await sleep(900);
-  await scroll(-2500, 10); await sleep(500);
-  { const bn = await reach('Memorising ·'); await sleep(300); await hl(bn, 2400); }
-  await sleep(2600);
-  mark('memorise', 'end');
+  // focus view
+  { const f = await reach('Focus view'); if (f) await tapXY(f.x + f.width / 2, f.y + f.height / 2); }
+  await sleep(2200);
+  mark('focus', 'start');
+  await sleep(1600);
+  await hlLabel('Hear: ', 1300); await sleep(1300);
+  await hscroll(764, 1400); await sleep(900);
+  await hlLabel('Tafseer', 1200, { exact: true }); await sleep(1000);
+  await tap('Ayahs', { exact: true }); await sleep(2600);
+  await tap('Close', { exact: true }); await sleep(900);
+  mark('focus', 'end');
 
   mark('tafseer', 'start');
-  { const t = await reach('Tafseer', { exact: true }); await sleep(300); if (t) await tapXY(t.x + t.width / 2, t.y + t.height / 2); }
-  await sleep(3800);
-  await tap('Bayan ul Quran'); await sleep(3600);
+  await tap('Tafseer', { exact: true }); await sleep(3800);
+  await tap('Bayan ul Quran'); await sleep(3400);
   mark('tafseer', 'end');
-
   await tap('Close', { exact: true }); await sleep(900);
-  mark('bookmark', 'start');
-  { const t = await reach('Bookmark', { exact: true }); await sleep(200); if (t) await tapXY(t.x + t.width / 2, t.y + t.height / 2); }
-  await sleep(900);
-  await tap('Add note'); await sleep(1100);
-  await tapXY(206, 750); await sleep(300);
-  await p.keyboard.type('Reflect on this tonight', { delay: 45 }); await sleep(1400);
-  await tapXY(300, 840); await sleep(900);
-  mark('bookmark', 'end');
 
-  // progress + library
-  await sleep(600);
+  // playlists
   await p.reload(); await sleep(9000);
   await p.locator('flt-semantics-placeholder').click({ force: true }).catch(() => {});
   await sleep(1000);
   { const n0 = logs.length; if (await find('Close', { exact: true })) { await tap('Close', { exact: true }); await sleep(1200); } logs.length = n0; }
-  mark('progress', 'start');
-  await tapXY(257, 862); await sleep(2200);
-  await scroll(500, 12); await sleep(1600);
-  await tapXY(360, 862); await sleep(2600);
-  mark('progress', 'end');
+  await tapXY(360, 862); await sleep(1800);
+  mark('playlists', 'start');
+  await sleep(500);
+  await tap('Playlists'); await sleep(2000);
+  await tap('Before sleep'); await sleep(2600);
+  await scroll(400, 10); await sleep(1800);
+  mark('playlists', 'end');
+  await p.mouse.click(22, 30); await sleep(1200); await p.mouse.click(22, 30); await sleep(1200);
 
   await tapXY(51, 862); await sleep(1500);
   await scroll(-3000, 6); await sleep(800);

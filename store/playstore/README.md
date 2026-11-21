@@ -2,13 +2,15 @@
 
 | File | Size | Use |
 |---|---|---|
-| `screenshots/01-overview.png` … `10-offline.png` | 1080×1920 | Phone screenshots, in upload order (Play takes 8; see `PLAYSTORE_DEPLOY.md`) |
-| `feature-graphic.png` | 1024×500 | Feature graphic |
+| `screenshots/en/01-overview.png` … `10-moments.png` | 1080×1920 | English phone screenshots, in upload order (Play takes 8; see `PLAYSTORE_DEPLOY.md`) |
+| `screenshots/ur/01-overview.png` … `10-moments.png` | 1080×1920 | The same in Urdu, for the Urdu listing |
+| `feature-graphic.png`, `feature-graphic-ur.png` | 1024×500 | Feature graphic, English and Urdu |
 | `design/` | | Sources: `slides.html`, `feature.html`, the app screens they use, and `render.js` |
 
 ## Regenerating
 
-1. Edit the text or the callout positions in `design/slides.html` (the `S` object) or `design/feature.html`.
+1. Edit the text or the callout positions in `design/slides.html` (the `S` object for English, `UR` for Urdu) or
+   `design/feature.html`. Both pages take `?lang=ur`.
 2. Render:
 
    ```bash
