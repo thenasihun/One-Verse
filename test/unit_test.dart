@@ -4,6 +4,7 @@ import 'package:oneverse/data/cache_store_memory.dart';
 import 'package:oneverse/data/catalog.dart';
 import 'package:oneverse/data/models.dart';
 import 'package:oneverse/data/network.dart';
+import 'package:oneverse/data/recommend.dart';
 import 'package:oneverse/data/repository.dart';
 import 'package:oneverse/data/tafsir.dart';
 import 'package:oneverse/state/listening_log.dart';
@@ -11,7 +12,6 @@ import 'package:oneverse/state/playlists.dart';
 import 'package:oneverse/state/reminders.dart';
 import 'package:oneverse/state/settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:oneverse/ui/screens/home_screen.dart';
 import 'package:oneverse/ui/screens/surahs_screen.dart';
 import 'package:oneverse/ui/widgets/quran_text.dart';
 
@@ -172,13 +172,32 @@ void main() {
       expect(days.where((d) => d.title == 'One of the last ten nights').length, 5);
     });
 
-    test('Friday suggests Al-Kahf, night suggests Al-Mulk', () {
-      final fridayNight = DateTime(2026, 10, 30, 22); // a Friday
-      final m = momentsFor(fridayNight).map((m) => m.surah).toList();
-      expect(m, contains(18));
-      expect(m, contains(67));
-      final thursdayMorning = DateTime(2026, 10, 29, 8);
-      expect(momentsFor(thursdayMorning).map((m) => m.surah), contains(36));
+    test('Friday brings Al-Kahf; picks never repeat; they rotate by day', () {
+      const r = Recommender();
+      final fridayMorning = DateTime(2026, 10, 30, 7); // a Friday
+      final f = r.picksFor(fridayMorning);
+      expect(f.first.surah, 18);
+      expect(f.map((p) => p.surah), anyOf(contains(32), contains(76)), reason: 'Friday Fajr surahs');
+      for (var d = 0; d < 60; d++) {
+        for (final h in [6, 13, 18, 23]) {
+          final picks = r.picksFor(DateTime(2026, 11, 1 + d, h));
+          expect(picks.length, 4);
+          expect(picks.map((p) => p.key).toSet().length, picks.length, reason: 'no duplicate on day $d at $h');
+          final whole = picks.where((p) => !p.passage).map((p) => p.surah).toList();
+          expect(whole.toSet().length, whole.length);
+        }
+      }
+      // Nights do not always show the same surah.
+      final nights = {for (var d = 0; d < 14; d++) r.picksFor(DateTime(2026, 11, 1 + d, 22)).map((p) => p.key).join()};
+      expect(nights.length, greaterThan(3));
+      // A surah heard lately is not offered to discover.
+      final recent = {for (final p in Recommender.verses) p.$1};
+      expect(r.picksFor(DateTime(2026, 11, 3, 13), recent: recent).where((p) => p.kind == 'discover').every((p) => !recent.contains(p.surah)), isTrue);
+      // Verse of the day: every ayah exists.
+      for (final (n, a) in Recommender.verses) {
+        expect(a, greaterThan(0));
+        expect(n, inInclusiveRange(1, 114));
+      }
     });
   });
 

@@ -1,7 +1,7 @@
 # One Verse: open to-dos
 
 Every suggestion made so far that is not built yet, plus the checks still owed. Numbers stay fixed so items can
-be referred to ("do 7 and 12"). Status as of 2026-11-13, version 2.2.0 (7).
+be referred to ("do 7 and 12"). Status as of 2026-11-21, version 2.3.0 (8).
 
 Legend: **P1** do before the next wide promotion · **P2** next features · **P3** later.
 
@@ -14,9 +14,9 @@ Legend: **P1** do before the next wide promotion · **P2** next features · **P3
    (`docs/quran-foundation-api.md`) allow offline copies only through their Content Sync API, refreshed at least
    every 7 days. Either move to Content Sync, which needs a Developer Console account, a client id and a small
    backend for the token, or ask Quran Foundation whether the public API may be cached this way.
-2. **Credit Quran Foundation on shared images and videos.** Social videos made from their content are allowed
-   only with credit. The share caption now says "Quran data provided by Quran Foundation". The card itself only
-   shows One Verse, so add a small credit line to the card (image and video).
+2. **Credit on shared images and videos:** the owner decided (2026-11-21) not to add a Quran Foundation line to
+   shares, because the app credits every source in About. If Quran Foundation's terms are revisited (item 1),
+   look at this again.
 3. **QuranHub photos and biographies.** The code licence is non-commercial and the terms for the data and
    photos are not stated. Ask Misraj AI (hello@misraj.ai) for written permission, or replace the photos.
 4. **baklarrrr/quran-timings has no licence file.** It supplies the word timings for Yasser Al-Dosari, Maher

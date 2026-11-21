@@ -1,4 +1,4 @@
-# One Verse v2.2.0 (build 7): Play Store deployment guide
+# One Verse v2.3.0 (build 8): Play Store deployment guide
 
 This file is a set of instructions for an AI agent (or a person) publishing this update to Google Play.
 Follow the steps in order. Do not change the build files or upload a different file.
@@ -15,8 +15,8 @@ is needed (foreground service, section 7).
 |---|---|
 | App name (on device) | One Verse |
 | Package name | `com.nasihun.oneverse` |
-| Version name | `2.2.0` |
-| Version code | `7` (higher than any earlier upload: 4, 5 or 6) |
+| Version name | `2.3.0` |
+| Version code | `8` (higher than any earlier upload: 4 to 7) |
 | Target SDK / Compile SDK | 36 (Android 16) |
 | Min SDK | 24 (Android 7.0), unchanged |
 | Signing key alias | `oneverse` |
@@ -51,8 +51,8 @@ How to build these files is in section 10.
 4. Go to **Test and release → Production** (or **Closed testing** to test first).
 5. Click **Create new release**.
 6. Under **App bundles**, click **Upload** and choose `build/app/outputs/bundle/release/app-release.aab`.
-   - Wait until it shows **Version 7 (2.2.0)** with no errors.
-7. **Release name:** `2.2.0 (7) – Share studio, playlists, easier player`
+   - Wait until it shows **Version 8 (2.3.0)** with no errors.
+7. **Release name:** `2.3.0 (8) – Smarter suggestions, Focus controls, library by reciter`
 8. **Release notes:** paste the text from section 4. Add both `en-US` and `ur` if the Urdu listing exists.
 9. Click **Next**. Read the warnings screen (section 8), then click **Save**.
 10. Update the store listing (section 5) and the graphics (section 6).
@@ -65,24 +65,28 @@ Listing changes are reviewed together with the release.
 
 ## 4. Release notes ("What's new", maximum 500 characters each)
 
-### en-US (444 characters)
+### en-US (495 characters)
 ```
-One Verse 2.2
-• NEW Share studio: send any ayah, passage or surah as an image, a video or an audio file, with or without translation, to WhatsApp, status or anywhere
-• NEW Playlists: your surahs, your order, your reciter, with a reminder on the days you choose
-• Easier player: big buttons for reciter, translation, repeat and speed
-• Tafseer, bookmarks with notes, memorise mode
-• 50+ reciters, word-by-word highlight, 5 scripts, works offline
+One Verse 2.3
+• Smarter suggestions for every moment: morning, night, Friday, Ramadan and the Hijri months, plus surahs to discover
+• Today card: minutes, daily goal and streak at a glance
+• Focus view: change reciter, translation and surah, pick any ayah from a list, share
+• Pick any ayah by typing its number
+• Library by surah or by reciter; reciters you saved and listen to most come first
+• Playlists: repeat, shuffle, duplicate, add from any surah
+• Eight new card backgrounds for sharing
 ```
 
-### ur (Urdu, 399 characters)
+### ur (Urdu, 420 characters)
 ```
-ون ورس 2.2
-• نیا: شیئر اسٹوڈیو – کوئی بھی آیت، چند آیات یا پوری سورت تصویر، ویڈیو یا آڈیو بنا کر واٹس ایپ، اسٹیٹس یا کہیں بھی بھیجیں، ترجمے کے ساتھ یا بغیر
-• نیا: پلے لسٹ – اپنی سورتیں، اپنی ترتیب، اپنا قاری، اور پسند کے دنوں میں یاددہانی
-• آسان پلیئر: قاری، ترجمہ، دہرانا اور رفتار کے بڑے بٹن
-• تفسیر، نوٹس کے ساتھ بک مارکس، حفظ موڈ
-• 50 سے زائد قاری، لفظ بہ لفظ ہائی لائٹ، 5 رسم الخط، بغیر انٹرنیٹ
+ون ورس 2.3
+• ہر وقت کے لیے بہتر تجاویز: صبح، رات، جمعہ، رمضان اور ہجری مہینے، اور نئی سورتیں
+• آج کا کارڈ: منٹ، روزانہ ہدف اور اسٹریک ایک نظر میں
+• فوکس ویو: قاری، ترجمہ اور سورت بدلیں، فہرست سے کوئی بھی آیت چنیں، شیئر کریں
+• آیت نمبر لکھ کر سیدھا اس آیت پر جائیں
+• لائبریری سورت یا قاری کے لحاظ سے؛ محفوظ اور زیادہ سنے گئے قاری اوپر
+• پلے لسٹ: دہرائیں، شفل، کاپی، کسی بھی سورت سے شامل کریں
+• شیئر کے لیے آٹھ نئے پس منظر
 ```
 
 ---
@@ -301,7 +305,7 @@ describes the storage permission of 1.x.
 
 | Error | Fix |
 |---|---|
-| "Version code 7 has already been used" | In `pubspec.yaml`, change `version: 2.2.0+7` to `+8`. Rebuild with `flutter build appbundle --release` and upload again. |
+| "Version code 8 has already been used" | In `pubspec.yaml`, change `version: 2.3.0+8` to `+9`. Rebuild with `flutter build appbundle --release` and upload again. |
 | "Your Android App Bundle is signed with the wrong key" | The bundle must be signed with the `oneverse` key (SHA-256 in section 1). Make sure `android/key.properties` exists and points to `OneVerseKey.jks`. When it does, the build log shows `✔ Using release keystore`. |
 | "signed in debug mode" | `android/key.properties` is missing, so the build fell back to debug signing. Restore it and rebuild. |
 | "You must complete the foreground service declaration" | Do the first part of section 7. |
@@ -338,6 +342,37 @@ It must match the upload certificate SHA-256 in section 1.
 ---
 
 ## 11. Changelog for this version (technical)
+
+### 2.3.0 (build 8): QA round
+
+- **Recommendations** (`lib/data/recommend.dart`): "For this moment" now draws on:
+  - special days and the Hijri month (Ramadan, the last ten nights, Eid, the ten days of Dhul Hijjah, Arafah,
+    Ashura, the new Hijri year, Rajab, Sha'ban, Rabi' al-Awwal)
+  - Friday: Al-Kahf, As-Sajdah and Al-Insan in the morning; Qaf, Al-Jumu'ah and Fussilat later
+  - wide lists for morning, afternoon, evening and night, rotating by date
+  - one surah to discover that was not heard in the last week
+  - no repeats, and passages (Ayat al-Kursi, the end of Al-Baqarah) that stop at their end
+
+  Verse of the day draws from 60 ayahs, with fitting ones on special days.
+- **Home:** a Today card with minutes, goal and streak.
+- **Focus view:**
+  - previous and next surah, and a surah list
+  - a strip with the reciter, translation, what you hear, the ayah list, tafseer, bookmark, share and add to
+    playlist
+- **Ayah picker:** type the number or pick from a list showing each ayah's first words. Used in share, playlists,
+  memorise and Go to ayah.
+- **Player:** translation and "you hear" on one line; the repeat and speed tiles were removed.
+- **Share:**
+  - eight more backgrounds
+  - the card follows translation changes at once
+  - audio can be Arabic, Arabic + translation or translation only
+  - no Quran Foundation line in captions
+- **Library:**
+  - by surah, with every saved reciter, or by reciter
+  - a check that forgets incomplete downloads
+- **Reciter picker:** reciters saved for the surah come first with a tick, then the most-listened ones.
+- **Playlists:** repeat, shuffle, duplicate, and Add to playlist from the reader and Focus view.
+
 
 ### 2.2.0 (build 7)
 

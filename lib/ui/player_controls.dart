@@ -49,7 +49,7 @@ class PlayerDeck extends StatelessWidget {
         Expanded(
           child: DeckPill(
             icon: Icons.translate_rounded,
-            kicker: trOn ? 'Translation · ${languageName(tr.language)}' : 'Translation',
+            kicker: trOn ? languageName(tr.language) : 'Translation',
             title: trOn ? tr.englishName : 'Off · Arabic only',
             lit: trOn,
             onTap: () => showTranslationQuickSheet(context),
