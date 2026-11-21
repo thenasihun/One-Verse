@@ -7,7 +7,9 @@ import '../../core/theme.dart';
 import '../../data/models.dart';
 import '../../data/repository.dart';
 import '../../state/playback.dart';
+import '../../state/playlists.dart';
 import '../../state/settings.dart';
+import '../playlists_screen.dart';
 import '../player_controls.dart';
 import '../sheets.dart';
 import '../study.dart';
@@ -94,21 +96,31 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
               child: Row(children: [
                 const SizedBox(width: 2),
                 RoundIcon(Icons.keyboard_arrow_down_rounded, tooltip: 'Close focus view', size: 40, onTap: () => Navigator.pop(context)),
+                RoundIcon(Icons.chevron_left_rounded, tooltip: 'Previous surah', size: 38, onTap: pb.surah > 1 ? () => pb.play(pb.surah - 1) : null),
                 Expanded(
-                  child: Text.rich(
-                    TextSpan(children: [
-                      TextSpan(text: info.nameEn, style: T.ui(14, w: FontWeight.w700, color: c.fg)),
-                      TextSpan(text: '  ${pb.surah}:${pb.ayah}', style: T.ui(13, w: FontWeight.w800, color: c.gold)),
-                      TextSpan(text: ' / ${info.ayahs}', style: T.ui(12, color: c.fg3)),
-                    ]),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () async {
+                      final n = await showSurahPicker(context, title: 'Play a surah');
+                      if (n != null) pb.play(n);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Text.rich(
+                        TextSpan(children: [
+                          TextSpan(text: info.nameEn, style: T.ui(14, w: FontWeight.w700, color: c.fg)),
+                          if (pb.ayahWise) TextSpan(text: '  ${pb.surah}:${pb.ayah}', style: T.ui(13, w: FontWeight.w800, color: c.gold)),
+                          if (pb.ayahWise) TextSpan(text: ' / ${info.ayahs}', style: T.ui(12, color: c.fg3)),
+                          WidgetSpan(alignment: PlaceholderAlignment.middle, child: Icon(Icons.expand_more_rounded, size: 18, color: c.fg3)),
+                        ]),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ),
                 ),
-                if (pb.wordExact) Tooltip(message: 'Word-exact timing', child: Icon(Icons.graphic_eq_rounded, size: 18, color: c.emerald)),
-                RoundIcon(Icons.menu_book_rounded, tooltip: 'Tafseer', size: 40, onTap: () => showTafsirSheet(context, pb.surah, pb.ayah)),
-                BookmarkButton(pb.surah, pb.ayah, size: 40),
+                RoundIcon(Icons.chevron_right_rounded, tooltip: 'Next surah', size: 38, onTap: pb.surah < 114 ? () => pb.play(pb.surah + 1) : null),
                 RoundIcon(Icons.text_fields_rounded, tooltip: 'Script and size', size: 40, onTap: () => showDisplaySheet(context)),
                 const SizedBox(width: 2),
               ]),
@@ -166,6 +178,51 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                   builder: (_, _, _) => LinearProgressIndicator(value: pb.surahFraction, minHeight: 3, color: c.gold, backgroundColor: c.line2),
                 ),
                 const SizedBox(height: 10),
+                // Everything else, one tap away, in a strip that scrolls sideways.
+                SizedBox(
+                  height: 44,
+                  child: ListView(scrollDirection: Axis.horizontal, children: [
+                    _Chip(
+                      leading: ReciterAvatar(s.reciter, size: 30),
+                      label: s.reciter.name,
+                      onTap: () => showReciterSheet(context),
+                    ),
+                    _Chip(
+                      icon: Icons.translate_rounded,
+                      label: s.show == ShowMode.arabic ? 'Translation off' : repo.translationById(s.translationId).englishName,
+                      onTap: () => showTranslationQuickSheet(context),
+                    ),
+                    _Chip(
+                      icon: s.listenMode == ListenMode.arabic ? Icons.record_voice_over_rounded : Icons.headphones_rounded,
+                      label: switch (s.listenMode) {
+                        ListenMode.arabic => 'Hear: Arabic',
+                        ListenMode.arabicTranslation => 'Hear: Arabic + meaning',
+                        ListenMode.translation => 'Hear: meaning only',
+                      },
+                      onTap: () => showListenSheet(context),
+                    ),
+                    _Chip(
+                      icon: Icons.format_list_numbered_rounded,
+                      label: 'Ayahs',
+                      onTap: () => pb.ayahWise
+                          ? showJumpSheet(context, pb.surah, (a) => pb.playAyah(pb.surah, a))
+                          : toast(context, Playback.noAyahReason(s.reciter)),
+                    ),
+                    _Chip(icon: Icons.menu_book_rounded, label: 'Tafseer', onTap: () => showTafsirSheet(context, pb.surah, pb.ayah)),
+                    _Chip(
+                      icon: s.bookmarkOf(pb.surah, pb.ayah) != null ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                      label: 'Bookmark',
+                      onTap: () => onBookmarkTap(context, pb.surah, pb.ayah),
+                    ),
+                    _Chip(icon: Icons.ios_share_rounded, label: 'Share', onTap: () => shareAyah(context, pb.surah, pb.ayah)),
+                    _Chip(
+                      icon: Icons.playlist_add_rounded,
+                      label: 'Add to playlist',
+                      onTap: () => showAddToPlaylist(context, pb.ayahWise ? PlaylistItem(pb.surah, pb.ayah, pb.ayah) : PlaylistItem(pb.surah, 1, info.ayahs)),
+                    ),
+                  ]),
+                ),
+                const SizedBox(height: 8),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   RoundIcon(Icons.subject_rounded, tooltip: 'Change what is shown', onTap: () {
                     s.update((x) => x.show = ShowMode.values[(x.show.index + 1) % 3]);
@@ -190,6 +247,41 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
               ]),
             ),
           ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final IconData? icon;
+  final Widget? leading;
+  final String label;
+  final VoidCallback onTap;
+  const _Chip({this.icon, this.leading, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: c.raised,
+        shape: StadiumBorder(side: BorderSide(color: c.line)),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(leading != null ? 6 : 12, 0, 14, 0),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              leading ?? Icon(icon, size: 18, color: c.gold),
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 170),
+                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(13, w: FontWeight.w700, color: c.fg)),
+              ),
+            ]),
+          ),
         ),
       ),
     );

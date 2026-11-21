@@ -23,6 +23,20 @@ class DownloadsScreen extends StatefulWidget {
 
 class _DownloadsScreenState extends State<DownloadsScreen> {
   Future<(int, int)>? _sizes;
+  bool _byReciter = false;
+  bool _checking = false;
+
+  Future<void> _check() async {
+    setState(() => _checking = true);
+    final dl = context.read<Downloads>();
+    final n = await dl.verify();
+    if (!mounted) return;
+    setState(() {
+      _checking = false;
+      _sizes = null;
+    });
+    toast(context, n == 0 ? 'All saved files are complete' : '$n saved surahs were incomplete and were removed; download them again');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -175,34 +189,69 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             );
           },
         ),
-        SectionTitle('Downloaded surahs', action: records.isEmpty ? null : '${records.length}'),
-        for (final id in complete)
-          _CompleteRow(id, onRemoved: () {
-            if (mounted) setState(() => _sizes = null);
-          }),
+        SectionTitle('Downloaded', action: dl.records.isEmpty ? null : '${dl.records.length}'),
+        if (dl.supported && dl.records.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Row(children: [
+              Expanded(
+                child: Segmented<bool>(
+                  options: const [(false, 'By surah'), (true, 'By reciter')],
+                  value: _byReciter,
+                  onChanged: (v) => setState(() => _byReciter = v),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: 'Check saved files',
+                child: Material(
+                  color: c.raised,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _checking ? null : _check,
+                    child: SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: _checking
+                          ? const Padding(padding: EdgeInsets.all(14), child: CircularProgressIndicator(strokeWidth: 2))
+                          : Icon(Icons.fact_check_rounded, color: c.fg2),
+                    ),
+                  ),
+                ),
+              ),
+            ]),
+          ),
         if (!dl.supported)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text('Audio downloads are available in the Android and iOS app.', style: T.ui(13.5, color: c.fg3)),
           )
-        else if (records.isEmpty && complete.isEmpty)
+        else if (dl.records.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text('Nothing downloaded yet. Open a surah and tap the download button to keep its recitation offline.',
                 style: T.ui(13.5, color: c.fg3, height: 1.45)),
-          ),
-        for (final r in records)
-          Dismissible(
-            key: ValueKey('${r.surah}_${r.reciterId}'),
-            direction: DismissDirection.endToStart,
-            background: Container(alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 24), color: Colors.red.shade700,
-                child: const Icon(Icons.delete_rounded, color: Colors.white)),
-            onDismissed: (_) async {
-              await dl.remove(r);
+          )
+        else if (_byReciter)
+          for (final (id, count, bytes) in dl.reciterSummary())
+            complete.contains(id)
+                ? _CompleteRow(id, onRemoved: () {
+                    if (mounted) setState(() => _sizes = null);
+                  })
+                : _ReciterGroup(id, count, bytes, onChanged: () {
+                    if (mounted) setState(() => _sizes = null);
+                  })
+        else ...[
+          for (final id in complete)
+            _CompleteRow(id, onRemoved: () {
               if (mounted) setState(() => _sizes = null);
-            },
-            child: _DownloadRow(r, repo),
-          ),
+            }),
+          for (final n in {for (final r in records) r.surah})
+            _SurahGroup(n, [for (final r in records) if (r.surah == n) r], onChanged: () {
+              if (mounted) setState(() => _sizes = null);
+            }),
+        ],
       ]),
     );
   }
@@ -400,35 +449,151 @@ class _Legend extends StatelessWidget {
       ]);
 }
 
-class _DownloadRow extends StatelessWidget {
-  final DownloadRecord r;
-  final QuranRepository repo;
-  const _DownloadRow(this.r, this.repo);
+/// One downloaded surah, with every reciter it is saved with.
+class _SurahGroup extends StatelessWidget {
+  final int surah;
+  final List<DownloadRecord> recs;
+  final VoidCallback onChanged;
+  const _SurahGroup(this.surah, this.recs, {required this.onChanged});
+
   @override
   Widget build(BuildContext context) {
     final c = context.ov;
-    final s = repo.surah(r.surah);
-    return InkWell(
-      onTap: () => _playSaved(context, r.reciterId, r.surah),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(children: [
-          SizedBox(width: 56, height: 56, child: Art(seed: r.surah, radius: BorderRadius.circular(14), child: Center(child: Text('${r.surah}', style: T.display(20, color: Colors.white))))),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(s.nameEn, style: T.ui(15, w: FontWeight.w600, color: c.fg)),
-              Text('${s.ayahs} ayahs · ${fmtBytes(r.bytes)}', style: T.ui(12.5, color: c.fg3)),
-              const SizedBox(height: 6),
-              Wrap(spacing: 6, runSpacing: 4, children: [
-                _Tag(reciterById(r.reciterId).name, c.raised, c.fg3),
-                for (final t in r.translations) _Tag(repo.translationById(t).englishName, c.emeraldWash, c.emerald),
-                _Tag('All scripts', c.emeraldWash, c.emerald),
-                if (r.voiceId != null) _Tag('${reciterById(r.voiceId).name} audio', c.raised, c.fg3),
-              ]),
+    final repo = context.read<QuranRepository>();
+    final dl = context.read<Downloads>();
+    final s = repo.surah(surah);
+    final bytes = recs.fold(0, (t, r) => t + r.bytes);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Material(
+        color: c.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: c.line)),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(children: [
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: Art(seed: surah, radius: BorderRadius.circular(12), child: Center(child: Text('$surah', style: T.display(18, color: Colors.white)))),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(s.nameEn, style: T.ui(15, w: FontWeight.w700, color: c.fg)),
+                  Text('${recs.length} ${recs.length == 1 ? 'reciter' : 'reciters'} · ${fmtBytes(bytes)}', style: T.ui(12.5, color: c.fg3)),
+                ]),
+              ),
+              RoundIcon(Icons.delete_outline_rounded, tooltip: 'Remove ${s.nameEn}', color: c.fg3, onTap: () async {
+                final which = recs.length == 1 ? recs.first : await _pickCopy(context, recs);
+                if (which == null) return;
+                await dl.remove(which);
+                onChanged();
+              }),
             ]),
+            const SizedBox(height: 10),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final r in recs) _ReciterChip(r.reciterId, onTap: () => _playSaved(context, r.reciterId, surah)),
+            ]),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  static Future<DownloadRecord?> _pickCopy(BuildContext context, List<DownloadRecord> recs) => showOvSheet<DownloadRecord>(context,
+      title: 'Remove which recitation?',
+      builder: (ctx) => Column(children: [
+            for (final r in recs)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: ReciterAvatar(reciterById(r.reciterId), size: 40),
+                title: Text(reciterById(r.reciterId).name, style: T.ui(15, w: FontWeight.w700, color: ctx.ov.fg)),
+                subtitle: Text(fmtBytes(r.bytes), style: T.ui(12, color: ctx.ov.fg3)),
+                trailing: Icon(Icons.delete_outline_rounded, color: ctx.ov.fg3),
+                onTap: () => Navigator.pop(ctx, r),
+              ),
+          ]));
+}
+
+/// One reciter, with the surahs saved in that voice.
+class _ReciterGroup extends StatelessWidget {
+  final String reciterId;
+  final int count, bytes;
+  final VoidCallback onChanged;
+  const _ReciterGroup(this.reciterId, this.count, this.bytes, {required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    final repo = context.read<QuranRepository>();
+    final dl = context.read<Downloads>();
+    final r = reciterById(reciterId);
+    final surahs = [for (final x in dl.records) if (x.reciterId == reciterId) x.surah]..sort();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Material(
+        color: c.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: c.line)),
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            shape: const Border(),
+            leading: ReciterAvatar(r, size: 44),
+            title: Text(r.name, style: T.ui(15, w: FontWeight.w700, color: c.fg)),
+            subtitle: Text('$count ${count == 1 ? 'surah' : 'surahs'} · ${fmtBytes(bytes)}', style: T.ui(12.5, color: c.fg3)),
+            childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+            children: [
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final n in surahs)
+                  OvChip('$n · ${repo.surah(n).nameEn}', leading: Icon(Icons.play_arrow_rounded, size: 16, color: c.gold), onTap: () => _playSaved(context, reciterId, n)),
+              ]),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () async {
+                    await dl.removeReciter(reciterId);
+                    onChanged();
+                  },
+                  icon: Icon(Icons.delete_outline_rounded, color: c.fg3),
+                  label: Text('Remove all of ${r.name}', style: T.ui(13, w: FontWeight.w700, color: c.fg2)),
+                ),
+              ),
+            ],
           ),
-        ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// A reciter a surah is saved with: tap to play it in that voice.
+class _ReciterChip extends StatelessWidget {
+  final String reciterId;
+  final VoidCallback onTap;
+  const _ReciterChip(this.reciterId, {required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    final r = reciterById(reciterId);
+    return Material(
+      color: c.emeraldWash,
+      shape: const StadiumBorder(),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            ReciterAvatar(r, size: 26),
+            const SizedBox(width: 6),
+            Text(r.name, style: T.ui(12.5, w: FontWeight.w700, color: c.fg)),
+            const SizedBox(width: 4),
+            Icon(Icons.download_done_rounded, size: 15, color: c.emerald),
+          ]),
+        ),
       ),
     );
   }

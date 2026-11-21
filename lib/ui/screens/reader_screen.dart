@@ -6,11 +6,14 @@ import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
+import '../../data/catalog.dart';
 import '../../data/downloads.dart';
 import '../../data/models.dart';
 import '../../data/repository.dart';
 import '../../state/playback.dart';
+import '../../state/playlists.dart';
 import '../../state/settings.dart';
+import '../playlists_screen.dart';
 import '../sheets.dart';
 import '../shell.dart';
 import '../study.dart';
@@ -330,7 +333,7 @@ class _Hero extends StatelessWidget {
               shape: StadiumBorder(side: BorderSide(color: c.line)),
               child: InkWell(
                 customBorder: const StadiumBorder(),
-                onTap: () => showReciterSheet(context),
+                onTap: () => showReciterSheet(context, surah: info.number),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(4, 4, 10, 4),
                   child: Row(children: [
@@ -345,7 +348,10 @@ class _Hero extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           FavButton.surah(info.number),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
+          RoundIcon(Icons.playlist_add_rounded, tooltip: 'Add to playlist', size: 46,
+              onTap: () => showAddToPlaylist(context, PlaylistItem(info.number, 1, info.ayahs))),
+          const SizedBox(width: 4),
           Material(
             color: downloaded ? c.emeraldWash : c.raised,
             shape: CircleBorder(side: BorderSide(color: downloaded ? c.emerald.withValues(alpha: 0.4) : c.line)),
@@ -380,6 +386,42 @@ class _Hero extends StatelessWidget {
           ],
         ]),
       ),
+      if (dl.recordsForSurah(info.number).isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: SizedBox(
+            height: 36,
+            child: ListView(scrollDirection: Axis.horizontal, children: [
+              Center(child: Text('Saved offline: ', style: T.ui(12.5, w: FontWeight.w700, color: c.emerald))),
+              for (final rec in dl.recordsForSurah(info.number))
+                Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: Material(
+                    color: rec.reciterId == settings.reciterId ? c.emerald : c.emeraldWash,
+                    shape: const StadiumBorder(),
+                    child: InkWell(
+                      customBorder: const StadiumBorder(),
+                      onTap: () {
+                        settings.update((x) => x.reciterId = rec.reciterId);
+                        pb.reload();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(3, 3, 10, 3),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          ReciterAvatar(reciterById(rec.reciterId), size: 26),
+                          const SizedBox(width: 6),
+                          Text(reciterById(rec.reciterId).name,
+                              style: T.ui(12, w: FontWeight.w700, color: rec.reciterId == settings.reciterId ? Colors.white : c.fg)),
+                          const SizedBox(width: 3),
+                          Icon(Icons.download_done_rounded, size: 14, color: rec.reciterId == settings.reciterId ? Colors.white : c.emerald),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ),
+            ]),
+          ),
+        ),
       if (!r.hasAyahSync && settings.listenMode != ListenMode.translation)
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),

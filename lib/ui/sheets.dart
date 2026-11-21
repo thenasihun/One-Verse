@@ -7,6 +7,7 @@ import '../data/downloads.dart';
 import '../data/models.dart';
 import '../data/network.dart';
 import '../data/repository.dart';
+import '../state/listening_log.dart';
 import '../state/playback.dart';
 import '../state/settings.dart';
 import 'ayah_picker.dart';
@@ -19,18 +20,22 @@ import 'widgets/quran_text.dart';
 
 /// Picks the reciter (or translation voice). With [onPick], the choice goes
 /// there instead of to the player, and [selected] is the one ticked.
-void showReciterSheet(BuildContext context, {bool voices = false, ValueChanged<Reciter>? onPick, String? selected}) {
+/// [surah] puts the reciters it is saved with first (default: the surah in
+/// the player).
+void showReciterSheet(BuildContext context, {bool voices = false, ValueChanged<Reciter>? onPick, String? selected, int? surah}) {
+  final pb = context.read<Playback>();
   showOvSheet(context,
       title: voices ? 'Translation voice' : 'Choose a reciter',
       scroll: false,
-      builder: (_) => _ReciterPicker(voices: voices, onPick: onPick, selected: selected));
+      builder: (_) => _ReciterPicker(voices: voices, onPick: onPick, selected: selected, surah: surah ?? (pb.hasSession ? pb.surah : null)));
 }
 
 class _ReciterPicker extends StatefulWidget {
   final bool voices;
   final ValueChanged<Reciter>? onPick;
   final String? selected;
-  const _ReciterPicker({required this.voices, this.onPick, this.selected});
+  final int? surah;
+  const _ReciterPicker({required this.voices, this.onPick, this.selected, this.surah});
   @override
   State<_ReciterPicker> createState() => _ReciterPickerState();
 }
@@ -45,15 +50,30 @@ class _ReciterPickerState extends State<_ReciterPicker> {
     final settings = context.watch<Settings>();
     final repo = context.watch<QuranRepository>();
     final current = widget.selected ?? (widget.voices ? settings.translationVoiceId : settings.reciterId);
+    final dl = context.watch<Downloads>();
+    final saved = widget.surah == null ? const <String>{} : {for (final r in dl.recordsForSurah(widget.surah!)) r.reciterId};
+    final heard = {for (final e in context.read<ListeningLog>().top('reciter', daysBack: 365)) e.key: e.value};
+    final topIds = heard.keys.take(3).toSet();
     final list = (widget.voices ? translationVoices : reciters).where((r) {
       final p = repo.profileOf(r);
       final hay = '${r.name} ${r.language ?? ''} ${p?.country ?? ''}'.toLowerCase();
       if (q.isNotEmpty && !hay.contains(q.toLowerCase())) return false;
       if (filter == 'Word sync') return r.hasWordSync;
       if (filter == 'Favourites') return settings.isFavReciter(r.id);
+      if (filter == 'Saved') return saved.contains(r.id);
       if (filter != 'All') return r.style == filter;
       return true;
     }).toList();
+    // Saved for this surah first, then the ones you listen to most.
+    if (!widget.voices) {
+      final order = {for (final (i, r) in reciters.indexed) r.id: i};
+      list.sort((a, b) {
+        final s = (saved.contains(a.id) ? 0 : 1).compareTo(saved.contains(b.id) ? 0 : 1);
+        if (s != 0) return s;
+        final m = (heard[b.id] ?? 0).compareTo(heard[a.id] ?? 0);
+        return m != 0 ? m : order[a.id]!.compareTo(order[b.id]!);
+      });
+    }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       TextField(
         onChanged: (v) => setState(() => q = v),
@@ -70,7 +90,7 @@ class _ReciterPickerState extends State<_ReciterPicker> {
         SizedBox(
           height: 52,
           child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.only(top: 12), children: [
-            for (final f in ['All', 'Favourites', 'Word sync', 'Murattal', 'Mujawwad', 'Teaching'])
+            for (final f in ['All', if (saved.isNotEmpty) 'Saved', 'Favourites', 'Word sync', 'Murattal', 'Mujawwad', 'Teaching'])
               Padding(padding: const EdgeInsets.only(right: 8), child: OvChip(f, selected: filter == f, onTap: () => setState(() => filter = f))),
           ]),
         ),
@@ -131,11 +151,32 @@ class _ReciterPickerState extends State<_ReciterPicker> {
                       child: CircleAvatar(radius: 12, backgroundColor: c.gold, child: Icon(Icons.check_rounded, size: 15, color: c.goldInk)),
                     ),
                   if (!widget.voices) Positioned(left: -4, top: -4, child: FavButton.reciter(r.id, size: 28)),
+                  if (saved.contains(r.id))
+                    Positioned(
+                      right: 0,
+                      bottom: 10,
+                      child: Tooltip(
+                        message: 'This surah is saved on the phone',
+                        child: CircleAvatar(radius: 11, backgroundColor: c.emerald, child: const Icon(Icons.download_done_rounded, size: 14, color: Colors.white)),
+                      ),
+                    ),
                 ]),
                 const SizedBox(height: 10),
                 Text(r.name, textAlign: TextAlign.center, maxLines: 2, style: T.ui(12.5, w: FontWeight.w600, color: on ? c.gold : c.fg, height: 1.2)),
-                Text(widget.voices ? r.language! : [r.style, if (p?.country != null) p!.country!].join(' · '),
-                    textAlign: TextAlign.center, maxLines: 2, style: T.ui(11, color: c.fg3, height: 1.2)),
+                Text(
+                    widget.voices
+                        ? r.language!
+                        : saved.contains(r.id)
+                            ? 'Saved offline'
+                            : topIds.contains(r.id)
+                                ? 'You listen most'
+                                : [r.style, if (p?.country != null) p!.country!].join(' · '),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    style: T.ui(11,
+                        w: saved.contains(r.id) || topIds.contains(r.id) ? FontWeight.w700 : FontWeight.w400,
+                        color: saved.contains(r.id) ? c.emerald : topIds.contains(r.id) ? c.gold : c.fg3,
+                        height: 1.2)),
               ]),
             );
           },
