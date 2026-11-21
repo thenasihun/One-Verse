@@ -4,11 +4,11 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../data/catalog.dart';
 import '../../data/models.dart';
+import '../../data/recommend.dart';
 import '../../data/repository.dart';
 import '../../state/listening_log.dart';
 import '../../state/playback.dart';
 import '../../state/playlists.dart';
-import '../../state/reminders.dart';
 import '../../state/settings.dart';
 import '../playlists_screen.dart';
 import '../sheets.dart';
@@ -17,40 +17,6 @@ import '../study.dart';
 import '../widgets/common.dart';
 import '../widgets/quran_text.dart';
 import 'about_screen.dart';
-
-class Moment {
-  final int surah;
-  final String kicker, title, subtitle;
-  final IconData icon;
-  const Moment(this.surah, this.kicker, this.title, this.subtitle, this.icon);
-}
-
-/// Suggestions for right now: special Hijri days, Friday Al-Kahf, Al-Mulk at
-/// night, Ya-Sin in the morning.
-List<Moment> momentsFor(DateTime now) {
-  final out = <Moment>[];
-  final special = specialDayOn(now);
-  if (special != null) out.add(Moment(special.surah, 'Today', special.title, special.body, Icons.auto_awesome_rounded));
-  final h = now.hour, d = now.weekday;
-  if (d == DateTime.friday) {
-    out.add(const Moment(18, 'Friday', 'Al-Kahf on Friday', 'Sunnah to recite on Jumu\'ah', Icons.star_rounded));
-  } else if (d == DateTime.thursday && h >= 17) {
-    out.add(const Moment(18, 'Tonight', 'Al-Kahf for Friday', 'Friday starts at maghrib', Icons.star_rounded));
-  }
-  if (h >= 20 || h < 4) {
-    out.add(const Moment(67, 'Before sleep', 'Al-Mulk', 'Recited every night before sleeping', Icons.nightlight_round));
-  } else if (h < 11) {
-    out.add(const Moment(36, 'This morning', 'Ya-Sin', 'Start the day with the heart of the Quran', Icons.wb_sunny_rounded));
-  } else if (h < 17) {
-    out.add(const Moment(55, 'This afternoon', 'Ar-Rahman', 'Which of the favours of your Lord…', Icons.wb_sunny_rounded));
-  } else {
-    out.add(const Moment(56, 'This evening', 'Al-Waqi\'ah', 'A surah many recite each evening', Icons.wb_twilight_rounded));
-  }
-  if (out.length < 2) out.add(const Moment(67, 'Tonight', 'Al-Mulk', 'Recited every night before sleeping', Icons.nightlight_round));
-  return out.take(2).toList();
-}
-
-const _verseOfDay = [(2, 255), (2, 286), (3, 190), (13, 28), (94, 5), (39, 53), (2, 152), (65, 3), (2, 186), (20, 114), (29, 69), (3, 139), (8, 46), (17, 82)];
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -103,15 +69,20 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: _ContinueCard(surah: s, ayah: pb.ayah, reciter: pb.leadVoice, playing: pb.playing, onPlay: pb.toggle),
       ),
+      Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 0), child: _TodayCard(log: log, goal: settings.goalMinutes)),
       const SectionTitle('For this moment'),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(children: [
-          for (final (i, m) in momentsFor(DateTime.now()).indexed) ...[
-            if (i > 0) const SizedBox(width: 10),
-            Expanded(child: _MomentCard(m)),
+      SizedBox(
+        height: 140,
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          scrollDirection: Axis.horizontal,
+          children: [
+            for (final p in const Recommender().picksFor(DateTime.now(), recent: {
+              for (final e in log.top('surah', daysBack: 7)) int.tryParse(e.key) ?? 0,
+            }))
+              Padding(padding: const EdgeInsets.only(right: 10), child: SizedBox(width: 176, child: _MomentCard(p))),
           ],
-        ]),
+        ),
       ),
       if (settings.favSurahs.isNotEmpty) ...[
         SectionTitle('Your favourites', action: '${settings.favSurahs.length}', onAction: () => goToTab(1)),
@@ -310,15 +281,33 @@ class _ContinueCard extends StatelessWidget {
 }
 
 class _MomentCard extends StatelessWidget {
-  final Moment m;
+  final Pick m;
   const _MomentCard(this.m);
+
+  IconData get icon => switch (m.kind) {
+        'special' => Icons.auto_awesome_rounded,
+        'month' => Icons.calendar_month_rounded,
+        'friday' => Icons.star_rounded,
+        'morning' => Icons.wb_sunny_rounded,
+        'day' => Icons.light_mode_rounded,
+        'evening' => Icons.wb_twilight_rounded,
+        'night' => Icons.nightlight_round,
+        _ => Icons.explore_rounded,
+      };
+
   @override
   Widget build(BuildContext context) {
     final pb = context.read<Playback>();
     return GestureDetector(
       onTap: () {
-        pb.play(m.surah);
-        Nav.surah(context, m.surah);
+        if (m.passage) {
+          // A passage plays as a one-item playlist, so it stops at its end.
+          pb.playPlaylist(Playlist(id: 'pick-${m.key}', name: m.title, items: [PlaylistItem(m.surah, m.from, m.to)]));
+          Nav.surah(context, m.surah, ayah: m.from);
+        } else {
+          pb.play(m.surah);
+          Nav.surah(context, m.surah);
+        }
       },
       child: Art(
         seed: m.surah,
@@ -328,13 +317,14 @@ class _MomentCard extends StatelessWidget {
           height: 112,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Row(children: [
-              Icon(m.icon, size: 14, color: Colors.white70),
+              Icon(icon, size: 14, color: Colors.white70),
               const SizedBox(width: 6),
               Text(m.kicker.toUpperCase(), style: T.label(Colors.white70).copyWith(fontSize: 10)),
             ]),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(m.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(15, w: FontWeight.w700, color: Colors.white)),
-              Text(m.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.ui(11.5, color: Colors.white70, height: 1.3)),
+              Text(m.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.ui(15, w: FontWeight.w700, color: Colors.white, height: 1.2)),
+              if (m.passage) Text('${m.surah}:${m.from}${m.to > m.from ? '–${m.to}' : ''}', style: T.ui(11, w: FontWeight.w700, color: Colors.white)),
+              Text(m.why, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.ui(11.5, color: Colors.white70, height: 1.3)),
             ]),
           ]),
         ),
@@ -381,8 +371,7 @@ class _VerseOfDayState extends State<_VerseOfDay> {
     final c = context.ov;
     final repo = context.read<QuranRepository>();
     final settings = context.watch<Settings>();
-    final day = DateTime.now().difference(DateTime(2024)).inDays;
-    final (n, a) = _verseOfDay[day % _verseOfDay.length];
+    final (n, a) = const Recommender().verseOfTheDay(DateTime.now());
     if (_future == null || _forTranslation != settings.translationId) {
       _forTranslation = settings.translationId;
       _future = () async {
@@ -508,6 +497,71 @@ class _PlaylistTile extends StatelessWidget {
               ),
             ]),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Today at a glance: minutes listened against the goal, and whether today
+/// already counts for the streak. Gentle words, no countdowns.
+class _TodayCard extends StatelessWidget {
+  final ListeningLog log;
+  final int goal;
+  const _TodayCard({required this.log, required this.goal});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    final now = DateTime.now();
+    final minutes = log.minutesOn(now);
+    final streak = log.currentStreak();
+    final counted = log.counts(now);
+    final frac = goal <= 0 ? 0.0 : (minutes / goal).clamp(0.0, 1.0);
+    final done = frac >= 1;
+    return Material(
+      color: c.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: c.line)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => goToTab(2),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            SizedBox(
+              width: 58,
+              height: 58,
+              child: Stack(alignment: Alignment.center, children: [
+                SizedBox.expand(child: CircularProgressIndicator(value: frac, strokeWidth: 6, color: done ? c.emerald : c.gold, backgroundColor: c.line2)),
+                Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text('${minutes.floor()}', style: T.display(18, w: FontWeight.w700, color: c.fg).copyWith(height: 1)),
+                  Text('min', style: T.ui(10, color: c.fg3)),
+                ]),
+              ]),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('TODAY', style: T.label(c.fg3).copyWith(fontSize: 10.5)),
+                const SizedBox(height: 2),
+                Text(done ? 'Daily goal reached, masha\'Allah' : '${minutes.floor()} of $goal minutes',
+                    style: T.ui(15, w: FontWeight.w700, color: c.fg)),
+                const SizedBox(height: 2),
+                Text(
+                    counted
+                        ? 'Today counts for your streak'
+                        : streak > 0
+                            ? 'One minute today keeps your $streak-day streak going'
+                            : 'One minute today starts a streak',
+                    style: T.ui(12.5, color: counted ? c.emerald : c.fg2)),
+              ]),
+            ),
+            Column(children: [
+              Icon(Icons.local_fire_department_rounded, color: counted ? c.gold : c.fg3),
+              Text('$streak', style: T.ui(14, w: FontWeight.w800, color: counted ? c.gold : c.fg2)),
+              Text(streak == 1 ? 'day' : 'days', style: T.ui(10, color: c.fg3)),
+            ]),
+          ]),
         ),
       ),
     );

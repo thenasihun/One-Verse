@@ -79,6 +79,20 @@ h1 em { font-style: normal; background: linear-gradient(92deg, var(--gold2), var
 .ribbon { position: absolute; left: 24px; right: 24px; bottom: 30px; display: flex; justify-content: center; gap: 8px; }
 .ribbon div { display: flex; align-items: center; gap: 6px; padding: 9px 13px; border-radius: 99px; background: rgba(34,168,125,.14); border: 1px solid rgba(34,168,125,.4); font: 700 12.5px Figtree; color: #BFF0DC; }
 .ribbon .ms { font-size: 17px; color: #4FD6A8; }
+@font-face { font-family: Nastaliq; src: url(../../../assets/fonts/NotoNastaliqUrdu-Regular.ttf); }
+@font-face { font-family: Nastaliq; font-weight: 700; src: url(../../../assets/fonts/NotoNastaliqUrdu-Bold.ttf); }
+body.ur .head, body.ur .pop, body.ur .tile, body.ur .ribbon, body.ur .brand .name span { direction: rtl; }
+body.ur h1 { font: 700 33px/1.75 Nastaliq; letter-spacing: 0; margin-top: 6px; }
+body.ur h1 em { padding: 0 2px; }
+body.ur .sub { font: 400 14.5px/2 Nastaliq; margin-top: 2px; }
+body.ur .eyebrow { font: 700 13px/1.6 Nastaliq; letter-spacing: 0; padding: 2px 13px 6px 10px; }
+body.ur .pop b { font: 700 13.5px/1.8 Nastaliq; }
+body.ur .pop span.t { font: 400 11px/1.9 Nastaliq; }
+body.ur .tile b { font: 700 13px/1.7 Nastaliq; }
+body.ur .tile span.d { font: 400 10.5px/1.8 Nastaliq; }
+body.ur .ribbon div { font: 700 12px/1.7 Nastaliq; }
+body.ur .brand .name span { font: 400 11.5px/1.7 Nastaliq; letter-spacing: 0; }
+body.ur .head h1[style] { font-size: 29px !important; margin-top: 8px !important; }
 </style>
 </head>
 <body>
@@ -92,113 +106,153 @@ const S = {
     img: 'reader-play.png', eyebrow: ['ink_highlighter', 'WORD BY WORD'],
     h1: 'Every word lights up<br><em>as it’s recited</em>', sub: 'Follow the recitation with your eyes. The reader scrolls along, ayah by ayah.',
     phone: { x: 110, y: 268, w: 320 },
-    zoom: { x: 10, y: 300, w: 373, h: 170, z: 1.28, at: { x: 31, y: 470 } },
+    zoom: { x: 6, y: 78, w: 381, h: 178, z: 1.25, at: { x: 32, y: 470 } },
     pops: [
-      { x: 22, y: 712, w: 205, icon: 'graphic_eq', t: 'Word-exact timing', d: 'For 16 reciters' },
-      { x: 316, y: 790, w: 205, icon: 'swipe_down', t: 'Follows along', d: 'Auto-scrolls with the audio', em: 1 },
+      { x: 22, y: 712, w: 205, icon: 'graphic_eq', t: 'Word-exact timing', d: '16 reciters, ayah sync for 40+' },
+      { x: 316, y: 800, w: 205, icon: 'swipe_down', t: 'Follows along', d: 'Auto-scrolls with the audio', em: 1 },
+    ],
+  },
+  share: {
+    img: 'share.png', eyebrow: ['ios_share', 'SHARE ANY AYAH'],
+    h1: 'Share it as an image,<br><em>video or audio</em>', sub: 'One ayah, a passage or a whole surah, with or without translation, to WhatsApp, status or any app.',
+    phone: { x: 110, y: 268, w: 320 },
+    hl: [{ x: 16, y: 383, w: 361, h: 50 }],
+    pops: [
+      { x: 18, y: 440, w: 200, icon: 'image', t: 'Story or square', d: '12 card styles, your script' },
+      { x: 322, y: 560, w: 200, icon: 'movie', t: 'Video with recitation', d: 'Ready for WhatsApp status', em: 1 },
+      { x: 18, y: 800, w: 214, icon: 'music_note', t: 'Audio file', d: 'Arabic, + translation, or translation only' },
     ],
   },
   player: {
-    img: 'now-playing.png', eyebrow: ['headphones', 'THE PLAYER'],
-    h1: 'A player made<br><em>for the Quran</em>', sub: 'Repeat an ayah, slow it down, set a sleep timer, and keep listening with the screen off.',
+    img: 'now-playing.png', eyebrow: ['touch_app', 'THUMB-FRIENDLY PLAYER'],
+    h1: 'Everything<br><em>under your thumb</em>', sub: 'Reciter, translation and what you hear, one tap each. Repeat and speed right beside play.',
     phone: { x: 110, y: 268, w: 320 },
-    hl: [{ x: 8, y: 612, w: 377, h: 80 }],
+    hl: [{ x: 10, y: 642, w: 373, h: 158 }],
     pops: [
-      { x: 18, y: 430, w: 196, icon: 'repeat_one', t: 'Repeat an ayah', d: '1×, 3× or forever' },
-      { x: 328, y: 520, w: 196, icon: 'speed', t: '0.75× – 1.5× speed', d: 'Learn at your own pace' },
-      { x: 18, y: 820, w: 205, icon: 'bedtime', t: 'Sleep timer', d: 'Fall asleep to Al-Mulk', em: 1 },
-      { x: 312, y: 700, w: 212, icon: 'notifications_active', t: 'Lock-screen controls', d: 'Plays in the background' },
+      { x: 18, y: 440, w: 196, icon: 'repeat_one', t: 'Repeat an ayah', d: '1× to 10×, or forever' },
+      { x: 328, y: 540, w: 196, icon: 'all_inclusive', t: 'Memorise mode', d: 'Loop ayahs with a pause' },
+      { x: 18, y: 820, w: 205, icon: 'headphones', t: 'Hear the meaning', d: 'After each ayah, or alone', em: 1 },
+    ],
+  },
+  tafseer: {
+    img: 'tafsir.png', eyebrow: ['menu_book', 'TAFSEER'],
+    h1: 'Understand<br><em>what you hear</em>', sub: 'Ibn Kathir, Bayan ul Quran, Ma’arif al-Qur’an and more, in Urdu, English and Arabic.',
+    phone: { x: 110, y: 268, w: 320 },
+    zoom: { x: 10, y: 400, w: 373, h: 230, z: 1.15, at: { x: 34, y: 690 } },
+    pops: [
+      { x: 18, y: 440, w: 200, icon: 'translate', t: '9 tafseer books', d: 'Urdu · English · Arabic' },
+      { x: 322, y: 560, w: 200, icon: 'bookmark_added', t: 'Bookmarks & notes', d: 'Keep your reflections', em: 1 },
+    ],
+  },
+  playlists: {
+    img: 'playlist-editor.png', eyebrow: ['queue_music', 'YOUR PLAYLISTS'],
+    h1: 'Your surahs,<br><em>your order</em>', sub: 'Pick the reciter, drag into order, and get a reminder on the days you choose.',
+    phone: { x: 110, y: 268, w: 320 },
+    hl: [{ x: 8, y: 298, w: 377, h: 225 }],
+    pops: [
+      { x: 18, y: 440, w: 200, icon: 'notifications_active', t: 'Reminder', d: 'Every day or chosen days' },
+      { x: 322, y: 620, w: 200, icon: 'download_for_offline', t: 'Download the list', d: 'Plays at once, offline', em: 1 },
+      { x: 18, y: 810, w: 206, icon: 'shuffle', t: 'Repeat & shuffle', d: 'Morning, sleep, Friday lists' },
     ],
   },
   scripts: {
-    img: 'script-sheet.png', eyebrow: ['menu_book', '5 QURAN SCRIPTS'],
+    img: 'script-sheet.png', eyebrow: ['auto_stories', '5 QURAN SCRIPTS'],
     h1: 'Read it the way<br><em>you learned it</em>', sub: 'Madani, IndoPak, Tajweed, Uthmani and Simple, each in the font it was made for.',
     phone: { x: 110, y: 268, w: 320 },
-    hl: [{ x: 18, y: 334, w: 357, h: 88 }],
-    zoom: { src: 'reader-tajweed.png', x: 10, y: 300, w: 373, h: 230, z: 1.12, at: { x: 34, y: 680 } },
+    hl: [{ x: 16, y: 222, w: 361, h: 186 }],
+    zoom: { src: 'reader-tajweed.png', x: 10, y: 455, w: 373, h: 200, z: 1.12, at: { x: 34, y: 705 } },
     pops: [
       { x: 330, y: 470, w: 190, icon: 'auto_stories', t: 'IndoPak Nastaleeq', d: 'Like the Mushaf you grew up with' },
-      { x: 18, y: 585, w: 230, icon: 'palette', t: 'Tajweed in colour', d: '', em: 1,
+      { x: 18, y: 590, w: 230, icon: 'palette', t: 'Tajweed in colour', d: '', em: 1,
         chips: [['#82A2FF', 'Madd'], ['#FFA35C', 'Ghunnah'], ['#FF6B70', 'Qalqalah'], ['#D77BEB', 'Ikhfa'], ['#43CFA6', 'Idgham'], ['#63D4FF', 'Iqlab']] },
     ],
   },
   urdu: {
-    img: 'reader-indopak-urdu.png', eyebrow: ['translate', '40+ TRANSLATIONS'],
-    h1: 'Understand<br><em>every ayah</em>', sub: 'Urdu, English, Hindi, Bangla, Indonesian, Turkish and many more, one tap away.',
+    img: 'reader-indopak-urdu.png', eyebrow: ['translate', '100+ TRANSLATIONS'],
+    h1: 'The meaning<br><em>in your language</em>', sub: 'Urdu, English, Hindi, Bangla, Indonesian, Turkish and 40+ languages, one tap away.',
     phone: { x: 110, y: 268, w: 320 },
-    zoom: { x: 10, y: 360, w: 373, h: 212, z: 1.2, at: { x: 46, y: 560 } },
+    zoom: { x: 10, y: 52, w: 373, h: 290, z: 1.12, at: { x: 40, y: 560 } },
     pops: [
       { x: 20, y: 452, w: 214, icon: 'edit_note', t: 'Urdu in Nastaliq', d: 'Fateh Muhammad Jalandhry & more' },
-      { x: 300, y: 836, w: 222, icon: 'download_done', t: 'Saved for offline', d: 'The whole translation, every surah', em: 1 },
     ],
   },
   reciters: {
     img: 'reciters.png', eyebrow: ['record_voice_over', '50+ RECITERS'],
-    h1: 'The voices<br><em>you love</em>', sub: 'Mishary Alafasy, Sudais, Maher Al-Muaiqly, Husary, Minshawi, Abdul Basit and more.',
+    h1: 'The voices<br><em>you love</em>', sub: 'Mishary Alafasy, Sudais, Maher Al-Muaiqly, Saad Al-Ghamdi, Husary, Minshawi and more.',
     phone: { x: 110, y: 268, w: 320 },
-    hl: [{ x: 818 - 786, y: 330, w: 92, h: 132 }],
+    hl: [{ x: 18, y: 312, w: 118, h: 152 }],
     pops: [
-      { x: 330, y: 470, w: 192, icon: 'photo_camera', t: 'Photos & bios', d: 'Know who you listen to' },
-      { x: 18, y: 700, w: 200, icon: 'verified', t: 'Word Sync badge', d: 'Highlight works with these', em: 1 },
-    ],
-  },
-  focus: {
-    img: 'focus.png', eyebrow: ['center_focus_strong', 'FOCUS VIEW'],
-    h1: 'Just you<br><em>and one ayah</em>', sub: 'A calm, full-screen view of the ayah being recited, with its meaning below.',
-    phone: { x: 110, y: 268, w: 320 },
-    pops: [
-      { x: 18, y: 420, w: 196, icon: 'fullscreen', t: 'Full-screen ayah', d: 'Big, clear Arabic' },
-      { x: 330, y: 560, w: 192, icon: 'swipe', t: 'Swipe to move', d: 'Next or previous ayah', em: 1 },
-      { x: 18, y: 760, w: 206, icon: 'light_mode', t: 'Screen stays awake', d: 'Read along hands-free' },
-    ],
-  },
-  progress: {
-    img: 'progress.png', eyebrow: ['local_fire_department', 'YOUR JOURNEY'],
-    h1: 'Build a<br><em>daily habit</em>', sub: 'See how much you listened today, this week, this month and this year. Keep your streak alive.',
-    phone: { x: 110, y: 268, w: 320 },
-    zoom: { x: 16, y: 58, w: 361, h: 154, z: 1.22, at: { x: 50, y: 400 } },
-    pops: [
-      { x: 330, y: 640, w: 192, icon: 'bar_chart', t: 'Day · Week · Year', d: 'Minutes you listened' },
-      { x: 18, y: 760, w: 216, icon: 'notifications', t: 'Gentle reminders', d: 'Daily goal, Friday Al-Kahf', em: 1 },
+      { x: 330, y: 470, w: 192, icon: 'star', t: 'You listen most', d: 'Your reciters come first' },
+      { x: 18, y: 720, w: 210, icon: 'download_done', t: 'Saved offline', d: 'Marked for each surah', em: 1 },
     ],
   },
   moments: {
     img: 'home.png', eyebrow: ['nights_stay', 'FOR EVERY MOMENT'],
-    h1: 'The right surah<br><em>at the right time</em>', sub: 'Al-Kahf on Fridays, Al-Mulk before sleep, Yasin in the morning, and special days like Ramadan and Arafah.',
+    h1: 'The right surah<br><em>at the right time</em>', sub: 'Friday Al-Kahf, Al-Mulk at night, Ramadan and the Hijri months, and new surahs to discover.',
     phone: { x: 110, y: 290, w: 320 },
-    hl: [{ x: 14, y: 395, w: 365, h: 142 }],
+    hl: [{ x: 14, y: 455, w: 365, h: 150 }],
     pops: [
-      { x: 18, y: 440, w: 200, icon: 'history', t: 'Continue listening', d: 'Exactly where you stopped' },
-      { x: 324, y: 720, w: 200, icon: 'event', t: 'Special days', d: 'Ramadan, Arafah, Eid, Ashura', em: 1 },
-    ],
-  },
-  offline: {
-    img: 'library.png', eyebrow: ['wifi_off', 'WORKS OFFLINE'],
-    h1: 'Always ready,<br><em>even offline</em>', sub: 'The whole Quran text, your translation and word timings stay on your phone.',
-    phone: { x: 110, y: 268, w: 320 },
-    hl: [{ x: 8, y: 52, w: 377, h: 300 }],
-    pops: [
-      { x: 18, y: 560, w: 206, icon: 'event_available', t: '30 days offline', d: 'Use it with no internet' },
-      { x: 306, y: 640, w: 218, icon: 'wifi', t: 'Auto-sync on Wi-Fi', d: 'Stays fresh by itself', em: 1 },
-      { x: 18, y: 790, w: 206, icon: 'download', t: 'Download recitations', d: 'Any surah, any reciter' },
+      { x: 18, y: 450, w: 200, icon: 'local_fire_department', t: 'Today at a glance', d: 'Minutes, goal and streak' },
+      { x: 324, y: 730, w: 200, icon: 'event', t: 'Smart suggestions', d: 'Morning, night, Friday, Ramadan', em: 1 },
     ],
   },
 };
 
 const FEATURES = [
   ['ink_highlighter', 'Word-by-word highlight', 'Every word lights up as it’s recited'],
-  ['record_voice_over', '50+ famous reciters', 'With photos, bios and word sync'],
-  ['menu_book', '5 Quran scripts', 'Madani, IndoPak, Tajweed & more'],
-  ['translate', '40+ translations', 'Urdu, English, Hindi, Bangla…'],
-  ['graphic_eq', 'Full audio player', 'Repeat, speed, sleep timer'],
-  ['headphones', 'Arabic + translation audio', 'Hear the meaning after each ayah'],
-  ['center_focus_strong', 'Focus view', 'One ayah, full screen'],
-  ['local_fire_department', 'Streaks & stats', 'Day, week, month and year'],
-  ['wifi_off', '30 days offline', 'Auto-syncs on Wi-Fi'],
-  ['notifications_active', 'Background player', 'Controls on the lock screen'],
-  ['nights_stay', 'Moments & reminders', 'Al-Kahf on Fridays, Al-Mulk at night'],
-  ['history', 'Resume anywhere', 'Continue exactly where you left'],
+  ['record_voice_over', '50+ famous reciters', 'Photos, bios, word and ayah sync'],
+  ['ios_share', 'Share any ayah', 'Image, video or audio, with translation'],
+  ['queue_music', 'Your playlists', 'Your order, reciter and reminders'],
+  ['menu_book', 'Tafseer', 'Ibn Kathir, Bayan ul Quran & more'],
+  ['auto_stories', '5 Quran scripts', 'Madani, IndoPak, Tajweed & more'],
+  ['translate', '100+ translations', 'Urdu, English, Hindi, Bangla…'],
+  ['headphones', 'Hear the meaning', 'Translation audio after each ayah'],
+  ['all_inclusive', 'Memorise mode', 'Loop ayahs until they stay'],
+  ['nights_stay', 'For every moment', 'Friday, night, Ramadan, Hijri months'],
+  ['local_fire_department', 'Streaks & stats', 'Today, week, month and year'],
+  ['wifi_off', 'Works offline', 'Download surahs and playlists'],
 ];
+
+// Urdu text for the same slides (?lang=ur).
+const UR = {
+  overview: { h1: 'قرآن کے ساتھ جینے کے لیے<br><em>سب کچھ ایک ایپ میں</em>', sub: 'خوبصورت تلاوت، لفظ بہ لفظ ہائی لائٹ اور اپنی زبان میں معنی۔',
+    tag: 'قرآن · سنیں · پڑھیں · سمجھیں', ribbon: ['ہمیشہ مفت', 'کوئی اشتہار نہیں', 'کوئی سائن اپ نہیں'] },
+  word: { eyebrow: 'لفظ بہ لفظ', h1: 'تلاوت کے ساتھ<br><em>ہر لفظ روشن</em>', sub: 'آنکھوں سے تلاوت کے ساتھ چلیں۔ ریڈر خود آیت بہ آیت آگے بڑھتا ہے۔',
+    pops: [['لفظ بہ لفظ ٹائمنگ', '16 قاری، 40 سے زائد آیت کے ساتھ'], ['خود ساتھ چلتا ہے', 'آڈیو کے ساتھ اسکرول']] },
+  share: { eyebrow: 'کوئی بھی آیت شیئر کریں', h1: 'تصویر، ویڈیو<br><em>یا آڈیو بنا کر</em>', sub: 'ایک آیت، چند آیات یا پوری سورت، ترجمے کے ساتھ یا بغیر، واٹس ایپ اور اسٹیٹس پر۔',
+    pops: [['اسٹوری یا مربع', '12 خوبصورت ڈیزائن'], ['تلاوت والی ویڈیو', 'واٹس ایپ اسٹیٹس کے لیے'], ['آڈیو فائل', 'عربی، ترجمے کے ساتھ، یا صرف ترجمہ']] },
+  player: { eyebrow: 'آسان پلیئر', h1: 'سب کچھ<br><em>ایک انگلی کی پہنچ میں</em>', sub: 'قاری، ترجمہ اور کیا سننا ہے، ہر ایک ایک ٹیپ میں۔ دہرانا اور رفتار پلے کے ساتھ۔',
+    pops: [['آیت دہرائیں', '1 سے 10 بار یا مسلسل'], ['حفظ موڈ', 'وقفے کے ساتھ آیات دہرائیں'], ['معنی بھی سنیں', 'ہر آیت کے بعد یا صرف ترجمہ']] },
+  tafseer: { eyebrow: 'تفسیر', h1: 'جو سنیں<br><em>اسے سمجھیں</em>', sub: 'تفسیر ابنِ کثیر، بیان القرآن، معارف القرآن اور مزید، اردو، انگریزی اور عربی میں۔',
+    pops: [['تفسیر کی 9 کتابیں', 'اردو · انگریزی · عربی'], ['بک مارکس اور نوٹس', 'اپنے خیالات محفوظ کریں']] },
+  playlists: { eyebrow: 'آپ کی پلے لسٹ', h1: 'آپ کی سورتیں،<br><em>آپ کی ترتیب</em>', sub: 'قاری چنیں، ترتیب بنائیں، اور اپنے پسند کے دنوں میں یاددہانی پائیں۔',
+    pops: [['یاددہانی', 'روزانہ یا چنے ہوئے دن'], ['پوری لسٹ ڈاؤن لوڈ', 'فوراً چلے، بغیر انٹرنیٹ'], ['دہرائیں اور شفل', 'صبح، رات اور جمعہ کی لسٹیں']] },
+  scripts: { eyebrow: 'قرآن کے 5 رسم الخط', h1: 'ویسے پڑھیں<br><em>جیسے سیکھا تھا</em>', sub: 'مدنی، انڈو پاک، تجوید، عثمانی اور سادہ، ہر ایک اپنے اصل فونٹ میں۔',
+    pops: [['انڈو پاک نستعلیق', 'جس مصحف سے آپ نے پڑھا'], ['رنگوں میں تجوید', '']] },
+  urdu: { eyebrow: '100 سے زائد ترجمے', h1: 'معنی<br><em>اپنی زبان میں</em>', sub: 'اردو، انگریزی، ہندی، بنگلہ، انڈونیشین، ترکی اور 40 سے زائد زبانیں۔',
+    pops: [['اردو نستعلیق میں', 'فتح محمد جالندھری اور دیگر']] },
+  reciters: { eyebrow: '50 سے زائد قاری', h1: 'وہ آوازیں<br><em>جو آپ کو پسند ہیں</em>', sub: 'مشاری العفاسی، سدیس، ماہر المعیقلی، سعد الغامدی، حصری، منشاوی اور مزید۔',
+    pops: [['آپ کے پسندیدہ', 'زیادہ سنے گئے قاری اوپر'], ['آف لائن محفوظ', 'ہر سورت کے لیے نشان']] },
+  moments: { eyebrow: 'ہر لمحے کے لیے', h1: 'صحیح وقت پر<br><em>صحیح سورت</em>', sub: 'جمعہ کو الکہف، رات کو الملک، رمضان اور ہجری مہینے، اور نئی سورتیں۔',
+    pops: [['آج ایک نظر میں', 'منٹ، ہدف اور اسٹریک'], ['سمجھدار تجاویز', 'صبح، رات، جمعہ، رمضان']] },
+};
+const UR_FEATURES = [
+  ['لفظ بہ لفظ ہائی لائٹ', 'تلاوت کے ساتھ ہر لفظ روشن'], ['50 سے زائد قاری', 'تصاویر اور تعارف کے ساتھ'], ['کوئی بھی آیت شیئر کریں', 'تصویر، ویڈیو یا آڈیو'],
+  ['آپ کی پلے لسٹ', 'ترتیب، قاری اور یاددہانی'], ['تفسیر', 'ابنِ کثیر، بیان القرآن اور مزید'], ['قرآن کے 5 رسم الخط', 'مدنی، انڈو پاک، تجوید'],
+  ['100 سے زائد ترجمے', 'اردو، انگریزی، ہندی…'], ['معنی بھی سنیں', 'ہر آیت کے بعد ترجمہ'], ['حفظ موڈ', 'آیات یاد ہونے تک دہرائیں'],
+  ['ہر لمحے کے لیے', 'جمعہ، رات، رمضان'], ['اسٹریک اور اعداد', 'آج، ہفتہ، مہینہ، سال'], ['بغیر انٹرنیٹ', 'سورتیں اور لسٹیں ڈاؤن لوڈ'],
+];
+const LANG = new URLSearchParams(location.search).get('lang') || 'en';
+if (LANG === 'ur') {
+  document.body.classList.add('ur');
+  for (const [k, u] of Object.entries(UR)) {
+    const c = S[k];
+    if (u.eyebrow) c.eyebrow = [c.eyebrow[0], u.eyebrow];
+    c.h1 = u.h1; c.sub = u.sub;
+    (u.pops || []).forEach(([t, d], i) => { if (c.pops && c.pops[i]) { c.pops[i].t = t; c.pops[i].d = d; } });
+  }
+  FEATURES.forEach((f, i) => { f[1] = UR_FEATURES[i][0]; f[2] = UR_FEATURES[i][1]; });
+}
 
 const el = (h) => { const d = document.createElement('div'); d.innerHTML = h.trim(); return d.firstChild; };
 const root = document.getElementById('root');
@@ -212,11 +266,12 @@ function popHtml(p) {
 
 if (c.kind === 'overview') {
   root.appendChild(el(`<div class="head" style="top:40px">
-    <div class="brand"><div class="logo"><img src="logo.png"></div><div class="name"><b>One Verse</b><span>QURAN AUDIO · READ · UNDERSTAND</span></div></div>
-    <h1 style="margin-top:22px;font-size:38px">Everything you need to<br><em>live with the Quran</em></h1>
-    <div class="sub" style="font-size:14.5px">Beautiful recitation, word-by-word highlight and the meaning in your language. Free, with no ads.</div></div>`));
+    <div class="brand"><div class="logo"><img src="logo.png"></div><div class="name"><b>One Verse</b><span>${LANG === 'ur' ? UR.overview.tag : 'QURAN AUDIO · READ · UNDERSTAND'}</span></div></div>
+    <h1 style="margin-top:22px;font-size:38px">${LANG === 'ur' ? UR.overview.h1 : 'Everything you need to<br><em>live with the Quran</em>'}</h1>
+    <div class="sub" style="font-size:14.5px">${LANG === 'ur' ? UR.overview.sub : 'Beautiful recitation, word-by-word highlight and the meaning in your language. Free, with no ads.'}</div></div>`));
   root.appendChild(el(`<div class="grid">${FEATURES.map(([i, t, d]) => `<div class="tile"><div class="ic"><span class="ms">${i}</span></div><div><b>${t}</b><span class="d">${d}</span></div></div>`).join('')}</div>`));
-  root.appendChild(el(`<div class="ribbon"><div><span class="ms">volunteer_activism</span>Free forever</div><div><span class="ms">block</span>No ads</div><div><span class="ms">person_off</span>No sign-up</div></div>`));
+  const rb = LANG === 'ur' ? UR.overview.ribbon : ['Free forever', 'No ads', 'No sign-up'];
+  root.appendChild(el(`<div class="ribbon"><div><span class="ms">volunteer_activism</span>${rb[0]}</div><div><span class="ms">block</span>${rb[1]}</div><div><span class="ms">person_off</span>${rb[2]}</div></div>`));
 } else {
   root.appendChild(el(`<div class="head"><div class="eyebrow"><span class="ms">${c.eyebrow[0]}</span>${c.eyebrow[1]}</div><h1>${c.h1}</h1><div class="sub">${c.sub}</div></div>`));
   const P = c.phone, inner = P.w - 18, s = inner / SW;

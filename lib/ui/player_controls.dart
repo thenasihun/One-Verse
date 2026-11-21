@@ -23,20 +23,16 @@ String listenLabel(ListenMode m) => switch (m) {
       ListenMode.translation => 'Translation only',
     };
 
-/// Reciter, translation, what you hear, repeat and speed.
+/// Reciter, then translation and what you hear on one line.
 class PlayerDeck extends StatelessWidget {
   const PlayerDeck({super.key});
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<Settings>();
-    final pb = context.watch<Playback>();
     final repo = context.read<QuranRepository>();
     final tr = repo.translationById(s.translationId);
     final trOn = s.show != ShowMode.arabic;
-    final repeat = pb.looping
-        ? 'Ayahs ${pb.loopFrom}–${pb.loopTo}'
-        : repeatLabel(s.repeat);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       DeckTile(
         leading: ReciterAvatar(s.reciter, size: 48),
@@ -47,56 +43,33 @@ class PlayerDeck extends StatelessWidget {
         onTap: () => showReciterSheet(context),
       ),
       const SizedBox(height: 10),
-      IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      // One line: what you read and what you hear. Repeat and speed sit
+      // beside the play button.
+      Row(children: [
         Expanded(
-          child: DeckTile(
+          child: DeckPill(
             icon: Icons.translate_rounded,
-            kicker: 'Translation',
-            title: trOn ? tr.englishName : 'Off',
-            subtitle: trOn ? languageName(tr.language) : 'Arabic only',
+            kicker: trOn ? languageName(tr.language) : 'Translation',
+            title: trOn ? tr.englishName : 'Off · Arabic only',
             lit: trOn,
-            vertical: true,
             onTap: () => showTranslationQuickSheet(context),
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: DeckTile(
-            icon: Icons.headphones_rounded,
+          child: DeckPill(
+            icon: s.listenMode == ListenMode.arabic ? Icons.record_voice_over_rounded : Icons.headphones_rounded,
             kicker: 'You hear',
-            title: listenLabel(s.listenMode),
-            subtitle: s.listenMode == ListenMode.arabic ? 'Recitation only' : s.translationVoice.name,
+            title: switch (s.listenMode) {
+              ListenMode.arabic => 'Arabic',
+              ListenMode.arabicTranslation => 'Arabic + meaning',
+              ListenMode.translation => 'Meaning only',
+            },
             lit: s.listenMode != ListenMode.arabic,
-            vertical: true,
             onTap: () => showListenSheet(context),
           ),
         ),
-      ])),
-      const SizedBox(height: 10),
-      IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Expanded(
-          child: DeckTile(
-            icon: pb.looping ? Icons.all_inclusive_rounded : s.repeat == 0 ? Icons.repeat_rounded : Icons.repeat_one_rounded,
-            kicker: pb.looping ? 'Memorising' : 'Repeat',
-            title: pb.ayahWise ? repeat : 'Not with this reciter',
-            subtitle: pb.ayahWise ? null : 'No ayah timings',
-            lit: pb.ayahWise && (s.repeat != 0 || pb.looping),
-            vertical: true,
-            onTap: () => pb.ayahWise ? showRepeatSheet(context) : toast(context, Playback.noAyahReason(s.reciter)),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: DeckTile(
-            icon: Icons.speed_rounded,
-            kicker: 'Speed',
-            title: s.speed == 1 ? 'Normal' : '${s.speed}×',
-            lit: s.speed != 1,
-            vertical: true,
-            onTap: () => showSpeedSheet(context),
-          ),
-        ),
-      ])),
+      ]),
     ]);
   }
 }
@@ -157,6 +130,54 @@ class DeckTile extends StatelessWidget {
               padding: vertical ? const EdgeInsets.fromLTRB(14, 12, 10, 14) : const EdgeInsets.fromLTRB(14, 10, 10, 10),
               child: body,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A compact half-width choice: icon, a small label and the current value.
+class DeckPill extends StatelessWidget {
+  final IconData icon;
+  final String kicker, title;
+  final bool lit;
+  final VoidCallback onTap;
+  const DeckPill({super.key, required this.icon, required this.kicker, required this.title, this.lit = false, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ov;
+    return Semantics(
+      button: true,
+      label: '$kicker: $title',
+      excludeSemantics: true,
+      child: Material(
+        color: lit ? c.goldWash : c.surface,
+        shape: StadiumBorder(side: BorderSide(color: lit ? c.gold.withValues(alpha: 0.45) : c.line)),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            height: 58,
+            child: Row(children: [
+              const SizedBox(width: 8),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: lit ? c.gold : c.raised, shape: BoxShape.circle),
+                child: Icon(icon, size: 20, color: lit ? c.goldInk : c.fg),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(kicker.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: T.label(lit ? c.gold : c.fg3).copyWith(fontSize: 9.5)),
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.ui(13.5, w: FontWeight.w700, color: c.fg)),
+                ]),
+              ),
+              Icon(Icons.expand_more_rounded, size: 20, color: c.fg3),
+              const SizedBox(width: 10),
+            ]),
           ),
         ),
       ),

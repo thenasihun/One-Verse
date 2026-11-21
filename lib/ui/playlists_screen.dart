@@ -1,3 +1,4 @@
+import 'ayah_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -401,6 +402,35 @@ class _PlaylistEditorState extends State<PlaylistEditor> {
             );
           }),
         ],
+        const Label('Playing'),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          activeTrackColor: c.gold,
+          value: list.repeat,
+          onChanged: (v) => _save((x) => x.repeat = v),
+          title: Text('Repeat the playlist', style: T.ui(15, w: FontWeight.w700, color: c.fg)),
+          subtitle: Text('Start again from the first item after the last', style: T.ui(12.5, color: c.fg3)),
+        ),
+        Row(children: [
+          Expanded(
+            child: GhostButton('Shuffle play', icon: Icons.shuffle_rounded, expand: true, onTap: list.items.length < 2
+                ? null
+                : () {
+                    final shuffled = list.copy(id: list.id, name: list.name)..items.shuffle();
+                    context.read<Playback>().playPlaylist(shuffled);
+                    Nav.nowPlaying(context);
+                  }),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: GhostButton('Duplicate', icon: Icons.copy_all_rounded, expand: true, onTap: () {
+              final copy = list.copy(id: DateTime.now().microsecondsSinceEpoch.toRadixString(36));
+              context.read<Settings>().savePlaylist(copy);
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PlaylistEditor(id: copy.id)));
+              toast(context, 'Copied as "${copy.name}"');
+            }),
+          ),
+        ]),
         const Label('Reminder'),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -465,7 +495,8 @@ class _PlaylistEditorState extends State<PlaylistEditor> {
 }
 
 /// A searchable list of surahs; returns the number picked.
-Future<int?> showSurahPicker(BuildContext context) => showOvSheet<int>(context, title: 'Add a surah', scroll: false, builder: (_) => const _SurahPicker());
+Future<int?> showSurahPicker(BuildContext context, {String title = 'Add a surah'}) =>
+    showOvSheet<int>(context, title: title, scroll: false, builder: (_) => const _SurahPicker());
 
 class _SurahPicker extends StatefulWidget {
   const _SurahPicker();
@@ -522,32 +553,27 @@ Future<(int, int)?> showRangeSheet(BuildContext context, SurahInfo s, int from, 
   var a = from, b = to;
   return showOvSheet<(int, int)>(context, title: s.nameEn, builder: (ctx) {
     return StatefulBuilder(builder: (ctx, set) {
-      final c = ctx.ov;
-      Widget stepper(String label, int v, void Function(int) on) => Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(16)),
-              child: Column(children: [
-                Text(label, style: T.label(c.fg3).copyWith(fontSize: 10.5)),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  RoundIcon(Icons.remove_rounded, tooltip: '$label one less', size: 40, onTap: v > 1 ? () => set(() => on(v - 1)) : null),
-                  SizedBox(width: 48, child: Text('$v', textAlign: TextAlign.center, style: T.display(22, w: FontWeight.w700, color: c.fg))),
-                  RoundIcon(Icons.add_rounded, tooltip: '$label one more', size: 40, onTap: v < s.ayahs ? () => set(() => on(v + 1)) : null),
-                ]),
-              ]),
-            ),
-          );
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          stepper('FROM AYAH', a, (v) {
-            a = v;
-            if (b < a) b = a;
-          }),
+          AyahField(
+              label: 'From ayah',
+              surah: s,
+              value: a,
+              max: s.ayahs,
+              onChanged: (v) => set(() {
+                    a = v;
+                    if (b < a) b = a;
+                  })),
           const SizedBox(width: 10),
-          stepper('TO AYAH', b, (v) {
-            b = v;
-            if (a > b) a = b;
-          }),
+          AyahField(
+              label: 'To ayah',
+              surah: s,
+              value: b,
+              max: s.ayahs,
+              onChanged: (v) => set(() {
+                    b = v;
+                    if (a > b) a = b;
+                  })),
         ]),
         const SizedBox(height: 10),
         Wrap(spacing: 8, children: [
@@ -557,5 +583,47 @@ Future<(int, int)?> showRangeSheet(BuildContext context, SurahInfo s, int from, 
         GoldButton('Done', icon: Icons.check_rounded, expand: true, onTap: () => Navigator.pop(ctx, (a, b))),
       ]);
     });
+  });
+}
+
+/// Adds [item] to a playlist the listener picks, or to a new one.
+Future<void> showAddToPlaylist(BuildContext context, PlaylistItem item) {
+  final s = context.read<Settings>();
+  final repo = context.read<QuranRepository>();
+  final info = repo.surah(item.surah);
+  final label = '${info.nameEn} · ${itemLabel(info, item).toLowerCase()}';
+  return showOvSheet(context, title: 'Add to playlist', builder: (ctx) {
+    final c = ctx.ov;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text(label, style: T.ui(13.5, color: c.fg2)),
+      const SizedBox(height: 12),
+      for (final p in s.playlists)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Material(
+            color: c.raised,
+            borderRadius: BorderRadius.circular(16),
+            child: ListTile(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              leading: Icon(Icons.queue_music_rounded, color: c.gold),
+              title: Text(p.name, style: T.ui(15, w: FontWeight.w700, color: c.fg)),
+              subtitle: Text('${p.items.length} items', style: T.ui(12, color: c.fg3)),
+              trailing: Icon(Icons.add_rounded, color: c.gold),
+              onTap: () {
+                p.items.add(item);
+                s.savePlaylist(p);
+                Navigator.pop(ctx);
+                toast(context, 'Added to ${p.name}');
+              },
+            ),
+          ),
+        ),
+      GoldButton('New playlist with this', icon: Icons.playlist_add_rounded, expand: true, onTap: () {
+        final p = Playlist(id: DateTime.now().microsecondsSinceEpoch.toRadixString(36), name: info.nameEn, items: [item]);
+        s.savePlaylist(p);
+        Navigator.pop(ctx);
+        PlaylistEditor.open(context, p.id);
+      }),
+    ]);
   });
 }

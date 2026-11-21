@@ -1,3 +1,4 @@
+import 'ayah_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -403,24 +404,6 @@ class _LoopSheetState extends State<_LoopSheet> {
     gap = pb.looping ? pb.loopGap : Duration.zero;
   }
 
-  Widget _stepper(String label, int value, int max, void Function(int) set) {
-    final c = context.ov;
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(16)),
-        child: Column(children: [
-          Text(label.toUpperCase(), style: T.label(c.fg3).copyWith(fontSize: 10.5)),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            RoundIcon(Icons.remove_rounded, tooltip: '$label: one less', size: 38, onTap: value > 1 ? () => setState(() => set(value - 1)) : null),
-            SizedBox(width: 44, child: Text('$value', textAlign: TextAlign.center, style: T.display(22, w: FontWeight.w700, color: c.fg))),
-            RoundIcon(Icons.add_rounded, tooltip: '$label: one more', size: 38, onTap: value < max ? () => setState(() => set(value + 1)) : null),
-          ]),
-        ]),
-      ),
-    );
-  }
-
   static Widget _row(List<Widget> chips) => Row(children: [
         for (final (i, w) in chips.indexed) ...[if (i > 0) const SizedBox(width: 6), Expanded(child: w)],
       ]);
@@ -434,15 +417,25 @@ class _LoopSheetState extends State<_LoopSheet> {
       Text('Plays a few ayahs again and again, so they stay with you.', style: T.ui(13.5, color: c.fg2)),
       const SizedBox(height: 14),
       Row(children: [
-        _stepper('From ayah', from, n, (v) {
-          from = v;
-          if (to < from) to = from;
-        }),
+        AyahField(
+            label: 'From ayah',
+            surah: pb.info,
+            value: from,
+            max: n,
+            onChanged: (v) => setState(() {
+                  from = v;
+                  if (to < from) to = from;
+                })),
         const SizedBox(width: 10),
-        _stepper('To ayah', to, n, (v) {
-          to = v;
-          if (from > to) from = to;
-        }),
+        AyahField(
+            label: 'To ayah',
+            surah: pb.info,
+            value: to,
+            max: n,
+            onChanged: (v) => setState(() {
+                  to = v;
+                  if (from > to) from = to;
+                })),
       ]),
       if (n > 1)
         RangeSlider(

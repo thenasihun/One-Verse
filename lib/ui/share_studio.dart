@@ -1,3 +1,4 @@
+import 'ayah_picker.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -30,7 +31,14 @@ enum CardStyle {
   surah('Surah colours', null, false),
   emerald('Emerald', [Color(0xFF0B5D47), Color(0xFF032A21)], false),
   night('Night', [Color(0xFF1B2A4A), Color(0xFF070B1A)], false),
-  sand('Sand', [Color(0xFFF7EEDC), Color(0xFFE6D2AA)], true);
+  sand('Sand', [Color(0xFFF7EEDC), Color(0xFFE6D2AA)], true),
+  goldSand('Gold sand', [Color(0xFFF6E6BF), Color(0xFFD9B06A)], true),
+  dune('Desert dune', [Color(0xFFF1D7B0), Color(0xFFC98F5A)], true),
+  roseSand('Rose sand', [Color(0xFFF8E7DD), Color(0xFFE3B49D)], true),
+  ivory('Ivory', [Color(0xFFFFFCF4), Color(0xFFEDE3CC)], true),
+  midnightGold('Midnight gold', [Color(0xFF3A2E14), Color(0xFF0E0B06)], false),
+  teal('Deep teal', [Color(0xFF0F5563), Color(0xFF05262E)], false),
+  plum('Plum', [Color(0xFF4A2346), Color(0xFF1A0C19)], false);
 
   final String label;
   final List<Color>? colors;
@@ -151,7 +159,9 @@ class _ShareStudioState extends State<ShareStudio> {
   late int from = widget.ayah, to = widget.ayah;
   ShareFormat format = ShareFormat.image;
   CardStyle style = CardStyle.surah;
-  bool story = true, showTr = true, hearTr = false;
+  bool story = true, showTr = true;
+  ListenMode hear = ListenMode.arabic; // what the audio and video say
+  String? _trId; // the translation [tr] was loaded for
   List<VerseText> verses = const [];
   List<String>? tr;
   int? _cardAyah; // while rendering video cards: the one ayah shown
@@ -170,6 +180,7 @@ class _ShareStudioState extends State<ShareStudio> {
     try {
       final v = await repo.words(widget.surah);
       List<String>? t;
+      _trId = s.translationId;
       try {
         t = await repo.translation(s.translationId, widget.surah);
       } catch (_) {}
@@ -201,7 +212,7 @@ class _ShareStudioState extends State<ShareStudio> {
     if (kIsWeb && (format == ShareFormat.video || format == ShareFormat.audio)) return 'Audio and video sharing work in the Android and iOS app.';
     if (format == ShareFormat.image && count > maxImage) return 'An image holds up to $maxImage ayahs. Choose fewer, or share audio.';
     if (format == ShareFormat.video && count > Exporter.maxVideoAyahs) return 'A video holds up to ${Exporter.maxVideoAyahs} ayahs. Choose fewer, or share audio.';
-    if (hearTr && (format == ShareFormat.audio || format == ShareFormat.video) && voiceFor(s.translationId)?.ayahEdition == null) {
+    if (hear != ListenMode.arabic && (format == ShareFormat.audio || format == ShareFormat.video) && voiceFor(s.translationId)?.ayahEdition == null) {
       return 'Your translation has no audio. Pick an Urdu, English or other voiced translation to hear it.';
     }
     return null;
@@ -209,8 +220,8 @@ class _ShareStudioState extends State<ShareStudio> {
 
   ExportRequest _request() {
     final s = context.read<Settings>();
-    final voice = hearTr ? voiceFor(s.translationId) : null;
-    return ExportRequest(surah: widget.surah, from: from, to: to, reciter: s.reciter, voice: voice);
+    final voice = hear != ListenMode.arabic ? voiceFor(s.translationId) : null;
+    return ExportRequest(surah: widget.surah, from: from, to: to, reciter: s.reciter, voice: voice, arabic: hear != ListenMode.translation);
   }
 
   Future<String> _capture(String name) async {
@@ -251,7 +262,7 @@ class _ShareStudioState extends State<ShareStudio> {
           text.writeln();
         }
         text.write('— ${info.nameEn} ${from == to ? '${widget.surah}:$from' : '${widget.surah}:$from-$to'}\n'
-            'Quran data provided by Quran Foundation\nOne Verse: $_storeLink');
+            'One Verse: $_storeLink');
         await SharePlus.instance.share(ShareParams(text: text.toString()));
         return null;
     }
@@ -270,7 +281,7 @@ class _ShareStudioState extends State<ShareStudio> {
         await SharePlus.instance.share(ShareParams(
           files: [XFile(path)],
           text: '${info.nameEn} ${from == to ? '${widget.surah}:$from' : '${widget.surah}:$from-$to'} · shared from One Verse\n'
-              'Quran data provided by Quran Foundation\n$_storeLink',
+              '$_storeLink',
         ));
       }
     } on ExportException catch (e) {
@@ -298,6 +309,16 @@ class _ShareStudioState extends State<ShareStudio> {
     final s = context.watch<Settings>();
     final repo = context.read<QuranRepository>();
     final edition = repo.translationById(s.translationId);
+    if (_trId != null && _trId != s.translationId) {
+      _trId = s.translationId;
+      () async {
+        List<String>? t;
+        try {
+          t = await repo.translation(s.translationId, widget.surah);
+        } catch (_) {}
+        if (mounted) setState(() => tr = t);
+      }();
+    }
     final voice = voiceFor(s.translationId);
     final visual = format == ShareFormat.image || format == ShareFormat.video;
     final shownVerses = shown;
@@ -346,9 +367,9 @@ class _ShareStudioState extends State<ShareStudio> {
               ),
               const Label('Ayahs'),
               Row(children: [
-                _Stepper(label: 'From', value: from, onChanged: (v) => _setRange(v, math.max(v, to)), max: info.ayahs),
+                AyahField(label: 'From ayah', surah: info, value: from, onChanged: (v) => _setRange(v, math.max(v, to)), max: info.ayahs),
                 const SizedBox(width: 10),
-                _Stepper(label: 'To', value: to, onChanged: (v) => _setRange(math.min(from, v), v), max: info.ayahs),
+                AyahField(label: 'To ayah', surah: info, value: to, onChanged: (v) => _setRange(math.min(from, v), v), max: info.ayahs),
               ]),
               const SizedBox(height: 10),
               Wrap(spacing: 8, runSpacing: 8, children: [
@@ -400,15 +421,29 @@ class _ShareStudioState extends State<ShareStudio> {
                   title: Text(format == ShareFormat.text ? 'Add the translation' : 'Show the translation', style: T.ui(14.5, w: FontWeight.w600, color: c.fg)),
                   subtitle: Text(edition.englishName, style: T.ui(12, color: c.fg3)),
                 ),
-              if (format == ShareFormat.audio || format == ShareFormat.video)
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  activeTrackColor: c.gold,
-                  value: hearTr,
-                  onChanged: (v) => setState(() => hearTr = v),
-                  title: Text('Hear the translation after each ayah', style: T.ui(14.5, w: FontWeight.w600, color: c.fg)),
-                  subtitle: Text(voice != null ? 'Read by ${voice.name} (${voice.language})' : 'This translation has no audio', style: T.ui(12, color: c.fg3)),
+              if (format == ShareFormat.audio || format == ShareFormat.video) ...[
+                const Label('What is heard'),
+                Segmented<ListenMode>(
+                  options: const [
+                    (ListenMode.arabic, 'Arabic'),
+                    (ListenMode.arabicTranslation, 'Arabic +\ntranslation'),
+                    (ListenMode.translation, 'Translation\nonly'),
+                  ],
+                  value: hear,
+                  onChanged: (v) => setState(() => hear = v),
                 ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                      hear == ListenMode.arabic
+                          ? 'Recited by ${s.reciter.name}'
+                          : voice != null
+                              ? '${hear == ListenMode.translation ? 'Only the meaning, ' : 'The meaning after each ayah, '}read by ${voice.name} (${voice.language})'
+                              : 'This translation has no audio: pick an Urdu, English or other voiced translation',
+                      style: T.ui(12, color: c.fg3)),
+                ),
+                const SizedBox(height: 8),
+              ],
               PickerChip(label: 'Change translation', icon: Icons.translate_rounded, onTap: () => showTranslationSheet(context)),
               if (format == ShareFormat.audio || format == ShareFormat.video) ...[
                 const Label('Reciter'),
@@ -480,32 +515,6 @@ class _ShareStudioState extends State<ShareStudio> {
             ),
           ),
       ]),
-    );
-  }
-}
-
-class _Stepper extends StatelessWidget {
-  final String label;
-  final int value, max;
-  final ValueChanged<int> onChanged;
-  const _Stepper({required this.label, required this.value, required this.max, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.ov;
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(16)),
-        child: Column(children: [
-          Text('${label.toUpperCase()} AYAH', style: T.label(c.fg3).copyWith(fontSize: 10.5)),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            RoundIcon(Icons.remove_rounded, tooltip: '$label: one less', size: 40, onTap: value > 1 ? () => onChanged(value - 1) : null),
-            SizedBox(width: 48, child: Text('$value', textAlign: TextAlign.center, style: T.display(22, w: FontWeight.w700, color: c.fg))),
-            RoundIcon(Icons.add_rounded, tooltip: '$label: one more', size: 40, onTap: value < max ? () => onChanged(value + 1) : null),
-          ]),
-        ]),
-      ),
     );
   }
 }

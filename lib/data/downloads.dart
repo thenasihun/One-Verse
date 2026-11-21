@@ -88,6 +88,48 @@ class Downloads extends ChangeNotifier {
     return null;
   }
 
+  /// Every reciter this surah is saved with.
+  List<DownloadRecord> recordsForSurah(int surah) => [for (final r in _records.values) if (r.surah == surah) r];
+
+  /// Reciters with at least one saved surah, most surahs first.
+  List<(String, int, int)> reciterSummary() {
+    final m = <String, (int, int)>{};
+    for (final r in _records.values) {
+      final e = m[r.reciterId] ?? (0, 0);
+      m[r.reciterId] = (e.$1 + 1, e.$2 + r.bytes);
+    }
+    return [for (final e in m.entries) (e.key, e.value.$1, e.value.$2)]..sort((a, b) => b.$2.compareTo(a.$2));
+  }
+
+  /// Whether the files of [r] are all on the phone.
+  bool isComplete(DownloadRecord r) {
+    if (!supported) return true;
+    final reciter = reciterById(r.reciterId);
+    final count = repo.surahs.isEmpty ? 0 : repo.surah(r.surah).ayahs;
+    bool ayahs(String ed) {
+      final d = Directory('${_audioDir(ed)}/${r.surah}');
+      if (!d.existsSync()) return false;
+      return d.listSync().whereType<File>().where((f) => f.path.endsWith('.mp3') && f.lengthSync() > 0).length >= count;
+    }
+
+    final chapter = File('${_audioDir(reciter.id)}/${r.surah}.mp3');
+    final arabicOk = (chapter.existsSync() && chapter.lengthSync() > 0) || (reciter.ayahEdition != null && ayahs(reciter.ayahEdition!));
+    final voice = r.voiceId == null ? null : reciterById(r.voiceId).ayahEdition;
+    return arabicOk && (voice == null || ayahs(voice));
+  }
+
+  /// Checks every saved surah against the files on the phone and forgets the
+  /// ones whose files are gone or cut short (they can be downloaded again).
+  /// Returns how many were removed.
+  Future<int> verify() async {
+    if (!supported) return 0;
+    final broken = [for (final r in _records.values) if (!isComplete(r)) r];
+    for (final r in broken) {
+      await remove(r);
+    }
+    return broken.length;
+  }
+
   Future<void> init() async {
     final e = await repo.store.read('downloads_index');
     if (e?.data is Map) {

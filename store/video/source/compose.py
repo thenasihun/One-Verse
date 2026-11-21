@@ -12,7 +12,7 @@ for n in names:
     inputs += ['-loop', '1', '-framerate', '30', '-t', f'{total}', '-i', f'{B}/t_{n}.png']
 vo0 = len(inputs) // 2  # not used
 nimg = 4 + len(names)
-vo_delay = {'intro': 0.75, 'outro': 0.6}
+vo_delay = {'hook': 0.5, 'outro': 0.6}
 for n in names:
     inputs += ['-i', f'{S}/vo/{n}.mp3']
 inputs += ['-i', f'{S}/bed.mp3']
@@ -30,7 +30,7 @@ f.append(f"[v1][scrm]overlay=x='{px}+{IN}':y={Y0 + IN}:eval=frame[v2]")
 cur = 'v2'
 for i, n in enumerate(names):
     t0, du = starts[i], durs[i]
-    fin = t0 + (0.9 if n == 'intro' else 0.3)
+    fin = t0 + (0.6 if n == 'hook' else 0.3)
     chain = f"[{4 + i}:v]format=rgba,fade=t=in:st={fin:.3f}:d=0.5:alpha=1"
     if n != 'outro':
         chain += f",fade=t=out:st={t0 + du - 0.6:.3f}:d=0.4:alpha=1"

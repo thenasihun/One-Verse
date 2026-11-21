@@ -17,6 +17,7 @@ class Playlist {
   bool remind;
   int remindAt; // minutes after midnight
   Set<int> days; // DateTime.monday..DateTime.sunday
+  bool repeat; // start again after the last item
 
   Playlist({
     required this.id,
@@ -26,6 +27,7 @@ class Playlist {
     this.remind = false,
     this.remindAt = 6 * 60,
     Set<int>? days,
+    this.repeat = false,
   })  : items = items ?? [],
         days = days ?? {1, 2, 3, 4, 5, 6, 7};
 
@@ -39,7 +41,20 @@ class Playlist {
         'rm': remind,
         'at': remindAt,
         'd': days.toList()..sort(),
+        'rp': repeat,
       };
+
+  /// A copy with a new id, e.g. to make a variation of a list.
+  Playlist copy({required String id, String? name}) => Playlist(
+        id: id,
+        name: name ?? '${this.name} (copy)',
+        reciterId: reciterId,
+        items: List.of(items),
+        remind: false,
+        remindAt: remindAt,
+        days: Set.of(days),
+        repeat: repeat,
+      );
 
   factory Playlist.fromJson(Map<String, dynamic> j) => Playlist(
         id: j['id'] as String,
@@ -49,6 +64,7 @@ class Playlist {
         remind: (j['rm'] as bool?) ?? false,
         remindAt: (j['at'] as int?) ?? 6 * 60,
         days: {for (final d in (j['d'] as List? ?? const [1, 2, 3, 4, 5, 6, 7])) d as int},
+        repeat: (j['rp'] as bool?) ?? false,
       );
 }
 

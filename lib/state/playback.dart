@@ -757,6 +757,9 @@ class Playback extends ChangeNotifier implements PlayerCommands {
   }
 
   Future<void> _advanceRun(Playlist p) async {
+    if (runIndex + 1 >= p.items.length && p.repeat && p.items.isNotEmpty) {
+      runIndex = -1; // start the list again
+    }
     if (runIndex + 1 >= p.items.length) {
       run = null;
       await player.pause();

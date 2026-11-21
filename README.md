@@ -16,8 +16,11 @@ There are no ads, no subscriptions and no account.
 
 | | | | | |
 |:-:|:-:|:-:|:-:|:-:|
-| <img src="store/playstore/screenshots/01-overview.png" width="160"> | <img src="store/playstore/screenshots/02-word.png" width="160"> | <img src="store/playstore/screenshots/03-player.png" width="160"> | <img src="store/playstore/screenshots/04-scripts.png" width="160"> | <img src="store/playstore/screenshots/05-urdu.png" width="160"> |
-| <img src="store/playstore/screenshots/06-reciters.png" width="160"> | <img src="store/playstore/screenshots/07-focus.png" width="160"> | <img src="store/playstore/screenshots/08-progress.png" width="160"> | <img src="store/playstore/screenshots/09-moments.png" width="160"> | <img src="store/playstore/screenshots/10-offline.png" width="160"> |
+| <img src="store/playstore/screenshots/en/01-overview.png" width="160"> | <img src="store/playstore/screenshots/en/02-word.png" width="160"> | <img src="store/playstore/screenshots/en/03-share.png" width="160"> | <img src="store/playstore/screenshots/en/04-player.png" width="160"> | <img src="store/playstore/screenshots/en/05-tafseer.png" width="160"> |
+| <img src="store/playstore/screenshots/en/06-playlists.png" width="160"> | <img src="store/playstore/screenshots/en/07-scripts.png" width="160"> | <img src="store/playstore/screenshots/en/08-urdu.png" width="160"> | <img src="store/playstore/screenshots/en/09-reciters.png" width="160"> | <img src="store/playstore/screenshots/en/10-moments.png" width="160"> |
+
+Urdu screenshots are in `store/playstore/screenshots/ur/`. Social posters are in `store/social/`, and the
+promo video and teasers in `store/video/`.
 
 ---
 

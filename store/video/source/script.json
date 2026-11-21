@@ -1,13 +1,10 @@
 [
- ["intro",    "This is One Verse. A calm, beautiful way to hear the Quran, and see every word."],
- ["home",     "Home suggests the right surah for the moment, and keeps your favourites and bookmarks close."],
- ["reader",   "Press play, and every word lights up exactly as it is recited, while the page follows along."],
- ["scripts",  "Read in five scripts, from Madani to IndoPak and tajweed colours, each in its proper font."],
- ["deck",     "The new player puts everything under your thumb. Reciter, translation, what you hear, repeat and speed. One tap each."],
- ["reciters", "Choose from more than fifty reciters, and keep your favourites on top."],
- ["memorise", "Memorising? Loop a few ayahs as many times as you need, with a pause to recite from memory."],
- ["tafseer",  "Open the tafseer of any ayah. Ibn Kathir, Bayan ul Quran, and more, in Urdu, English and Arabic."],
- ["bookmark", "Bookmark an ayah, and keep your own note with it."],
- ["progress", "Build a daily habit with streaks and listening goals. Download the complete Quran, and listen offline."],
- ["outro",    "One Verse. Free, with no ads, and no account. Get it on Google Play."]
+ ["hook",      "Ever lost your place while listening to the Quran? With One Verse, every word lights up as it is recited."],
+ ["home",      "Each day it picks a verse for you, and the right surah for the moment, and keeps your streak going."],
+ ["focus",     "Focus view keeps the ayah large and calm, with every control one tap away."],
+ ["deck",      "Change the reciter, the translation, or what you hear, in a single tap."],
+ ["share",     "Share any ayah as an image, a video, or audio, in twelve beautiful designs."],
+ ["playlists", "Build playlists for mornings, bedtime or Friday, with reminders, and download them to listen offline."],
+ ["tafseer",   "And understand every ayah, with tafseer from Ibn Kathir, Bayan ul Quran, and more."],
+ ["outro",     "One Verse. Free, with no ads, and no account. Get it on Google Play."]
 ]

@@ -35,22 +35,36 @@ h1 em { font-style: normal; background: linear-gradient(92deg, #F3D978, #E2BE4F 
 .p1 { left: 610px; top: 70px; transform: rotate(-7deg); }
 .p2 { left: 770px; top: 36px; transform: rotate(6deg); }
 .ar { position: absolute; right: 30px; bottom: 14px; font: 34px Hafs; color: rgba(226,190,79,.85); direction: rtl; }
+@font-face { font-family: Nastaliq; src: url(../../../assets/fonts/NotoNastaliqUrdu-Regular.ttf); }
+@font-face { font-family: Nastaliq; font-weight: 700; src: url(../../../assets/fonts/NotoNastaliqUrdu-Bold.ttf); }
+body.ur h1, body.ur .sub, body.ur .chips { direction: rtl; text-align: right; }
+body.ur h1 { font: 700 42px/1.7 Nastaliq; letter-spacing: 0; margin-top: 8px; }
+body.ur .sub { font: 400 14.5px/2 Nastaliq; margin-top: 2px; }
+body.ur .chip { font: 700 13px/1.6 Nastaliq; padding: 3px 13px 7px; }
 </style>
 </head>
 <body>
 <div class="bg"></div><div class="lattice"></div>
 <div class="left">
   <div class="brand"><div class="logo"><img src="logo.png"></div><b>One Verse</b></div>
-  <h1>Hear the Quran.<br><em>See every word.</em></h1>
-  <div class="sub">Word-by-word highlight, 50+ reciters, 5 Quran scripts<br>and 40+ translations. Free, no ads, works offline.</div>
-  <div class="chips">
+  <h1 id="h1">Hear the Quran.<br><em>See every word.</em></h1>
+  <div class="sub" id="sub">50+ reciters, tafseer, 100+ translations and word-by-word<br>highlight. Share any ayah. Free, no ads, works offline.</div>
+  <div class="chips" id="chips">
     <div class="chip"><span class="ms">ink_highlighter</span>Word highlight</div>
-    <div class="chip"><span class="ms">translate</span>Urdu &amp; 40+ languages</div>
-    <div class="chip"><span class="ms">wifi_off</span>Offline</div>
+    <div class="chip"><span class="ms">ios_share</span>Share image · video · audio</div>
+    <div class="chip"><span class="ms">queue_music</span>Playlists</div>
   </div>
 </div>
-<div class="phone p2"><div class="screen"><img src="now-playing.png"></div></div>
+<div class="phone p2"><div class="screen"><img src="share.png"></div></div>
 <div class="phone p1"><div class="screen"><img src="reader-indopak-urdu.png"></div></div>
-<script>document.fonts.ready.then(() => setTimeout(() => document.body.dataset.ready = '1', 300));</script>
+<script>
+if (new URLSearchParams(location.search).get('lang') === 'ur') {
+  document.body.classList.add('ur');
+  document.getElementById('h1').innerHTML = 'قرآن سنیں،<br><em>ہر لفظ دیکھیں</em>';
+  document.getElementById('sub').innerHTML = '50 سے زائد قاری، تفسیر، 100 سے زائد ترجمے اور لفظ بہ لفظ ہائی لائٹ۔<br>کوئی بھی آیت شیئر کریں۔ مفت، بغیر اشتہارات، بغیر انٹرنیٹ بھی۔';
+  document.getElementById('chips').innerHTML = [['ink_highlighter', 'لفظ بہ لفظ'], ['ios_share', 'تصویر · ویڈیو · آڈیو'], ['queue_music', 'پلے لسٹ']]
+    .map(([i, t]) => `<div class="chip"><span class="ms">${i}</span>${t}</div>`).join('');
+}
+document.fonts.ready.then(() => setTimeout(() => document.body.dataset.ready = '1', 300));</script>
 </body>
 </html>

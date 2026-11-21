@@ -1,11 +1,12 @@
-# One Verse v2.2.0 (build 7): Play Store deployment guide
+# One Verse v2.3.0 (build 8): Play Store deployment guide
 
 This file is a set of instructions for an AI agent (or a person) publishing this update to Google Play.
 Follow the steps in order. Do not change the build files or upload a different file.
 
-Version 2.0 is a complete rebuild of the app with a new design, and 2.1 adds tafseer, bookmarks with notes and
-a memorise mode. The listing text, screenshots and feature graphic all change with it, and one new declaration
-is needed (foreground service, section 7).
+Version 2.3 adds the Today card and daily recommendations, a richer Focus view, a one-line player, the share
+studio with twelve designs, playlists with ready templates, and an offline library sorted by surah and reciter.
+The listing text, all screenshots (English and Urdu), both feature graphics and a new promo video change with it.
+One declaration is needed if it was not done for 2.2 (foreground service, section 7).
 
 ---
 
@@ -15,8 +16,8 @@ is needed (foreground service, section 7).
 |---|---|
 | App name (on device) | One Verse |
 | Package name | `com.nasihun.oneverse` |
-| Version name | `2.2.0` |
-| Version code | `7` (higher than any earlier upload: 4, 5 or 6) |
+| Version name | `2.3.0` |
+| Version code | `8` (higher than any earlier upload: 4 to 7) |
 | Target SDK / Compile SDK | 36 (Android 16) |
 | Min SDK | 24 (Android 7.0), unchanged |
 | Signing key alias | `oneverse` |
@@ -33,9 +34,11 @@ All paths are relative to the project root `/Users/Data/Development/flutter/One-
 |---|---|---|
 | **App bundle (upload this to Play)** | `build/app/outputs/bundle/release/app-release.aab` | **Yes** |
 | R8 deobfuscation mapping | `build/app/outputs/mapping/release/mapping.txt` | Yes (App bundle explorer → Downloads → ReTrace mapping file) |
-| Phone screenshots (1080×1920) | `store/playstore/screenshots/01-overview.png` … `08-progress.png` | Yes, in this order |
-| Extra screenshots | `store/playstore/screenshots/09-moments.png`, `10-offline.png` | Optional (tablet slots, see section 6) |
-| Feature graphic (1024×500) | `store/playstore/feature-graphic.png` | Yes |
+| Phone screenshots, English (1080×1920) | `store/playstore/screenshots/en/01-overview.png` … `08-urdu.png` | Yes, in this order (section 6) |
+| Phone screenshots, Urdu (1080×1920) | `store/playstore/screenshots/ur/01-overview.png` … `08-urdu.png` | Yes, on the Urdu listing (section 5) |
+| Extra screenshots | `screenshots/en/09-reciters.png`, `10-moments.png` (and the same in `ur/`) | Optional (tablet slots) |
+| Feature graphic (1024×500) | `store/playstore/feature-graphic.png` (English), `feature-graphic-ur.png` (Urdu) | Yes |
+| Promo video | `store/video/one-verse-promo.mp4` → upload to YouTube, paste the link | Yes (section 6) |
 | App icon (512×512) | unchanged | No |
 | Signed APK (testing or sideloading only) | `build/app/outputs/flutter-apk/app-release.apk` | No. Play only accepts the `.aab` |
 
@@ -51,11 +54,12 @@ How to build these files is in section 10.
 4. Go to **Test and release → Production** (or **Closed testing** to test first).
 5. Click **Create new release**.
 6. Under **App bundles**, click **Upload** and choose `build/app/outputs/bundle/release/app-release.aab`.
-   - Wait until it shows **Version 7 (2.2.0)** with no errors.
-7. **Release name:** `2.2.0 (7) – Share studio, playlists, easier player`
+   - Wait until it shows **Version 8 (2.3.0)** with no errors.
+7. **Release name:** `2.3.0 (8) – Smarter suggestions, Focus controls, library by reciter`
 8. **Release notes:** paste the text from section 4. Add both `en-US` and `ur` if the Urdu listing exists.
 9. Click **Next**. Read the warnings screen (section 8), then click **Save**.
-10. Update the store listing (section 5) and the graphics (section 6).
+10. Update the store listing (section 5) and the graphics (section 6), then add the Urdu translation of the
+    listing (section 5) with its own screenshots and feature graphic.
 11. Go to **Publishing overview** and click **Send changes for review**.
 12. Recommended: a **staged rollout** of 20%, increased after 1–2 days with no crash reports in **Android vitals**.
 
@@ -65,24 +69,28 @@ Listing changes are reviewed together with the release.
 
 ## 4. Release notes ("What's new", maximum 500 characters each)
 
-### en-US (444 characters)
+### en-US (495 characters)
 ```
-One Verse 2.2
-• NEW Share studio: send any ayah, passage or surah as an image, a video or an audio file, with or without translation, to WhatsApp, status or anywhere
-• NEW Playlists: your surahs, your order, your reciter, with a reminder on the days you choose
-• Easier player: big buttons for reciter, translation, repeat and speed
-• Tafseer, bookmarks with notes, memorise mode
-• 50+ reciters, word-by-word highlight, 5 scripts, works offline
+One Verse 2.3
+• Smarter suggestions for every moment: morning, night, Friday, Ramadan and the Hijri months, plus surahs to discover
+• Today card: minutes, daily goal and streak at a glance
+• Focus view: change reciter, translation and surah, pick any ayah from a list, share
+• Pick any ayah by typing its number
+• Library by surah or by reciter; reciters you saved and listen to most come first
+• Playlists: repeat, shuffle, duplicate, add from any surah
+• Eight new card backgrounds for sharing
 ```
 
-### ur (Urdu, 399 characters)
+### ur (Urdu, 420 characters)
 ```
-ون ورس 2.2
-• نیا: شیئر اسٹوڈیو – کوئی بھی آیت، چند آیات یا پوری سورت تصویر، ویڈیو یا آڈیو بنا کر واٹس ایپ، اسٹیٹس یا کہیں بھی بھیجیں، ترجمے کے ساتھ یا بغیر
-• نیا: پلے لسٹ – اپنی سورتیں، اپنی ترتیب، اپنا قاری، اور پسند کے دنوں میں یاددہانی
-• آسان پلیئر: قاری، ترجمہ، دہرانا اور رفتار کے بڑے بٹن
-• تفسیر، نوٹس کے ساتھ بک مارکس، حفظ موڈ
-• 50 سے زائد قاری، لفظ بہ لفظ ہائی لائٹ، 5 رسم الخط، بغیر انٹرنیٹ
+ون ورس 2.3
+• ہر وقت کے لیے بہتر تجاویز: صبح، رات، جمعہ، رمضان اور ہجری مہینے، اور نئی سورتیں
+• آج کا کارڈ: منٹ، روزانہ ہدف اور اسٹریک ایک نظر میں
+• فوکس ویو: قاری، ترجمہ اور سورت بدلیں، فہرست سے کوئی بھی آیت چنیں، شیئر کریں
+• آیت نمبر لکھ کر سیدھا اس آیت پر جائیں
+• لائبریری سورت یا قاری کے لحاظ سے؛ محفوظ اور زیادہ سنے گئے قاری اوپر
+• پلے لسٹ: دہرائیں، شفل، کاپی، کسی بھی سورت سے شامل کریں
+• شیئر کے لیے آٹھ نئے پس منظر
 ```
 
 ---
@@ -97,92 +105,155 @@ One Verse: Quran Word by Word
 Alternatives: `One Verse - Quran Audio & Read` (30), `One Verse: Quran Audio Offline` (30).
 
 ### Short description (maximum 80 characters)
-76 characters:
+80 characters:
 ```
-Quran audio with word-by-word highlight, 5 scripts, Urdu & 40+ translations.
+Quran audio, word-by-word highlight, tafseer, playlists and share. Free, no ads.
 ```
 
 ### Full description (maximum 4000 characters)
-3984 characters:
+3839 characters:
 ```
 One Verse – Hear the Quran. See every word.
 
-One Verse is a calm, beautiful Quran app for listening, reading and understanding, one ayah at a time. Free forever, with no ads, no subscriptions and no sign-up.
+A calm, beautiful Quran app for listening, reading and understanding, one ayah at a time. Free forever: no ads, no subscriptions, no sign-up.
 
 ✨ WORD-BY-WORD HIGHLIGHT
 • Every word lights up exactly as the reciter says it
-• Word-exact timing for 16 reciters, including Mishary Alafasy, Abdur-Rahman As-Sudais and Maher Al-Muaiqly
-• The reader scrolls along by itself, ayah by ayah
+• Word-exact timing for 16 reciters, including Mishary Alafasy, Sudais and Maher Al-Muaiqly
+• The page follows the recitation by itself, so you never lose your place
+
+🌅 A VERSE FOR TODAY
+• Each day One Verse picks a verse for you and the right surahs for the moment: Al-Kahf on Friday, Al-Mulk at night, morning and evening passages, and the special days of the Islamic year
+• A Today card with your minutes, goal ring and streak
 
 📖 5 QURAN SCRIPTS, EACH IN ITS OWN FONT
-• Madani (KFGQPC Hafs) – the printed Madinah Mushaf
-• IndoPak Nastaleeq – the style most readers in Pakistan and India learned
-• Tajweed colours – Madd, Ghunnah, Qalqalah, Ikhfa, Idgham, Iqlab and more
-• Uthmani and Simple (modern spelling)
+• Madani (KFGQPC Hafs), IndoPak Nastaleeq, Tajweed colours, Uthmani and Simple
 • Every mark sits in the right place, so the text reads correctly on Android
 
-🎧 50+ RECITERS, WITH THEIR PHOTOS
-• Mishary Alafasy, Sudais, Shuraim, Maher Al-Muaiqly, Yasser Al-Dosari, Saad Al-Ghamdi, Khalid Al-Jaleel, Idrees Abkar, Fares Abbad, Mansour Al-Salimi, Husary, Minshawi, Abdul Basit and many more
-• Keep your favourite reciters and surahs one tap away
-• Short biographies, Murattal, Mujawwad and teaching styles
+🎧 50+ RECITERS
+• Mishary Alafasy, Sudais, Shuraim, Maher Al-Muaiqly, Yasser Al-Dosari, Saad Al-Ghamdi, Khalid Al-Jaleel, Idrees Abkar, Husary, Minshawi, Abdul Basit and many more
+• The reciters you listen to most rise to the top, and downloaded reciters are marked with a tick
+• Pick the ayah to start from by typing its number or choosing it from the list
 
 🌍 UNDERSTAND EVERY AYAH
 • 100+ translations in 40+ languages: Urdu, English, Hindi, Bengali, Indonesian, Turkish, French, Persian and more
-• Urdu shown in beautiful Nastaliq
-• Hear the translation audio after each Arabic ayah (English, Urdu, French, Russian, Persian, Chinese, Uzbek)
-• Switch translation with one tap
-
-▶️ A PLAYER MADE FOR THE QURAN
-• Repeat an ayah 1×, 3× or forever – ideal for memorising
-• Speed from 0.75× to 1.5× and a sleep timer that fades out gently
-• Keeps playing in the background, with controls in the notification and on the lock screen
-• Arabic only, Arabic + translation, or translation only
-
-📤 SHARE ANY AYAH
-• Send an ayah, a passage or a whole surah as a beautiful image, a video with the recitation, or an audio file
-• With or without the translation, to WhatsApp, status or any app, or save it to your phone
-
-🎶 YOUR PLAYLISTS
-• Your surahs in your order, with your reciter
-• A reminder on the days and time you choose
+• Urdu in beautiful Nastaliq
+• Hear the translation audio after each ayah, or the translation alone (English, Urdu and more)
 
 📚 TAFSEER, BOOKMARKS AND NOTES
-• Read the tafseer of any ayah: Ibn Kathir, Bayan ul Quran (Dr. Israr Ahmad), Tazkir ul Quran and Fi Zilal al-Quran in Urdu; Ibn Kathir, Ma'arif al-Qur'an and Tazkirul Quran in English; Muyassar and Al-Sa'di in Arabic
-• Bookmark ayahs and write your own notes and reflections
-
-🧠 MEMORISE (HIFZ) MODE
-• Loop a range of ayahs 3, 5, 10, 20 times or until you stop
-• Add a pause between rounds to recite from memory
+• Ibn Kathir, Bayan ul Quran (Dr. Israr Ahmad), Tazkir ul Quran and Fi Zilal al-Quran in Urdu; Ibn Kathir, Ma'arif al-Qur'an and Tazkirul Quran in English; Muyassar and Al-Sa'di in Arabic
+• Bookmark ayahs with your own notes and reflections
 
 🕌 FOCUS VIEW
 • One ayah, full screen, with its meaning below
-• Swipe to move between ayahs; the screen stays awake
+• Reciter, translation, what you hear, ayah list, tafseer, bookmark and share in one row of buttons
+• Move to the next or previous surah without leaving
+
+▶️ A PLAYER MADE FOR THE QURAN
+• Change reciter, translation or what you hear with one tap
+• Repeat, speed, and a sleep timer that fades out gently
+• Plays in the background, with lock-screen and notification controls
+
+📤 SHARE STUDIO
+• Share any ayah, passage or surah as an image, a video with the recitation, or an audio file
+• Twelve card designs, including sand, gold and night
+• Story or square size, with or without translation, or the translation audio alone
+• Send to WhatsApp and status, or save to your phone
+
+🎶 PLAYLISTS
+• Ready lists to start from: Morning, Before sleep, Friday and Protection
+• Your surahs and passages in your order, with your reciter
+• Repeat, shuffle and duplicate
+• A reminder on the days and time you choose
+• Download a whole playlist to listen offline
+
+🧠 MEMORISE (HIFZ) MODE
+• Loop a range of ayahs 3, 5, 10 or 20 times, with a pause to recite from memory
 
 🔥 BUILD A DAILY HABIT
-• Minutes listened today, this week, this month and this year
-• Daily goal ring, listening streak and a calendar of your days
-• Gentle reminders: your daily goal, Al-Kahf on Fridays, Al-Mulk before sleep
-• Special days: Ramadan, the last ten nights, Arafah, Eid and Ashura
+• Minutes today, this week, month and year, a daily goal and a listening streak
+• Gentle reminders: daily goal, Al-Kahf on Fridays, Al-Mulk before sleep, Ramadan, Arafah and Eid
 
-📶 ALWAYS READY, EVEN OFFLINE
-• The whole Quran text in all five scripts, your translation and word timings are kept on your phone for 30 days
-• On Wi-Fi it refreshes by itself, so it is always ready without internet
-• Download the complete Quran with one tap, or any single surah. It keeps downloading in the background, pauses and resumes, and carries on by itself on Wi-Fi
+📶 OFFLINE LIBRARY
+• Download the complete Quran with one tap, or any surah, in the background
+• See your downloads by surah or by reciter, and check the files with one tap
+• The text, translation and timings stay on your phone, ready without internet
 
 ⏯️ CONTINUE WHERE YOU LEFT OFF
-• Close the app or restart your phone – One Verse opens on the same ayah, with the same reciter and settings
-
-🎨 MADE WITH CARE
-• Dark (emerald and gold) and light themes
-• Adjustable Arabic and translation size
-• Share any ayah
+• One Verse opens on the same ayah, with the same reciter and settings
 
 🔒 PRIVATE BY DESIGN
-No account, no ads, no tracking. Your listening history stays on your device.
+No account, no ads, no tracking. Your listening history stays on your phone.
 
 Quran text and word timings: Quran.com (Quran Foundation). Fonts: King Fahd Glorious Quran Printing Complex. Translations and audio: AlQuran Cloud, Quranic Audio and mp3quran. Full credits are in the app's About screen.
 
 Made by Nasihun – nasihun.com. Please remember us in your duas.
+```
+
+### Urdu listing (Store presence → Main store listing → Manage translations → add Urdu)
+Add Urdu (`ur`) as a translation of the listing, paste the text below, and upload the Urdu screenshots
+(`store/playstore/screenshots/ur/`) and `feature-graphic-ur.png` in that language's Graphics section. People
+whose phone is set to Urdu then see the Urdu listing.
+
+App name (23 characters):
+```
+ون ورس: قرآن لفظ بہ لفظ
+```
+Short description (80 characters):
+```
+قرآن کی تلاوت لفظ بہ لفظ، اردو ترجمہ، تفسیر، پلے لسٹس اور شیئر۔ مفت، بغیر اشتہار
+```
+Full description (1625 characters):
+```
+ون ورس – قرآن سنیں، ہر لفظ ساتھ دیکھیں۔
+
+قرآن سننے، پڑھنے اور سمجھنے کے لیے ایک پُرسکون اور خوبصورت ایپ۔ ہمیشہ مفت: کوئی اشتہار نہیں، کوئی سبسکرپشن نہیں، کوئی سائن اپ نہیں۔
+
+✨ لفظ بہ لفظ ہائی لائٹ
+• قاری جو لفظ پڑھے، وہی لفظ روشن ہوتا ہے
+• صفحہ خود تلاوت کے ساتھ چلتا ہے، آپ کبھی جگہ نہیں بھولیں گے
+
+🌅 آج کی آیت
+• ہر دن آپ کے لیے ایک آیت، اور اس وقت کے لیے مناسب سورتیں: جمعہ کو سورۃ الکہف، رات کو سورۃ الملک، صبح و شام کی آیات اور اسلامی سال کے خاص دن
+
+📖 مصحف کے 5 خط
+• عثمانی (مدنی)، انڈوپاک نستعلیق، تجوید کے رنگ، اور مزید
+• اردو ترجمہ خوبصورت نستعلیق میں
+
+🎧 50 سے زیادہ قاری
+• مشاری العفاسی، السدیس، الشریم، ماہر المعیقلی، سعد الغامدی، عبدالباسط اور بہت سے
+• جنہیں آپ زیادہ سنیں وہ اوپر، اور ڈاؤن لوڈ شدہ قاری پر سبز نشان
+
+🌍 ہر آیت سمجھیں
+• 40 سے زیادہ زبانوں میں 100 سے زیادہ ترجمے
+• ہر آیت کے بعد اردو ترجمے کی آواز، یا صرف ترجمہ
+
+📚 تفسیر، بُک مارک اور نوٹس
+• تفسیر ابن کثیر، بیان القرآن (ڈاکٹر اسرار احمد)، تذکیر القرآن، فی ظلال القرآن اور مزید
+• آیات محفوظ کریں اور اپنے نوٹس لکھیں
+
+📤 شیئر اسٹوڈیو
+• کوئی بھی آیت تصویر، تلاوت والی ویڈیو یا آڈیو کی شکل میں
+• بارہ خوبصورت ڈیزائن، واٹس ایپ اور اسٹیٹس کے لیے
+
+🎶 پلے لسٹس
+• صبح، سونے سے پہلے، جمعہ اور حفاظت کی تیار فہرستیں
+• اپنی ترتیب، اپنا قاری، منتخب دنوں پر یاد دہانی
+• پوری پلے لسٹ ایک بار میں ڈاؤن لوڈ کریں
+
+🧠 حفظ موڈ
+• چند آیات 3، 5، 10 یا 20 بار دہرائیں، درمیان میں وقفے کے ساتھ
+
+🔥 روزانہ کی عادت
+• روزانہ ہدف، سلسلہ (اسٹریک) اور نرم یاد دہانیاں
+
+📶 بغیر انٹرنیٹ
+• پورا قرآن ایک ٹیپ میں ڈاؤن لوڈ کریں، قاری اور سورت کے حساب سے ترتیب
+
+🔒 مکمل پرائیویسی
+کوئی اکاؤنٹ نہیں، کوئی اشتہار نہیں، کوئی ٹریکنگ نہیں۔
+
+نصیحون کی طرف سے – nasihun.com۔ اپنی دعاؤں میں یاد رکھیں۔
 ```
 
 ### Category and tags
@@ -193,28 +264,36 @@ Made by Nasihun – nasihun.com. Please remember us in your duas.
 
 ## 6. Graphics (Main store listing → Graphics)
 
-Play allows **up to 8 phone screenshots**. Upload them in this order:
+Play allows **up to 8 phone screenshots**. Upload them in this order (English listing from
+`store/playstore/screenshots/en/`, Urdu listing from `store/playstore/screenshots/ur/`; the file names match):
 
 | # | File | Shows |
 |---|---|---|
-| 1 | `store/playstore/screenshots/01-overview.png` | All 12 features with icons |
+| 1 | `01-overview.png` | One Verse and its main features |
 | 2 | `02-word.png` | Word-by-word highlight in the reader |
-| 3 | `03-player.png` | Now Playing: repeat, speed, sleep timer, lock-screen controls |
-| 4 | `04-scripts.png` | 5 Quran scripts and tajweed colours |
-| 5 | `05-urdu.png` | IndoPak text with Urdu translation |
-| 6 | `06-reciters.png` | 50+ reciters with photos |
-| 7 | `07-focus.png` | Focus view |
-| 8 | `08-progress.png` | Streaks and listening stats |
+| 3 | `03-share.png` | Share studio: image, video or audio in twelve designs |
+| 4 | `04-player.png` | The new player with the one-line deck |
+| 5 | `05-tafseer.png` | Tafseer of any ayah |
+| 6 | `06-playlists.png` | Playlists with templates, reminders and offline download |
+| 7 | `07-scripts.png` | 5 Quran scripts and tajweed colours |
+| 8 | `08-urdu.png` | IndoPak text with Urdu translation |
 
 Optional:
-- `09-moments.png` (Home and special days) and `10-offline.png` (offline library).
+- `09-reciters.png` (50+ reciters) and `10-moments.png` (Today card and suggestions).
   - They can go in the **7-inch tablet** and **10-inch tablet** screenshot slots, or replace 7 and 8 above.
-- **Feature graphic:** `store/playstore/feature-graphic.png` (1024×500).
+- **Feature graphic:** `store/playstore/feature-graphic.png` (English) and `feature-graphic-ur.png` (Urdu), 1024×500.
 - **App icon:** unchanged.
-- **Promo video:** optional. `demo/one-verse-ad.mp4` is from the old 1.1.0 design, so do not use it for this release.
+- **Promo video:** Play takes only a YouTube link. Upload `store/video/one-verse-promo.mp4` (55 s, 1920×1080) to
+  YouTube as public or unlisted, with ads turned off, and paste the link in **Video**.
 
 All images are PNG without transparency, at the sizes Play requires. To regenerate them, see
 `store/playstore/README.md`.
+
+### For social media (not for Play)
+- `store/video/one-verse-teaser-en.mp4` and `one-verse-teaser-ur.mp4`: 19 s, 9:16, for Reels, Shorts, TikTok and
+  WhatsApp status.
+- `store/social/portrait/` (1080×1350) and `store/social/square/` (1080×1080): three posters each in English,
+  Urdu and Arabic. See `store/social/README.md`.
 
 ---
 
@@ -301,7 +380,7 @@ describes the storage permission of 1.x.
 
 | Error | Fix |
 |---|---|
-| "Version code 7 has already been used" | In `pubspec.yaml`, change `version: 2.2.0+7` to `+8`. Rebuild with `flutter build appbundle --release` and upload again. |
+| "Version code 8 has already been used" | In `pubspec.yaml`, change `version: 2.3.0+8` to `+9`. Rebuild with `flutter build appbundle --release` and upload again. |
 | "Your Android App Bundle is signed with the wrong key" | The bundle must be signed with the `oneverse` key (SHA-256 in section 1). Make sure `android/key.properties` exists and points to `OneVerseKey.jks`. When it does, the build log shows `✔ Using release keystore`. |
 | "signed in debug mode" | `android/key.properties` is missing, so the build fell back to debug signing. Restore it and rebuild. |
 | "You must complete the foreground service declaration" | Do the first part of section 7. |
@@ -338,6 +417,37 @@ It must match the upload certificate SHA-256 in section 1.
 ---
 
 ## 11. Changelog for this version (technical)
+
+### 2.3.0 (build 8): QA round
+
+- **Recommendations** (`lib/data/recommend.dart`): "For this moment" now draws on:
+  - special days and the Hijri month (Ramadan, the last ten nights, Eid, the ten days of Dhul Hijjah, Arafah,
+    Ashura, the new Hijri year, Rajab, Sha'ban, Rabi' al-Awwal)
+  - Friday: Al-Kahf, As-Sajdah and Al-Insan in the morning; Qaf, Al-Jumu'ah and Fussilat later
+  - wide lists for morning, afternoon, evening and night, rotating by date
+  - one surah to discover that was not heard in the last week
+  - no repeats, and passages (Ayat al-Kursi, the end of Al-Baqarah) that stop at their end
+
+  Verse of the day draws from 60 ayahs, with fitting ones on special days.
+- **Home:** a Today card with minutes, goal and streak.
+- **Focus view:**
+  - previous and next surah, and a surah list
+  - a strip with the reciter, translation, what you hear, the ayah list, tafseer, bookmark, share and add to
+    playlist
+- **Ayah picker:** type the number or pick from a list showing each ayah's first words. Used in share, playlists,
+  memorise and Go to ayah.
+- **Player:** translation and "you hear" on one line; the repeat and speed tiles were removed.
+- **Share:**
+  - eight more backgrounds
+  - the card follows translation changes at once
+  - audio can be Arabic, Arabic + translation or translation only
+  - no Quran Foundation line in captions
+- **Library:**
+  - by surah, with every saved reciter, or by reciter
+  - a check that forgets incomplete downloads
+- **Reciter picker:** reciters saved for the surah come first with a tick, then the most-listened ones.
+- **Playlists:** repeat, shuffle, duplicate, and Add to playlist from the reader and Focus view.
+
 
 ### 2.2.0 (build 7)
 

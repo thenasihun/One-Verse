@@ -1,7 +1,7 @@
 # One Verse: open to-dos
 
 Every suggestion made so far that is not built yet, plus the checks still owed. Numbers stay fixed so items can
-be referred to ("do 7 and 12"). Status as of 2026-11-13, version 2.2.0 (7).
+be referred to ("do 7 and 12"). Status as of 2026-11-21, version 2.3.0 (8).
 
 Legend: **P1** do before the next wide promotion · **P2** next features · **P3** later.
 
@@ -14,9 +14,9 @@ Legend: **P1** do before the next wide promotion · **P2** next features · **P3
    (`docs/quran-foundation-api.md`) allow offline copies only through their Content Sync API, refreshed at least
    every 7 days. Either move to Content Sync, which needs a Developer Console account, a client id and a small
    backend for the token, or ask Quran Foundation whether the public API may be cached this way.
-2. **Credit Quran Foundation on shared images and videos.** Social videos made from their content are allowed
-   only with credit. The share caption now says "Quran data provided by Quran Foundation". The card itself only
-   shows One Verse, so add a small credit line to the card (image and video).
+2. **Credit on shared images and videos:** the owner decided (2026-11-21) not to add a Quran Foundation line to
+   shares, because the app credits every source in About. If Quran Foundation's terms are revisited (item 1),
+   look at this again.
 3. **QuranHub photos and biographies.** The code licence is non-commercial and the terms for the data and
    photos are not stated. Ask Misraj AI (hello@misraj.ai) for written permission, or replace the photos.
 4. **baklarrrr/quran-timings has no licence file.** It supplies the word timings for Yasser Al-Dosari, Maher
@@ -44,11 +44,13 @@ Legend: **P1** do before the next wide promotion · **P2** next features · **P3
 ## C. Play Store (P1)
 
 14. Play Console: the "Data sync" foreground-service declaration (text in `PLAYSTORE_DEPLOY.md`, section 7).
-15. Upload 2.2.0 (7) with the release notes in `PLAYSTORE_DEPLOY.md`.
-16. New screenshots: the current ten show 2.0. Add the share studio, playlists and the new player.
-17. Upload `store/video/one-verse-promo.mp4` to YouTube and put the link in the listing (Play takes only
-    YouTube links).
-18. Make a 9:16 cut of the promo video for Reels, Shorts and WhatsApp status, and an Urdu voice-over version.
+15. Upload 2.3.0 (8) with the release notes, listing text and Urdu listing in `PLAYSTORE_DEPLOY.md`.
+16. ~~New screenshots~~ Done: ten in English and ten in Urdu (`store/playstore/screenshots/en/`, `ur/`), and an
+    Urdu feature graphic.
+17. Upload `store/video/one-verse-promo.mp4` (new, 2.3) to YouTube and put the link in the listing (Play takes
+    only YouTube links).
+18. ~~9:16 cut and Urdu voice-over~~ Done: `one-verse-teaser-en.mp4` and `one-verse-teaser-ur.mp4`. Still open: a
+    full-length Urdu voice-over of the promo, if wanted.
 
 ## D. Features (P2)
 
